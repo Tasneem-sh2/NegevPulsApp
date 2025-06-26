@@ -24,8 +24,10 @@ export default function MainIndex() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations();
+  
+  // استخدم عنوان IP حقيقي أو ngrok بدلاً من localhost
   const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://172.19.33.185:8082";
- 
+
   useEffect(() => {
     const fetchVillages = async () => {
       try {
@@ -43,16 +45,7 @@ export default function MainIndex() {
 
     fetchVillages();
   }, [baseUrl]);
-  const safePush = (path: string) => {
-  const allowedRoutes = ['/authOptions', '/login', '/signup']; // Add all valid routes
-    if (allowedRoutes.includes(path)) {
-      router.push(path as any);
-    } else {
-      console.warn(`Attempted to navigate to invalid route: ${path}`);
-      router.push('./');
-    }
-  };
-  
+
   const getImageUrl = (village: Village) => {
     if (!village.images || village.images.length === 0) {
       return '';
@@ -109,7 +102,10 @@ export default function MainIndex() {
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity 
           style={styles.retryButton}
-          onPress={() => location.reload()}
+          onPress={() => {
+            setError(null);
+            setLoading(true);
+          }}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
@@ -146,18 +142,24 @@ export default function MainIndex() {
           </Text>
         </Animated.View>
 
-        {/* Bottom Row - Start Button */}
-        <View style={styles.startButtonContainer}>
+        {/* Bottom Row - Auth Buttons */}
+        <View style={styles.authButtons}>
           <TouchableOpacity 
-            style={styles.startButton}
-            onPress={() => safePush('/authOptions')}
+            style={styles.authButton} 
+            onPress={() => router.push('./login')}
           >
-            <Text style={styles.startButtonText}>{t.common.letsStart}</Text>
+            <Text style={styles.authButtonText}>{t.auth.signIn}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.authButton, styles.signUpButton]}
+            onPress={() => router.push('./signup')}
+          >
+            <Text style={[styles.authButtonText, styles.signUpButtonText]}>{t.auth.signUp}</Text>
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Content Section */}
+      
+      {/* Content Section (keep the rest of your ScrollView content exactly the same) */}
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -253,6 +255,7 @@ export default function MainIndex() {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -318,22 +321,30 @@ const styles = StyleSheet.create({
     color: '#FFD700',
     fontWeight: 'bold',
   },
-  startButtonContainer: {
+  authButtons: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 10,
   },
-  startButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 25,
-    backgroundColor: '#FFD700',
+  authButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginHorizontal: 5,
+    backgroundColor: '#5d4037',
     alignItems: 'center',
+    maxWidth: 150,
   },
-  startButtonText: {
-    color: '#5d4037',
+  signUpButton: {
+    backgroundColor: '#FFD700',
+  },
+  authButtonText: {
+    color: '#FFD700',
     fontWeight: 'bold',
-    fontSize: 18,
+    fontSize: 16,
+  },
+  signUpButtonText: {
+    color: '#5d4037',
   },
   scrollView: {
     flex: 1,
@@ -463,4 +474,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
  
+
 });
