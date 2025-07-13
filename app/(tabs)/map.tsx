@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, ActivityIndicator, Text ,StyleSheet} from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import EmergencyPage from "../EmergencyPage";
-import WorkerPage from "./local";
+import WorkerPage from "../local";
 
 const HomePage: React.FC = () => {
   const [role, setRole] = useState<string | null>(null);

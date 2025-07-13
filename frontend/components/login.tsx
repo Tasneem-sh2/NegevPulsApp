@@ -64,7 +64,7 @@ export default function Login() {
           router.replace('./(tabs)/local');
           break;
         case 'emergency':
-          router.replace('./(tabs)/homepage');
+          router.replace('./(tabs)/map');
           break;
         case 'admin':
           router.replace('./admin');
