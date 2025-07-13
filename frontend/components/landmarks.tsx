@@ -9,7 +9,7 @@ const AddLandmark: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      await axios.post("http://172.19.33.185:8082/api/landmarks", {
+      await axios.post("http://10.0.0.8:8082/api/landmarks", {
         name,
         lat: Number(lat),
         lon: Number(lon),

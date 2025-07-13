@@ -3,11 +3,11 @@ import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView, Platform,
-  ScrollView,
-  StyleSheet,
-  Text, TextInput, TouchableOpacity,
-  View
+    KeyboardAvoidingView, Platform,
+    ScrollView,
+    StyleSheet,
+    Text, TextInput, TouchableOpacity,
+    View
 } from 'react-native';
 
 type SignupData = {
@@ -46,7 +46,7 @@ const Signup = () => {
     setSuccessMessage("");
 
     try {
-      const url = `http://172.19.33.185:8082/api/signup`;
+      const url = `http://10.0.0.8:8082/api/signup`;
       const { data: res } = await axios.post(url, data);
 
       setSuccessMessage("Account created successfully!");

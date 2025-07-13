@@ -9,17 +9,18 @@ import {
   TextInput, 
   Alert,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import axios, { AxiosError } from 'axios';
-import { useRouter } from 'expo-router';
+import { useRouter } from 'expo-router/build/hooks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 
-const API_BASE_URL = 'http://172.19.33.185:8082/api';
+const API_BASE_URL = 'http://10.0.0.8:8082/api';
 
 // Types
 interface LocationCoords {
@@ -663,6 +664,13 @@ const LandmarkPage: React.FC = () => {
         router.push('/login');
         return;
       }
+         if (Platform.OS === 'web' && newLandmark.imageUrl) {
+      // معالجة الصور للويب
+      const response = await axios.post(`${API_BASE_URL}/upload`, {
+        image: newLandmark.imageUrl
+      });
+      newLandmark.imageUrl = response.data.url;
+    }
 
       if (!newLandmark.title.trim()) {
         Alert.alert('Error', 'Please enter a landmark title');

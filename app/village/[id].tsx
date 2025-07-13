@@ -3,17 +3,17 @@ import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  Image,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    Image,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 
@@ -36,7 +36,7 @@ const VillageDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://172.19.33.185:8082";
+  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://10.0.0.8:8082";
   const flatListRef = useRef<FlatList>(null);
   const SCREEN_WIDTH = Dimensions.get('window').width;
 

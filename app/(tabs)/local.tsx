@@ -58,7 +58,7 @@ export default function LocalPage() {
           const token = await AsyncStorage.getItem('token');
           if (token) {
             try {
-              const response = await axios.get('http://172.19.33.185:8082/api/auth/me', {
+              const response = await axios.get('http://10.0.0.8:8082/api/auth/me', {
                 headers: { 'Authorization': `Bearer ${token}` }
               });
               if (response.data?.success) {
@@ -91,7 +91,7 @@ useEffect(() => {
   const fetchUserData = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const response = await axios.get('http://172.19.33.185:8082/api/auth/me', {
+      const response = await axios.get('http://10.0.0.8:8082/api/auth/me', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -188,7 +188,7 @@ useEffect(() => {
 
     // Make the API request
     const response = await axios.post(
-      'http://172.19.33.185:8082/api/auth/request-super',
+      'http://10.0.0.8:8082/api/auth/request-super',
       {}, // Empty body since we're using the token
       {
         headers: {

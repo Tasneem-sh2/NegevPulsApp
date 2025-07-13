@@ -1,780 +1,769 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import axios from 'axios';
+import { FontAwesome, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import MapboxGL, {
+  UserLocationRenderMode,
+  UserTrackingMode
+} from '@rnmapbox/maps';
+import axios from "axios";
 import * as Location from 'expo-location';
-import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
-import SuperCluster from 'supercluster';
+  Dimensions,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from "react-native";
 
-const API_BASE_URL = 'http://172.19.33.185:8082/api';
-const ORS_API_KEY = process.env.EXPO_PUBLIC_ORS_API_KEY!;
+const MAPBOX_TOKEN = process.env.MAPBOX_DOWNLOADS_TOKEN || 'sk.eyJ1IjoidGFzbmVlbTIwMDIiLCJhIjoiY21jZ3l4bHJ3MGVyejJqc2h3YjkyY3hhcSJ9.OJCc5jNljboKnrfP1yfpYA';
 
-interface Point {
-  lat: number;
-  lon: number;
-  title?: string;
-}
+MapboxGL.setAccessToken(MAPBOX_TOKEN);
+
+const { PointAnnotation, Camera } = MapboxGL;
+const speakInstruction = (instruction: string) => {
+  Speech.speak(instruction, {
+    language: 'en',
+    rate: 0.9
+  });
+};
 
 interface Landmark {
-  _id: string;
-  title: string;
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+type Point = {
   lat: number;
   lon: number;
-  verified: boolean;
-}
+  Name?: string;
+};
 
-interface Route {
-  _id: string;
-  title: string;
-  points: Point[];
-  verified: boolean;
-  rating?: number;
-  ratingsCount?: number;
-  createdBy?: string;
-  createdAt?: string;
-}
+type Route = {
+  id: string;
+  name?: string;
+  coordinates: [number, number][];
+};
 
-interface Instruction {
-  type: string;
-  distance: number;
-  duration: number;
-  text: string;
-}
-
-const EmergencyPage: React.FC = () => {
-  const mapRef = useRef<MapView>(null);
-  const [location, setLocation] = useState<Point | null>(null);
-  const [startPoint, setStartPoint] = useState<Point | null>(null);
-  const [destination, setDestination] = useState<Point | null>(null);
-  const [route, setRoute] = useState<{ coordinates: Point[] } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [landmarks, setLandmarks] = useState<Landmark[]>([]);
-  const [routes, setRoutes] = useState<Route[]>([]);
-  const [savedRoutes, setSavedRoutes] = useState<Route[]>([]);
-  const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(null);
-  const [region, setRegion] = useState({
-    latitude: 31.155844,
-    longitude: 34.807268,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  });
-  const [startAddress, setStartAddress] = useState('');
-  const [destinationAddress, setDestinationAddress] = useState('');
+const HomePage: React.FC = () => {
+  const mapRef = useRef<MapboxGL.MapView>(null);
+  const cameraRef = useRef<MapboxGL.Camera>(null);
+  const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [startPoint, setStartPoint] = useState<{ lat: number; lon: number; title?: string } | null>(null);
+  const [destination, setDestination] = useState<{ lat: number; lon: number; title?: string } | null>(null);
+  const [route, setRoute] = useState<{ coordinates: [number, number][] } | null>(null);
   const [routeDetails, setRouteDetails] = useState<{ distance: string; duration: string } | null>(null);
-  const [instructions, setInstructions] = useState<Instruction[]>([]);
-  const [clusters, setClusters] = useState<any[]>([]);
-  const [hint, setHint] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const router = useRouter();
+  const [selectedLandmark, setSelectedLandmark] = useState<{ lat: number, lon: number, title: string } | null>(null);
+  const [startAddress, setStartAddress] = useState("");
+  const [destinationAddress, setDestinationAddress] = useState("");
+  const [cameraSettings, setCameraSettings] = useState({
+    center: [35.513889, 33.892166] as [number, number],
+    zoom: 10
+  });
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [navigationMode, setNavigationMode] = useState(false);
+  const [userHeading, setUserHeading] = useState<number | undefined>(undefined);
+  const [navigationSteps, setNavigationSteps] = useState<any[]>([]);
+  const [showControls, setShowControls] = useState(true);
 
-  // Static landmarks data
   const staticLandmarks = [
-    { _id: '1', title: "Algergawi Shop", lat: 31.155844, lon: 34.807268, verified: true },
-    { _id: '2', title: "Electricity Pole", lat: 31.15478, lon: 34.809776, verified: true },
-    { _id: '3', title: "Electric Company", lat: 31.155101, lon: 34.811155, verified: true },
-    { _id: '4', title: "Al-Azazma School", lat: 31.163493, lon: 34.820984, verified: true },
-    { _id: '5', title: "Algergawi Mosque", lat: 31.15632, lon: 34.810717, verified: true },
+    { lat: 31.155844, lon: 34.807268, title: "Algergawi Shop" },
+    { lat: 31.15478, lon: 34.809776, title: "Electricity Pole" },
+    { lat: 31.155101, lon: 34.811155, title: "Electric Company" },
+    { lat: 31.163493, lon: 34.820984, title: "Al-Azazma School" },
+    { lat: 31.15632, lon: 34.810717, title: "Algergawi Mosque" },
+    { lat: 31.166333, lon: 34.812421, title: "Abu Swilim Building Materials" },
+    { lat: 31.166306, lon: 34.814712, title: "Abu Swilim Mosque" },
+    { lat: 31.163345, lon: 34.815559, title: "Abu Muharib's Butcher Shop" },
+    { lat: 31.155848, lon: 34.807387, title: "Mauhidet Clinic" },
+    { lat: 31.166374, lon: 34.810585, title: "General Dental Clinic" },
+    { lat: 31.156483, lon: 34.805685, title: "The Entry of the Electric Company" },
+    { lat: 31.155741, lon: 34.806393, title: "The Green Container" },
   ];
 
-  // Calculate distance between two points
-  const calculateDistance = (point1: Point, point2: Point) => {
-    const R = 6371e3; // Earth radius in meters
-    const φ1 = point1.lat * Math.PI/180;
-    const φ2 = point2.lat * Math.PI/180;
-    const Δφ = (point2.lat - point1.lat) * Math.PI/180;
-    const Δλ = (point2.lon - point1.lon) * Math.PI/180;
+  const [landmarks, setLandmarks] = useState(staticLandmarks);
 
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const getCurrentLocation = async (): Promise<{ lat: number; lon: number }> => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Permission to access location was denied');
+        return { lat: 31.155844, lon: 34.807268 };
+      }
 
-    return R * c;
+      const location = await Location.getCurrentPositionAsync({});
+      return {
+        lat: location.coords.latitude,
+        lon: location.coords.longitude
+      };
+    } catch (error) {
+      console.error("Error getting location:", error);
+      return { lat: 31.155844, lon: 34.807268 };
+    }
   };
 
-  // Find nearest point on custom routes
-  const findNearestPointOnCustomRoutes = (point: Point) => {
-    let nearestPoint = point;
-    let minDistance = Infinity;
-
-    routes.forEach(route => {
-      route.points.forEach(routePoint => {
-        const distance = calculateDistance(point, routePoint);
-        if (distance < minDistance) {
-          minDistance = distance;
-          nearestPoint = routePoint;
-        }
-      });
-    });
-
-    return nearestPoint;
-  };
-
-  // Fetch landmarks from API
   useEffect(() => {
     const fetchLandmarks = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/landmarks`);
-        const verifiedLandmarks = response.data.filter((l: Landmark) => l.verified);
-        setLandmarks([...staticLandmarks, ...verifiedLandmarks]);
+        const API_BASE_URL = Platform.select({
+          ios: 'http://localhost:8082',
+          android: 'http://10.0.0.8:8082',
+          default: 'http://10.0.0.8:8082'
+        });
+        
+        const response = await axios.get(`${API_BASE_URL}/api/landmarks`);
+        const dbLandmarks = response.data;
+        const verifiedLandmarks = dbLandmarks.filter((lm: any) => lm.verified === true);
+        const combined = [...staticLandmarks, ...verifiedLandmarks];
+        setLandmarks(combined);
       } catch (error) {
         console.error("Error fetching landmarks:", error);
-        setLandmarks(staticLandmarks);
       }
     };
 
     fetchLandmarks();
-  }, []);
 
-  // Fetch routes from API
-  useEffect(() => {
-    const fetchRoutes = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/routes`);
-        const verifiedRoutes = response.data.filter((r: Route) => r.verified);
-        setRoutes(verifiedRoutes);
-      } catch (error) {
-        console.error("Error fetching routes:", error);
-      }
-    };
-
-    fetchRoutes();
-  }, []);
-
-  // Get user location
-  useEffect(() => {
-    const getLocation = async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        console.log('Permission to access location was denied');
-        setLocation({ lat: 31.155844, lon: 34.807268 });
-        setStartPoint({ lat: 31.155844, lon: 34.807268 });
-        return;
-      }
-
-      let location = await Location.getCurrentPositionAsync({});
-      const newLocation = {
-        lat: location.coords.latitude,
-        lon: location.coords.longitude,
-        title: 'Current Location'
-      };
-      
-      setLocation(newLocation);
-      setStartPoint(newLocation);
-      setRegion({
-        latitude: newLocation.lat,
-        longitude: newLocation.lon,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
+    const initializeLocation = async () => {
+      const currentLocation = await getCurrentLocation();
+      setLocation(currentLocation);
+      setStartPoint(currentLocation);
+      setCameraSettings({
+        center: [currentLocation.lon, currentLocation.lat],
+        zoom: 14
       });
     };
 
-    getLocation();
+    initializeLocation();
+
+    Location.watchHeadingAsync((heading) => {
+      setUserHeading(heading.trueHeading);
+    });
+   
   }, []);
 
-  // Update clusters when landmarks or region changes
-  useEffect(() => {
-    const index = new SuperCluster({
-      radius: 60,
-      maxZoom: 16
+  const fetchRoutes = async () => {
+    try {
+      const API_BASE_URL = Platform.select({
+        ios: 'http://localhost:8082',
+        android: 'http://10.0.0.8:8082',
+        default: 'http://10.0.0.8:8082'
+      });
+
+      
+      const response = await axios.get(`${API_BASE_URL}/api/routes`);
+      const verifiedOnly = response.data.filter((r: any) => r.verified===true);
+      
+      const formatted = verifiedOnly.map((r: any) => ({
+        id: r._id,
+        name: r.title,
+        coordinates: r.points.map((p: any) => [p.lon, p.lat]),
+      }));
+      
+      setRoutes(formatted);
+      setShowControls(false); // إخفاء النافذة بعد الحصول على المسار
+
+    } catch (err) {
+      console.error("Error fetching routes:", err);
+    }
+  };
+
+  const handleLandmarkClick = (landmark: Landmark) => {
+    setSelectedLandmark({
+      lat: landmark.latitude,
+      lon: landmark.longitude,
+      title: landmark.name,
     });
     
-    index.load(landmarks.map(l => ({
-      type: 'Feature',
-      properties: { landmark: l },
-      geometry: {
-        type: 'Point',
-        coordinates: [l.lon, l.lat]
-      }
-    })));
-    
-    const newClusters = index.getClusters(
-      [region.longitude - region.longitudeDelta, region.latitude - region.latitudeDelta, 
-       region.longitude + region.longitudeDelta, region.latitude + region.latitudeDelta],
-      Math.floor(Math.log2(360 / region.longitudeDelta))
-    );
-    
-    setClusters(newClusters);
-  }, [landmarks, region]);
-
-  // Update hints based on state
-  useEffect(() => {
-    if (!startPoint && !destination) {
-      setHint('Set both start and destination points to calculate route');
-    } else if (!route) {
-      setHint('Press "Calculate Route" to find the best path');
-    } else {
-      setHint('Long press on map to add custom path points');
-    }
-  }, [startPoint, destination, route]);
-
-  // Focus map on selected point
-  const focusOnPoint = (point: Point) => {
-    if (!mapRef.current || !point) return;
-    
-    setRegion({
-      latitude: point.lat,
-      longitude: point.lon,
-      latitudeDelta: 0.005,
-      longitudeDelta: 0.005,
+    setCameraSettings({
+      center: [landmark.longitude, landmark.latitude],
+      zoom: 14
     });
   };
 
-  // Handle landmark selection
-  const handleLandmarkSelect = (landmark: Landmark) => {
-    setSelectedLandmark(landmark);
-    focusOnPoint({ lat: landmark.lat, lon: landmark.lon, title: landmark.title });
-  };
-
-  // Set start point from address
- const handleSetStartPoint = async () => {
-  if (!startAddress.trim()) {
-    Alert.alert('Error', 'Please enter a starting address');
-    return;
-  }
-
-  // 1️⃣ Check in local landmarks
-  const landmark = landmarks.find((l) =>
-    l.title.toLowerCase().includes(startAddress.toLowerCase())
-  );
-  if (landmark) {
-    const optimizedStart = findNearestPointOnCustomRoutes(landmark);
-    setStartPoint({ lat: landmark.lat, lon: landmark.lon, title: landmark.title });
-    focusOnPoint({ lat: landmark.lat, lon: landmark.lon });
-    return;
-  }
-
-  // 2️⃣ Try external geocoding
-  try {
-  const response = await axios.get(
-  `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destinationAddress)}`, 
-  {
-    headers: {
-      'User-Agent': 'MyApp/1.0 (youremail@example.com)',
-      'Accept-Language': 'en',
-    },
-  }
-);
-    if (response.data.length > 0) {
-      const { lat, lon, display_name } = response.data[0];
-      setStartPoint({ lat: parseFloat(lat), lon: parseFloat(lon), title: display_name });
-      focusOnPoint({ lat: parseFloat(lat), lon: parseFloat(lon) });
-    } else {
-      Alert.alert('Error', 'Location not found. Try a landmark name.');
-    }
-  } catch (error) {
-    console.error(error);
-    Alert.alert('Error', 'Could not locate starting point. Try another name.');
-  }
-};
-
-
-  // Set destination from address
- const handleSetDestination = async () => {
-  if (!destinationAddress.trim()) {
-    Alert.alert('Error', 'Please enter a destination address');
-    return;
-  }
-
-  // 1️⃣ Check in local landmarks
-  const landmark = landmarks.find((l) =>
-    l.title.toLowerCase().includes(destinationAddress.toLowerCase())
-  );
-  if (landmark) {
-    const optimizedDest = findNearestPointOnCustomRoutes(landmark);
-    setDestination({ lat: landmark.lat, lon: landmark.lon, title: landmark.title });
-    focusOnPoint({ lat: landmark.lat, lon: landmark.lon });
-    return;
-  }
-
-  // 2️⃣ Try external geocoding
-  try {
-  const response = await axios.get(
-  `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destinationAddress)}`, 
-  {
-    headers: {
-      'User-Agent': 'MyApp/1.0 (youremail@example.com)',
-      'Accept-Language': 'en',
-    },
-  }
-);
-    if (response.data.length > 0) {
-      const { lat, lon, display_name } = response.data[0];
-      setDestination({ lat: parseFloat(lat), lon: parseFloat(lon), title: display_name });
-      focusOnPoint({ lat: parseFloat(lat), lon: parseFloat(lon) });
-    } else {
-      Alert.alert('Error', 'Location not found. Try a landmark name.');
-    }
-  } catch (error) {
-    console.error(error);
-    Alert.alert('Error', 'Could not locate destination. Try another name.');
-  }
-};
-
-
-  // Calculate route using OpenRouteService API
-  const calculateRoute = async () => {
+  const fetchRoute = async () => {
     if (!startPoint || !destination) {
-      Alert.alert('Error', 'Please set both start and destination points');
+      alert("Please set both the start point and the destination.");
       return;
     }
 
     setLoading(true);
-    
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startPoint.lon},${startPoint.lat};${destination.lon},${destination.lat}?alternatives=false&geometries=geojson&language=en&overview=full&steps=true&access_token=pk.eyJ1Ijoic3JhZWwxMiIsImEiOiJjbTVpZmk1angwd2puMmlzNzliendwcDZhIn0.K1gCuh7b0tNdi58FGEhBcA`;
+
     try {
-      // Prepare custom paths from user-added routes
-      const customPaths = routes.map(route => ({
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: route.points.map(p => [p.lon, p.lat])
-        }
-      }));
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
 
-      // Call OpenRouteService API
-      const response = await axios.post(
-        `https://api.openrouteservice.org/v2/directions/foot-walking/geojson`,
-        {
-          coordinates: [
-            [startPoint.lon, startPoint.lat],
-            [destination.lon, destination.lat]
-          ],
-          extra_info: ['ways'],
-          preferences: 'recommended',
-          geometry_simplify: false,
-          instructions: true,
-          custom_paths: customPaths
-        },
-        {
-          headers: {
-            'Authorization': ORS_API_KEY,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      // Process response
-      const rawOptimizedCoordinates: [number, number][] = response.data.features[0].geometry.coordinates;
-      const optimizedCoordinates = rawOptimizedCoordinates.map(([lon, lat]) => ({ lat, lon }));
-      setRoute({ coordinates: optimizedCoordinates }); // مفقودة!
+      const data = await response.json();
+      const routeCoordinates = data.routes[0].geometry.coordinates;
+      const steps = data.routes[0].legs[0].steps;
+      setNavigationSteps(steps);
 
-
-      
-      // Route details
-      const { distance, duration } = response.data.features[0].properties.summary;
-      setRouteDetails({
-        distance: `${(distance / 1000).toFixed(1)} km`,
-        duration: `${Math.round(duration / 60)} min`
+      setRoute({
+        coordinates: routeCoordinates,
       });
 
-      // Navigation instructions
-      const steps = response.data.features[0].properties.segments[0].steps.map((step: any) => ({
-        type: step.type,
-        distance: step.distance,
-        duration: step.duration,
-        text: step.instruction
-      }));
-      setInstructions(steps);
+      setRouteDetails({
+        distance: (data.routes[0].legs[0].distance / 1000).toFixed(1) + ' km',
+        duration: (data.routes[0].legs[0].duration / 60).toFixed(1) + ' min',
+      });
+
+      if (mapRef.current && routeCoordinates.length > 0) {
+        cameraRef.current?.fitBounds(
+          [startPoint.lon, startPoint.lat],
+          [destination.lon, destination.lat],
+          100,
+          100,
+        );
+      }
+          setShowControls(false); // إخفاء النافذة بعد الحصول على المسار
+
     } catch (error) {
-      console.error("Error calculating route:", error);
-      Alert.alert('Error', 'Could not calculate route. Please try again.');
+      console.error("Failed to fetch route:", error);
+      alert("Failed to fetch route. Please try again later.");
     } finally {
       setLoading(false);
     }
   };
-
-  // Optimize route using community paths
-  const optimizeRouteWithCustomPaths = async () => {
-    if (!route) return;
-    
-    setLoading(true);
+  
+  const geocodeAddress = async (address: string) => {
+    if (!address.trim()) return null;
     
     try {
-      // Sample points from current route
-      const waypoints = route.coordinates
-        .filter((_, i) => i % 5 === 0)
-        .map(p => [p.lon, p.lat]);
-      
-      // Prepare custom paths
-      const customPaths = routes.map(r => ({
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: r.points.map(p => [p.lon, p.lat])
-        }
-      }));
-
-      // Call API for optimized route
-      const response = await axios.post(
-        `https://api.openrouteservice.org/v2/directions/foot-walking/geojson`,
-        {
-          coordinates: waypoints,
-          preferences: 'recommended',
-          custom_paths: customPaths
-        },
-        {
-          headers: {
-            'Authorization': ORS_API_KEY,
-            'Content-Type': 'application/json'
-          }
-        }
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=pk.eyJ1Ijoic3JhZWwxMiIsImEiOiJjbTVpZmk1angwd2puMmlzNzliendwcDZhIn0.K1gCuh7b0tNdi58FGEhBcA`
       );
       
-      // Update route with optimized path
-     const rawCoordinates: [number, number][] = response.data.features[0].geometry.coordinates;
-     const coordinates = rawCoordinates.map(([lon, lat]) => ({ lat, lon }));
-     setRoute({ coordinates });
+      if (!response.ok) {
+        throw new Error(`Geocoding failed: ${response.status}`);
+      }
 
+      const data = await response.json();
       
-      // Update route details
-      const { distance, duration } = response.data.features[0].properties.summary;
-      setRouteDetails({
-        distance: `${(distance / 1000).toFixed(1)} km`,
-        duration: `${Math.round(duration / 60)} min`
-      });
-
-      // Update instructions
-      const steps = response.data.features[0].properties.segments[0].steps.map((step: any) => ({
-        type: step.type,
-        distance: step.distance,
-        duration: step.duration,
-        text: step.instruction
-      }));
-      setInstructions(steps);
+      if (data.features && data.features.length > 0) {
+        const [lon, lat] = data.features[0].center;
+        return { lon, lat, title: data.features[0].place_name };
+      }
+      return null;
     } catch (error) {
-      console.error("Optimization failed:", error);
-      Alert.alert('Error', 'Could not optimize route');
-    } finally {
-      setLoading(false);
+      console.error("Geocoding error:", error);
+      return null;
     }
   };
 
-  // Rate a route
-  const rateRoute = async (routeId: string, rating: number) => {
-    try {
-      await axios.post(`${API_BASE_URL}/routes/rate`, {
-        routeId,
-        rating
+  const updateStartPoint = async () => {
+    if (!startAddress.trim()) {
+      alert("Please enter a starting address");
+      return;
+    }
+  
+    const landmark = staticLandmarks.find(
+      (lm) => lm.title.toLowerCase() === startAddress.trim().toLowerCase()
+    );
+  
+    if (landmark) {
+      setStartPoint({ lat: landmark.lat, lon: landmark.lon, title: landmark.title });
+      setCameraSettings({
+        center: [landmark.lon, landmark.lat],
+        zoom: 14
       });
-      
-      // Update local state
-      setRoutes(routes.map(r => 
-        r._id === routeId ? {
-          ...r,
-          rating: ((r.rating || 0) * (r.ratingsCount || 0) + rating) / ((r.ratingsCount || 0) + 1),
-          ratingsCount: (r.ratingsCount || 0) + 1
-        } : r
-      ));
-    } catch (error) {
-      console.error("Rating failed:", error);
+      return;
+    }
+  
+    const result = await geocodeAddress(startAddress);
+    if (result) {
+      setStartPoint({ ...result, title: result.title || startAddress });
+      setCameraSettings({
+        center: [result.lon, result.lat],
+        zoom: 14
+      });
+    } else {
+      alert("Could not find this location. Please try a different address.");
     }
   };
 
-  // Save current route to favorites
-  const saveCurrentRoute = () => {
-    if (!route) return;
-    
-    const newRoute: Route = {
-      _id: Date.now().toString(),
-      title: `Saved Route ${savedRoutes.length + 1}`,
-      points: route.coordinates,
-      verified: false,
-      createdAt: new Date().toISOString()
-    };
-    
-    
-    setSavedRoutes([...savedRoutes, newRoute]);
-    Alert.alert('Success', 'Route saved to your favorites');
+  const updateDestination = async () => {
+    if (!destinationAddress.trim()) {
+      alert("Please enter a destination address");
+      return;
+    }
+  
+    const landmark = staticLandmarks.find(
+      (lm) => lm.title.toLowerCase() === destinationAddress.trim().toLowerCase()
+    );
+  
+    if (landmark) {
+      setDestination({ lat: landmark.lat, lon: landmark.lon, title: landmark.title});
+      setCameraSettings({
+        center: [landmark.lon, landmark.lat],
+        zoom: 14
+      });
+      return;
+    }
+  
+    const result = await geocodeAddress(destinationAddress);
+    if (result) {
+      setDestination({ ...result, title: result.title || destinationAddress });
+      setCameraSettings({
+        center: [result.lon, result.lat],
+        zoom: 14
+      });
+    } else {
+      alert("Could not find this location. Please try a different address.");
+    }
   };
+  
+  const startNavigation = () => {
+    if (!route || !startPoint || !destination) {
+      alert("Please set a route first.");
+      return;
+    }
+      setShowControls(false); // إخفاء النافذة عند بدء الملاحة
+
+    setNavigationMode(true);
+    cameraRef.current?.fitBounds(
+      [startPoint.lon, startPoint.lat],
+      [destination.lon, destination.lat],
+      100,
+      100,
+    );
+    
+    if (navigationSteps.length > 0) {
+      speakInstruction(navigationSteps[currentStepIndex + 1].maneuver.instruction);
+    }
+    
+    setCurrentStepIndex(0);
+  };
+
+  const toggleControls = () => {
+    setShowControls(!showControls);
+  };
+
+ const handleGoToCurrentLocation = async () => {
+  const currentLocation = await getCurrentLocation();
+  const targetZoom = navigationMode ? 17 : 14;
+  
+  setCameraSettings({
+    center: [currentLocation.lon, currentLocation.lat],
+    zoom: targetZoom
+  });
+  
+  if (mapRef.current) {
+    cameraRef.current?.setCamera({
+      centerCoordinate: [currentLocation.lon, currentLocation.lat],
+      zoomLevel: targetZoom,
+      animationDuration: 1000
+    });
+  }
+};
+// دالة لحساب المسافة بين نقطتين (بالأمتار)
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371e3; // نصف قطر الأرض بالأمتار
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2 - lat1) * Math.PI/180;
+  const Δλ = (lon2 - lon1) * Math.PI/180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c;
+};
 
   return (
     <View style={styles.container}>
-      <MapView
+      <MapboxGL.MapView
         ref={mapRef}
         style={styles.map}
-        initialRegion={region}
-        onRegionChangeComplete={setRegion}
+        styleURL="mapbox://styles/mapbox/streets-v11"
+          onPress={() => setShowControls(false)} // إخفاء عند الضغط على الخريطة
+
       >
-        {/* User location marker */}
-        {location && (
-          <Marker
-            coordinate={{ latitude: location.lat, longitude: location.lon }}
-            title="Your Location"
-            pinColor="#FFD700"
-          />
-        )}
+        <Camera
+          ref={cameraRef}
+          followUserLocation={navigationMode}
+          followUserMode={navigationMode ? 'compass' as UserTrackingMode : undefined}
+          followZoomLevel={17}
+          centerCoordinate={location ? [location.lon ?? 0, location.lat ?? 0] : cameraSettings.center}
+        />
 
-        {/* Start point marker */}
-        {startPoint && (
-          <Marker
-            coordinate={{ latitude: startPoint.lat, longitude: startPoint.lon }}
-            title={startPoint.title || "Start Point"}
-            pinColor="red"
-          />
-        )}
-
-        {/* Destination marker */}
-        {destination && (
-          <Marker
-            coordinate={{ latitude: destination.lat, longitude: destination.lon }}
-            title={destination.title || "Destination"}
-            pinColor="green"
-          />
-        )}
-
-        {/* Clustered landmarks */}
-        {clusters.map(cluster => {
-          if (cluster.properties.cluster) {
-            return (
-              <Marker
-                key={`cluster-${cluster.id}`}
-                coordinate={{
-                  latitude: cluster.geometry.coordinates[1],
-                  longitude: cluster.geometry.coordinates[0]
-                }}
-                onPress={() => {
-                  const zoom = Math.min(20, Math.floor(Math.log2(360 / region.longitudeDelta) + 1));
-                  mapRef.current?.animateToRegion({
-                    latitude: cluster.geometry.coordinates[1],
-                    longitude: cluster.geometry.coordinates[0],
-                    latitudeDelta: region.latitudeDelta / 2,
-                    longitudeDelta: region.longitudeDelta / 2
-                  }, 500);
-                }}
-              >
-                <View style={styles.clusterMarker}>
-                  <Text style={styles.clusterText}>{cluster.properties.point_count}</Text>
-                </View>
-              </Marker>
-            );
-          }
+        <MapboxGL.UserLocation
+  onUpdate={(location) => {
+    // تحديث الموقع الحالي
+    setLocation({
+      lat: location.coords.latitude,
+      lon: location.coords.longitude,
+    });
+    
+    // تحديث اتجاه المستخدم
+    setUserHeading(location.coords.heading);
+    
+    // في وضع الملاحة فقط
+    if (navigationMode) {
+      // تحريك الكاميرا لمتابعة المستخدم
+      cameraRef.current?.moveTo([location.coords.longitude, location.coords.latitude], 1000);
+      
+      // التحديث التلقائي للخطوات أثناء الملاحة
+      if (navigationSteps.length > 0 && currentStepIndex < navigationSteps.length - 1) {
+        const nextStep = navigationSteps[currentStepIndex + 1];
+        const nextStepLocation = nextStep.maneuver.location;
+        
+        // حساب المسافة بين المستخدم والخطوة التالية
+        const distanceToNextStep = calculateDistance(
+          location.coords.latitude,
+          location.coords.longitude,
+          nextStepLocation[1], // خط العرض
+          nextStepLocation[0]  // خط الطول
+        );
+        
+        // إذا كان المستخدم على بعد أقل من 50 متر من الخطوة التالية
+        if (distanceToNextStep < 50) {
+          const newIndex = currentStepIndex + 1;
+          setCurrentStepIndex(newIndex);
           
-          const landmark = cluster.properties.landmark;
-          return (
-            <Marker
-              key={landmark._id}
-              coordinate={{ latitude: landmark.lat, longitude: landmark.lon }}
-              title={landmark.title}
-              pinColor={landmark.verified ? "#3498db" : "#AAAAAA"}
-              onPress={() => handleLandmarkSelect(landmark)}
-            />
-          );
-        })}
-
-        {/* User-added routes */}
-        {routes.map(route => (
-          <Polyline
-            key={route._id}
-            coordinates={route.points.map(p => ({
-              latitude: p.lat,
-              longitude: p.lon
-            }))}
-            strokeColor="#3A86FF"
-            strokeWidth={3}
-          />
-        ))}
-
-        {/* Calculated route */}
-        {route && (
-          <Polyline
-            coordinates={route.coordinates.map(p => ({
-              latitude: p.lat,
-              longitude: p.lon
-            }))}
-            strokeColor="brown"
-            strokeWidth={4}
-          />
+          // تحديث الكاميرا للخطوة الجديدة
+          cameraRef.current?.flyTo(nextStepLocation, 1000);
+          
+          // نطق التعليمات للخطوة التالية
+          if (newIndex + 1 < navigationSteps.length) {
+            speakInstruction(navigationSteps[newIndex + 1].maneuver.instruction);
+          } else {
+            speakInstruction("You have reached your destination");
+          }
+        }
+      }
+    }
+  }}
+  renderMode={UserLocationRenderMode.Normal}
+  androidRenderMode={UserLocationRenderMode.Normal}
+/>
+        
+        {startPoint && (
+          <PointAnnotation
+            id="startPoint"
+            coordinate={[startPoint.lon, startPoint.lat]}
+            title="Start Point"
+          >
+            <View style={styles.annotationContainer}>
+              <View style={[styles.annotation, { backgroundColor: '#FF5252' }]} />
+              <Text style={styles.annotationText}>Start</Text>
+            </View>
+          </PointAnnotation>
         )}
-      </MapView>
-
-      {/* Controls container */}
-      <View style={styles.controlsContainer}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Hint text */}
-          <Text style={styles.hintText}>{hint}</Text>
-
-          {/* Start Point Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Starting Point:</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter landmark name or 'Current Location'"
-              value={startAddress}
-              onChangeText={setStartAddress}
-            />
-            <View style={styles.buttonRow}>
-              <TouchableOpacity 
-                style={styles.button} 
-                onPress={handleSetStartPoint}
-              >
-                <Text style={styles.buttonText}>Set Start</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.secondaryButton}
-                onPress={() => startPoint && focusOnPoint(startPoint)}
-                disabled={!startPoint}
-              >
-                <MaterialIcons name="my-location" size={20} color="white" />
-              </TouchableOpacity>
+        
+        {destination && (
+          <PointAnnotation
+            id="destination"
+            coordinate={[destination.lon, destination.lat]}
+            title="Destination"
+          >
+            <View style={styles.annotationContainer}>
+              <View style={[styles.annotation, { backgroundColor: '#4CAF50' }]} />
+              <Text style={styles.annotationText}>Destination</Text>
             </View>
-          </View>
-
-          {/* Destination Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Destination:</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter landmark name"
-              value={destinationAddress}
-              onChangeText={setDestinationAddress}
+          </PointAnnotation>
+        )}
+        
+        {route && (
+          <MapboxGL.ShapeSource
+            id="routeSource"
+            shape={{
+              type: 'Feature',
+              geometry: {
+                type: 'LineString',
+                coordinates: route.coordinates,
+              },
+              properties: {},
+            }}
+          >
+            <MapboxGL.LineLayer
+              id="routeLine"
+              style={{
+                lineColor: '#3A86FF',
+                lineWidth: 6,
+                lineOpacity: 0.8,
+              }}
             />
-            <View style={styles.buttonRow}>
-              <TouchableOpacity 
-                style={styles.button} 
-                onPress={handleSetDestination}
-              >
-                <Text style={styles.buttonText}>Set Destination</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.secondaryButton}
-                onPress={() => destination && focusOnPoint(destination)}
-                disabled={!destination}
-              >
-                <MaterialIcons name="my-location" size={20} color="white" />
-              </TouchableOpacity>
+          </MapboxGL.ShapeSource>
+        )}
+        
+        {routes.map((r, index) => (
+          <MapboxGL.ShapeSource
+            key={`route-${index}`}
+            id={`route-${index}`}
+            shape={{
+              type: 'Feature',
+              geometry: {
+                type: 'LineString',
+                coordinates: r.coordinates,
+              },
+              properties: {},
+            }}
+          >
+            <MapboxGL.LineLayer
+              id={`routeLine-${index}`}
+              style={{
+                lineColor: '#FF6B35',
+                lineWidth: 3,
+              }}
+            />
+          </MapboxGL.ShapeSource>
+        ))}
+        
+        {landmarks.map((landmark, index) => (
+          <PointAnnotation
+            key={`landmark-${index}`}
+            id={`landmark-${index}`}
+            coordinate={[landmark.lon, landmark.lat]}
+            title={landmark.title}
+            onSelected={() => handleLandmarkClick({
+              id: index,
+              name: landmark.title,
+              latitude: landmark.lat,
+              longitude: landmark.lon
+            })}
+          >
+            <View style={styles.annotationContainer}>
+              <View style={[styles.annotation, { backgroundColor: '#5D5FEF' }]} />
+              <Text style={styles.annotationText}>{landmark.title}</Text>
             </View>
-          </View>
-
-          {/* Route Actions */}
-          <View style={styles.section}>
-            <TouchableOpacity 
-              style={styles.routeButton}
-              onPress={calculateRoute}
-              disabled={!startPoint || !destination || loading}
+          </PointAnnotation>
+        ))}
+        
+        {navigationMode && location && (
+          <>
+            <MapboxGL.Images images={{ arrow: require('@/assets/images/arrow_icon.png') }} />
+            <MapboxGL.ShapeSource
+              id="arrow-source"
+              shape={{
+                type: 'Feature',
+                geometry: {
+                  type: 'Point',
+                  coordinates: [location.lon, location.lat],
+                },
+                properties: {},
+              }}
             >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text style={styles.buttonText}>Calculate Route</Text>
-              )}
-            </TouchableOpacity>
-
-            {route && (
-              <>
-                <TouchableOpacity 
-                  style={styles.optimizedRouteButton}
-                  onPress={optimizeRouteWithCustomPaths}
-                  disabled={loading}
-                >
-                  <Text style={styles.buttonText}>Optimize Using Community Paths</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.saveButton}
-                  onPress={saveCurrentRoute}
-                >
-                  <Text style={styles.buttonText}>Save This Route</Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-            <TouchableOpacity 
-              style={styles.secondaryRouteButton}
-              onPress={() => setRoutes([...routes])} // Refresh routes
-            >
-              <Text style={styles.buttonText}>Refresh Routes</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Route Details */}
-         {route && routes.some(r =>
-  route.coordinates.some(c =>
-    r.points.some(p =>
-      calculateDistance(c, p) < 50
-    )
-  )
-) && (
-  <View style={styles.communitySection}>
-    <Text style={styles.communityTitle}>Community Paths Used</Text>
-    {routes.filter(r =>
-      route.coordinates.some(c =>
-        r.points.some(p =>
-          calculateDistance(c, p) < 50
-        )
-      )
-    ).map(r => (
-      <View key={r._id} style={styles.routeInfo}>
-        <Text>{r.title}</Text>
-        <View style={styles.ratingContainer}>
-          <Text>Rating: {r.rating?.toFixed(1) || 'Not rated'}</Text>
-          {[1, 2, 3, 4, 5].map(star => (
-            <TouchableOpacity
-              key={star}
-              onPress={() => rateRoute(r._id, star)}
-            >
-              <MaterialIcons
-                name={star <= (r.rating || 0) ? 'star' : 'star-border'}
-                size={20}
-                color="#FFD700"
+              <MapboxGL.SymbolLayer
+                id="direction-arrow"
+                style={{
+                  iconImage: 'arrow',
+                  iconSize: 0.02,
+                  iconRotate: userHeading || 0,
+                  iconAllowOverlap: true,
+                }}
               />
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-    ))}
-  </View>
-)}
-
-          {/* Navigation Instructions */}
-          {instructions.length > 0 && (
-            <View style={styles.instructionsContainer}>
-              <Text style={styles.sectionTitle}>Navigation Instructions</Text>
-              <ScrollView style={styles.instructionsList}>
-                {instructions.map((step, index) => (
-                  <View key={index} style={styles.instructionItem}>
-                    <Text style={styles.instructionText}>{step.text}</Text>
-                    <Text style={styles.instructionDistance}>{step.distance}m</Text>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Landmarks List */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Verified Landmarks</Text>
-            <ScrollView style={styles.landmarksList}>
-              {landmarks.map(landmark => (
-                <TouchableOpacity 
-                  key={landmark._id}
-                  style={styles.landmarkItem}
-                  onPress={() => handleLandmarkSelect(landmark)}
-                >
-                  <Text>{landmark.title}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </ScrollView>
-      </View>
-
-      {/* Selected Landmark Info */}
+            </MapboxGL.ShapeSource>
+          </>
+        )}
+      </MapboxGL.MapView>
+      
       {selectedLandmark && (
         <View style={styles.landmarkInfo}>
           <Text style={styles.landmarkTitle}>{selectedLandmark.title}</Text>
           <TouchableOpacity 
-            style={styles.closeButton}
+            style={styles.closeButton} 
             onPress={() => setSelectedLandmark(null)}
           >
             <MaterialIcons name="close" size={24} color="white" />
           </TouchableOpacity>
+        </View>
+      )}
+      
+      <View style={styles.topControls}>
+        <TouchableOpacity 
+          style={styles.topButton} 
+          onPress={toggleControls}
+        >
+          <MaterialIcons 
+            name={showControls ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
+            size={28} 
+            color="#5d4037" 
+          />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.topButton} 
+          onPress={handleGoToCurrentLocation}
+        >
+          <MaterialIcons name="my-location" size={24} color="#5d4037" />
+        </TouchableOpacity>
+      </View>
+      
+      {showControls && (
+        <ScrollView 
+          style={styles.controlsContainer}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Starting Point:</Text>
+            <TextInput
+              style={styles.input}
+              value={startAddress}
+              onChangeText={setStartAddress}
+              placeholder="Current Location or specific address"
+              placeholderTextColor="#a1887f"
+            />
+            <View style={styles.buttonRow}>
+              <TouchableOpacity 
+                style={styles.button} 
+                onPress={updateStartPoint}
+              >
+                <Text style={styles.buttonText}>Set Start</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.secondaryButton} 
+                onPress={() => startPoint && setCameraSettings({
+                  center: [startPoint.lon, startPoint.lat],
+                  zoom: 14
+                })} 
+                disabled={!startPoint}
+              >
+                <FontAwesome name="map-marker" size={20} color="white" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Destination:</Text>
+            <TextInput
+              style={styles.input}
+              value={destinationAddress}
+              onChangeText={setDestinationAddress}
+              placeholder="Destination address"
+              placeholderTextColor="#a1887f"
+            />
+            <View style={styles.buttonRow}>
+              <TouchableOpacity 
+                style={styles.button} 
+                onPress={updateDestination}
+              >
+                <Text style={styles.buttonText}>Set Destination</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.secondaryButton} 
+                onPress={() => destination && setCameraSettings({
+                  center: [destination.lon, destination.lat],
+                  zoom: 14
+                })} 
+                disabled={!destination}
+              >
+                <FontAwesome name="map-marker" size={20} color="white" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Route Actions</Text>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity 
+                style={styles.routeButton} 
+                onPress={fetchRoutes}
+              >
+                <Text style={styles.buttonText}>Show Routes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.routeButton} 
+                onPress={fetchRoute}
+                disabled={!startPoint || !destination || loading}
+              >
+                <Text style={styles.buttonText}>
+                  {loading ? "Loading..." : "Show Route"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.navigationButton} 
+              onPress={startNavigation} 
+              disabled={!route}
+            >
+              <Text style={styles.buttonText}>Start Navigation</Text>
+              <Ionicons name="navigate" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+
+          {routeDetails && (
+            <View style={styles.detailsContainer}>
+              <Text style={styles.detailsTitle}>Route Information</Text>
+              <View style={styles.routeInfo}>
+                <Text><MaterialCommunityIcons name="map-marker-distance" size={18} color="#5d4037" /> Distance: {routeDetails.distance}</Text>
+                <Text><MaterialCommunityIcons name="clock-outline" size={18} color="#5d4037" /> Duration: {routeDetails.duration}</Text>
+              </View>
+            </View>
+          )}
+
+          {navigationSteps.length > 0 && (
+            <View style={styles.instructionsContainer}>
+              <Text style={styles.sectionTitle}>Navigation Steps</Text>
+              <View style={styles.instructionsList}>
+                {navigationSteps.slice(currentStepIndex, currentStepIndex + 3).map((step, index) => (
+                  <View key={index} style={styles.instructionItem}>
+                    <Text style={styles.instructionText}>{step.maneuver.instruction}</Text>
+                    <Text style={styles.instructionDistance}>
+                      {(step.distance / 1000).toFixed(1)} km
+                    </Text>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity 
+                  style={styles.secondaryRouteButton}
+                  onPress={() => {
+                    if (currentStepIndex > 0) {
+                      setCurrentStepIndex(currentStepIndex - 1);
+                    }
+                  }}
+                  disabled={currentStepIndex === 0}
+                >
+                  <Text style={styles.buttonText}>Previous</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.secondaryRouteButton}
+                  onPress={() => {
+                    if (currentStepIndex < navigationSteps.length - 1) {
+                      setCurrentStepIndex(currentStepIndex + 1);
+                      const { location } = navigationSteps[currentStepIndex + 1].maneuver;
+                      cameraRef.current?.flyTo(location, 1000);
+                    } else {
+                      alert("You have reached your destination!");
+                    }
+                  }}
+                  disabled={currentStepIndex >= navigationSteps.length - 1}
+                >
+                  <Text style={styles.buttonText}>Next</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      {!showControls && (
+        <View style={styles.minimizedControls}>
+          <TouchableOpacity 
+            style={styles.minimizedButton} 
+            onPress={toggleControls}
+          >
+            <MaterialIcons name="keyboard-arrow-up" size={28} color="#5d4037" />
+          </TouchableOpacity>
+          <Text style={styles.minimizedText}>
+            {startPoint?.title ? `From: ${startPoint.title}` : 'Set starting point'}
+          </Text>
+          <Text style={styles.minimizedText}>
+            {destination?.title ? `To: ${destination.title}` : 'Set destination'}
+          </Text>
         </View>
       )}
     </View>
@@ -795,205 +784,253 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 20,
     right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 12,
-    padding: 15,
-    maxHeight: '50%',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 20,
+    maxHeight: Dimensions.get('window').height * 0.6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 10,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 10,
   },
   inputContainer: {
     marginBottom: 15,
   },
   label: {
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 8,
     color: '#5d4037',
+    fontSize: 16,
   },
   input: {
     backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#d7ccc8',
-    marginBottom: 10,
+    marginBottom: 12,
+    fontSize: 16,
+    color: '#4E342E',
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
+    marginBottom: 15,
   },
   button: {
     flex: 1,
     backgroundColor: '#6d4c41',
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   secondaryButton: {
     backgroundColor: '#8d6e63',
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 50,
+    width: 60,
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 16,
   },
   section: {
     marginTop: 10,
+    marginBottom: 15,
   },
   routeButton: {
+    flex: 1,
     backgroundColor: '#6d4c41',
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
   },
-  optimizedRouteButton: {
+  navigationButton: {
     backgroundColor: '#3A86FF',
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
-  },
-  saveButton: {
-    backgroundColor: '#4CAF50',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
   },
   secondaryRouteButton: {
+    flex: 1,
     backgroundColor: '#8d6e63',
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   detailsContainer: {
     backgroundColor: '#f5f5f5',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 12,
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#f0e6e2',
+    borderColor: '#e0e0e0',
   },
   detailsTitle: {
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 8,
     color: '#5d4037',
-  },
-  communitySection: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  communityTitle: {
-    fontWeight: 'bold',
-    marginBottom: 5,
+    fontSize: 16,
   },
   routeInfo: {
-    marginBottom: 8,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginBottom: 5,
     gap: 5,
   },
   sectionTitle: {
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 10,
     color: '#5d4037',
+    fontSize: 18,
   },
   instructionsContainer: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fffbe6',
     padding: 15,
-    borderRadius: 8,
-    marginTop: 10,
-    maxHeight: 150,
+    borderRadius: 12,
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: '#ffd700',
   },
   instructionsList: {
-    marginTop: 5,
+    marginTop: 10,
+    marginBottom: 15,
   },
   instructionItem: {
-    padding: 8,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   instructionText: {
     flex: 3,
+    fontSize: 15,
+    color: '#5d4037',
   },
   instructionDistance: {
     flex: 1,
     textAlign: 'right',
     color: '#6d4c41',
-  },
-  landmarksList: {
-    maxHeight: 100,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 10,
-  },
-  landmarkItem: {
-    padding: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    fontWeight: 'bold',
   },
   landmarkInfo: {
     position: 'absolute',
-    top: 40,
+    top: 50,
     left: 20,
     right: 20,
-    backgroundColor: 'rgba(109, 76, 65, 0.9)',
+    backgroundColor: 'rgba(109, 76, 65, 0.95)',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   landmarkTitle: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+    flex: 1,
   },
   closeButton: {
     padding: 5,
   },
-  clusterMarker: {
-    backgroundColor: '#6d4c41',
-    borderRadius: 15,
-    padding: 10,
-    width: 30,
-    height: 30,
+  annotationContainer: {
+    alignItems: 'center',
+  },
+  annotation: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  annotationText: {
+    fontSize: 12,
+    color: 'white',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 4,
+    borderRadius: 4,
+    marginTop: 4,
+    fontWeight: 'bold',
+  },
+  topControls: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    flexDirection: 'column',
+    gap: 12,
+    alignItems: 'flex-end',
+  },
+  topButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  minimizedControls: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 10,
+  },
+  minimizedButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  clusterText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  hintText: {
-    color: '#6d4c41',
-    fontStyle: 'italic',
-    marginTop: 5,
-    textAlign: 'center',
+  minimizedText: {
+    flex: 1,
+    marginLeft: 10,
+    color: '#5d4037',
+    fontSize: 14,
   },
 });
 
-export default EmergencyPage;
+export default HomePage;

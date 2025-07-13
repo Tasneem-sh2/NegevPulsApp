@@ -19,7 +19,7 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useAuth } from './AuthContext';
 type ObjectId = string; // أو استخدام نوع من مكتبة أخرى مثل 'bson' إذا لزم الأمر
 
-const API_BASE_URL = 'http://172.19.33.185:8082/api';
+const API_BASE_URL = 'http://10.0.0.8:8082/api';
 
 interface Location {
   lat: number;
@@ -587,14 +587,15 @@ const RoutePage: React.FC = () => {
       ) : (
         <>
           <MapView
-            ref={mapRef}
-            style={styles.map}
-            region={mapRegion}
-            onPress={handleMapPress}
-            onLongPress={handleMapLongPress}
-            onPanDrag={handleMapPanDrag}
-            onResponderRelease={handleMapRelease}
-            onResponderTerminate={handleMapRelease}
+             ref={mapRef}
+              style={styles.map}
+              region={mapRegion}
+              onPress={handleMapPress}
+              onLongPress={handleMapLongPress}
+              onPanDrag={handleMapPanDrag}
+              onResponderRelease={handleMapRelease}
+              onResponderTerminate={handleMapRelease}
+              mapType="standard"
           >
             {location && (
               <Marker

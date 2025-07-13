@@ -24,7 +24,7 @@ export default function MainIndex() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations();
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://172.19.33.185:8082";
+  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://10.0.0.8:8082";
  
   useEffect(() => {
     const fetchVillages = async () => {

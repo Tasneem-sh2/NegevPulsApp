@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
       const response = await axios.post<{
         user: User;
         token: string;
-      }>('http://172.19.33.185:8082/api/auth/login', {
+      }>('http://10.0.0.8:8082/api/auth/login', {
         email,
         password
       });
