@@ -1,4 +1,4 @@
-import { FontAwesome, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { FontAwesome, Ionicons, MaterialCommunityIcons, MaterialIcons,AntDesign } from '@expo/vector-icons';
 import MapboxGL, {
   UserLocationRenderMode,
   UserTrackingMode
@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+
 
 const MAPBOX_TOKEN = process.env.MAPBOX_DOWNLOADS_TOKEN || 'sk.eyJ1IjoidGFzbmVlbTIwMDIiLCJhIjoiY21jZ3l4bHJ3MGVyejJqc2h3YjkyY3hhcSJ9.OJCc5jNljboKnrfP1yfpYA';
 
@@ -88,6 +89,33 @@ const HomePage: React.FC = () => {
     { lat: 31.156483, lon: 34.805685, title: "The Entry of the Electric Company" },
     { lat: 31.155741, lon: 34.806393, title: "The Green Container" },
   ];
+  const getArrowIcon = (modifier: string): any => {
+  switch (modifier) {
+    case 'left':
+      return 'arrow-left';
+    case 'right':
+      return 'arrow-right';
+    case 'straight':
+      return 'arrow-up';
+    case 'uturn':
+      return 'u-turn-left'; // يمكنك تغييره حسب التوجه
+    case 'sharp left':
+      return 'arrow-top-left-bold';
+    case 'sharp right':
+      return 'arrow-top-right-bold';
+    case 'slight left':
+      return 'arrow-top-left';
+    case 'slight right':
+      return 'arrow-top-right';
+    default:
+      return 'arrow-up-bold';
+  }
+};
+const calculateETA = (durationStr: string): string => {
+  const minutes = parseFloat(durationStr);
+  const arrival = new Date(Date.now() + minutes * 60 * 1000);
+return arrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+};
 
   const [landmarks, setLandmarks] = useState(staticLandmarks);
 
@@ -148,6 +176,13 @@ const HomePage: React.FC = () => {
     });
    
   }, []);
+  useEffect(() => {
+  if (navigationMode && navigationSteps[currentStepIndex]) {
+    const instruction = navigationSteps[currentStepIndex].maneuver.instruction;
+    Speech.speak(instruction, { language: 'ar', rate: 0.9 });
+  }
+}, [currentStepIndex]);
+
 
   const fetchRoutes = async () => {
     try {
@@ -322,27 +357,28 @@ const HomePage: React.FC = () => {
     }
   };
   
-  const startNavigation = () => {
-    if (!route || !startPoint || !destination) {
-      alert("Please set a route first.");
-      return;
-    }
-      setShowControls(false); // إخفاء النافذة عند بدء الملاحة
+ const startNavigation = () => {
+  if (!route || !startPoint || !destination) {
+    alert("Please set a route first.");
+    return;
+  }
 
-    setNavigationMode(true);
-    cameraRef.current?.fitBounds(
-      [startPoint.lon, startPoint.lat],
-      [destination.lon, destination.lat],
-      100,
-      100,
-    );
-    
-    if (navigationSteps.length > 0) {
-      speakInstruction(navigationSteps[currentStepIndex + 1].maneuver.instruction);
-    }
-    
-    setCurrentStepIndex(0);
-  };
+  setNavigationMode(true);
+  setShowControls(false); // إخفاء النافذة السفلية
+  cameraRef.current?.fitBounds(
+    [startPoint.lon, startPoint.lat],
+    [destination.lon, destination.lat],
+    100, 100
+  );
+
+  setCurrentStepIndex(0);
+
+  // تحدث أول تعليمات
+  const firstInstruction = navigationSteps[0]?.maneuver?.instruction;
+  if (firstInstruction) {
+    Speech.speak(firstInstruction, { language: 'ar', rate: 0.9 });
+  }
+};
 
   const toggleControls = () => {
     setShowControls(!showControls);
@@ -383,6 +419,30 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 
   return (
     <View style={styles.container}>
+        {navigationMode && navigationSteps.length > 0 && (
+    <View style={styles.navigationOverlay}>
+      <View style={styles.arrowContainer}>
+        <MaterialCommunityIcons
+          name={getArrowIcon(navigationSteps[currentStepIndex]?.maneuver.modifier)}
+          size={36}
+          color="#fff"
+        />
+      </View>
+      <View style={styles.directionInfo}>
+        <Text style={styles.distanceText}>
+          {Math.round(navigationSteps[currentStepIndex]?.distance)} m
+        </Text>
+        <Text style={styles.instructionText2}>
+          {navigationSteps[currentStepIndex]?.maneuver.instruction}
+        </Text>
+             {routeDetails && (
+          <Text style={styles.etaText}>
+             ETA: {calculateETA(routeDetails.duration)}
+          </Text>
+        )}
+      </View>
+    </View>
+  )}
       <MapboxGL.MapView
         ref={mapRef}
         style={styles.map}
@@ -448,6 +508,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   renderMode={UserLocationRenderMode.Normal}
   androidRenderMode={UserLocationRenderMode.Normal}
 />
+
         
         {startPoint && (
           <PointAnnotation
@@ -568,6 +629,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
           </>
         )}
       </MapboxGL.MapView>
+
       
       {selectedLandmark && (
         <View style={styles.landmarkInfo}>
@@ -581,25 +643,37 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
         </View>
       )}
       
-      <View style={styles.topControls}>
-        <TouchableOpacity 
-          style={styles.topButton} 
-          onPress={toggleControls}
-        >
-          <MaterialIcons 
-            name={showControls ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
-            size={28} 
-            color="#5d4037" 
-          />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.topButton} 
-          onPress={handleGoToCurrentLocation}
-        >
-          <MaterialIcons name="my-location" size={24} color="#5d4037" />
-        </TouchableOpacity>
-      </View>
+<View style={[styles.topControls, navigationMode && styles.topControlsNavigation]}>
+  <TouchableOpacity 
+    style={styles.topButton} 
+    onPress={toggleControls}
+  >
+    <MaterialIcons 
+      name={showControls ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
+      size={28} 
+      color="#5d4037" 
+    />
+  </TouchableOpacity>
+  
+  <TouchableOpacity 
+    style={styles.topButton} 
+    onPress={handleGoToCurrentLocation}
+  >
+    <MaterialIcons name="my-location" size={24} color="#5d4037" />
+  </TouchableOpacity>
+  
+  {navigationMode && (
+    <TouchableOpacity 
+      style={[styles.topButton, styles.stopButton]} 
+      onPress={() => {
+        setNavigationMode(false);
+        setShowControls(true);
+      }}
+    >
+      <AntDesign name="closecircle" size={24} color="white" />
+    </TouchableOpacity>
+  )}
+</View>
       
       {showControls && (
         <ScrollView 
@@ -981,12 +1055,18 @@ const styles = StyleSheet.create({
   },
   topControls: {
     position: 'absolute',
-    top: 50,
+    top: 50, // القيمة الافتراضية
     right: 20,
     flexDirection: 'column',
     gap: 12,
     alignItems: 'flex-end',
+    zIndex: 1000, // زيادة قيمة zIndex لتكون فوق العناصر الأخرى
+
   },
+  topControlsNavigation: { // نمط إضافي عند تفعيل الملاحة
+    top: 70,
+  },
+
   topButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     width: 48,
@@ -1031,6 +1111,49 @@ const styles = StyleSheet.create({
     color: '#5d4037',
     fontSize: 14,
   },
+  navigationOverlay: {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  padding: 12,
+  backgroundColor: 'rgba(0,0,0,0.85)',
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'flex-start',
+  zIndex: 999,
+  borderBottomLeftRadius: 12,
+  borderBottomRightRadius: 12,
+},
+arrowContainer: {
+  marginRight: 16,
+  backgroundColor: '#444',
+  padding: 10,
+  borderRadius: 10,
+},
+directionInfo: {
+  flex: 1,
+},
+distanceText: {
+  color: '#fff',
+  fontSize: 18,
+  fontWeight: 'bold',
+  marginBottom: 4,
+},
+instructionText2: {
+  color: '#ddd',
+  fontSize: 14,
+},
+etaText: {
+  color: '#aaa',
+  fontSize: 12,
+  marginTop: 6,
+},
+stopButton: {
+  backgroundColor: '#ff4444',
+},
+
+
 });
 
 export default HomePage;
