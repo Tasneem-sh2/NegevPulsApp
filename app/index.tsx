@@ -26,7 +26,7 @@ export default function MainIndex() {
   const t = useTranslations();
   
   // استخدم عنوان IP حقيقي أو ngrok بدلاً من ost
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://negevpulsapp.onrender.com";
+const baseUrl = "https://negevpulsapp.onrender.com"; // تأكدي إنها https
 
   useEffect(() => {
     const fetchVillages = async () => {

@@ -63,7 +63,7 @@
       ]
     ],
     "extra": {
-      "EXPO_PUBLIC_API_URL": "http://negevpulsapp.onrender.com",
+      "EXPO_PUBLIC_API_URL": "https://negevpulsapp.onrender.com",
       "EXPO_PUBLIC_OPENROUTESERVICE_API_KEY": "5b3ce3597851110001cf62484b08c8b51c17436c954031e3d5b2d82f"
     }
     

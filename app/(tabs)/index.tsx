@@ -24,7 +24,7 @@ export default function MainIndex() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations();
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://negevpulsapp.onrender.com";
+  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://negevpulsapp.onrender.com";
  
   useEffect(() => {
     const fetchVillages = async () => {

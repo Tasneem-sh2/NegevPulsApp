@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
       const response = await axios.post<{
         user: User;
         token: string;
-      }>('http://negevpulsapp.onrender.com/api/auth/login', {
+      }>('https://negevpulsapp.onrender.com/api/auth/login', {
         email,
         password
       });

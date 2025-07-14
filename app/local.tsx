@@ -58,7 +58,7 @@ export default function LocalPage() {
           const token = await AsyncStorage.getItem('token');
           if (token) {
             try {
-              const response = await axios.get('http://negevpulsapp.onrender.com/api/auth/me', {
+              const response = await axios.get('https://negevpulsapp.onrender.com/api/auth/me', {
                 headers: { 'Authorization': `Bearer ${token}` }
               });
               if (response.data?.success) {
@@ -91,7 +91,7 @@ useEffect(() => {
   const fetchUserData = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const response = await axios.get('http://negevpulsapp.onrender.com/api/auth/me', {
+      const response = await axios.get('https://negevpulsapp.onrender.com/api/auth/me', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -188,7 +188,7 @@ useEffect(() => {
 
     // Make the API request
     const response = await axios.post(
-      'http://negevpulsapp.onrender.com/api/auth/request-super',
+      'https://negevpulsapp.onrender.com/api/auth/request-super',
       {}, // Empty body since we're using the token
       {
         headers: {

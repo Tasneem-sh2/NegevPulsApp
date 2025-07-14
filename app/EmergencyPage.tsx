@@ -1,7 +1,7 @@
 import { AntDesign, FontAwesome, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import MapboxGL, {
-    UserLocationRenderMode,
-    UserTrackingMode
+  UserLocationRenderMode,
+  UserTrackingMode
 } from '@rnmapbox/maps';
 import axios from "axios";
 import * as Location from 'expo-location';
@@ -9,14 +9,14 @@ import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Dimensions,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Dimensions,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 
 
@@ -142,9 +142,9 @@ return arrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' 
     const fetchLandmarks = async () => {
       try {
         const API_BASE_URL = Platform.select({
-          ios: 'http://negevpulsapp.onrender.com',
-          android: 'http://negevpulsapp.onrender.com',
-          default: 'http://negevpulsapp.onrender.com'
+          ios: 'https://negevpulsapp.onrender.com',
+          android: 'https://negevpulsapp.onrender.com',
+          default: 'https://negevpulsapp.onrender.com'
         });
         
         const response = await axios.get(`${API_BASE_URL}/api/landmarks`);
@@ -187,9 +187,9 @@ return arrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' 
   const fetchRoutes = async () => {
     try {
       const API_BASE_URL = Platform.select({
-        ios: 'http://negevpulsapp.onrender.com',
-        android: 'http://negevpulsapp.onrender.com',
-        default: 'http://negevpulsapp.onrender.com'
+        ios: 'https://negevpulsapp.onrender.com',
+        android: 'https://negevpulsapp.onrender.com',
+        default: 'https://negevpulsapp.onrender.com'
       });
 
       

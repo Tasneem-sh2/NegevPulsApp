@@ -19,7 +19,7 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useAuth } from './AuthContext';
 type ObjectId = string; // أو استخدام نوع من مكتبة أخرى مثل 'bson' إذا لزم الأمر
 
-const API_BASE_URL = 'http://negevpulsapp.onrender.com/api';
+const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
 
 interface Location {
   lat: number;

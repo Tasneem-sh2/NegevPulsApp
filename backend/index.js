@@ -389,3 +389,6 @@ mongoose.connect(process.env.DB)
     process.exit(1);
   });
 
+app.get('/', (req, res) => {
+  res.send('🚀 Server is up and running!');
+});
