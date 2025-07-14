@@ -32,7 +32,7 @@ export default function Login() {
     try {
       console.log('Attempting login with:', { email, password });
 
-      const response = await axios.post('http://10.0.0.8:8082/api/auth/login', {
+      const response = await axios.post('http://negevpulsapp.onrender.com/api/auth/login', {
         email: email.trim(),
         password: password.trim()
       });

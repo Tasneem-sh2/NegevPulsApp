@@ -36,7 +36,7 @@ const VillageDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://10.0.0.8:8082";
+  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://negevpulsapp.onrender.com";
   const flatListRef = useRef<FlatList>(null);
   const SCREEN_WIDTH = Dimensions.get('window').width;
 

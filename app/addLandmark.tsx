@@ -20,7 +20,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 
-const API_BASE_URL = 'http://10.0.0.8:8082/api';
+const API_BASE_URL = 'http://negevpulsapp.onrender.com/api';
 
 // Types
 interface LocationCoords {

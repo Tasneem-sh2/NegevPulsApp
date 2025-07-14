@@ -46,7 +46,7 @@ const Signup = () => {
     setSuccessMessage("");
 
     try {
-      const url = `http://10.0.0.8:8082/api/signup`;
+      const url = `http://negevpulsapp.onrender.com/api/signup`;
       const { data: res } = await axios.post(url, data);
 
       setSuccessMessage("Account created successfully!");
