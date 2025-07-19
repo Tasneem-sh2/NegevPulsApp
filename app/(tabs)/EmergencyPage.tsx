@@ -74,6 +74,8 @@ const HomePage: React.FC = () => {
   const [userHeading, setUserHeading] = useState<number | undefined>(undefined);
   const [navigationSteps, setNavigationSteps] = useState<any[]>([]);
   const [showControls, setShowControls] = useState(true);
+  const [searchLandmarkText, setSearchLandmarkText] = useState("");
+  const [filteredLandmarks, setFilteredLandmarks] = useState<typeof landmarks>([]);
 
   const staticLandmarks = [
     { lat: 31.155844, lon: 34.807268, title: "Algergawi Shop" },
@@ -182,6 +184,20 @@ return arrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' 
     Speech.speak(instruction, { language: 'ar', rate: 0.9 });
   }
 }, [currentStepIndex]);
+
+  useEffect(() => {
+    if (searchLandmarkText.trim() === "") {
+      setFilteredLandmarks([]);
+      return;
+    }
+
+    const filtered = landmarks.filter((lm) =>
+      lm.title.toLowerCase().includes(searchLandmarkText.toLowerCase())
+    );
+
+    setFilteredLandmarks(filtered);
+  }, [searchLandmarkText, landmarks]);
+
 
 
   const fetchRoutes = async () => {
@@ -326,36 +342,39 @@ return arrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' 
     }
   };
 
-  const updateDestination = async () => {
-    if (!destinationAddress.trim()) {
-      alert("Please enter a destination address");
-      return;
-    }
-  
-    const landmark = staticLandmarks.find(
-      (lm) => lm.title.toLowerCase() === destinationAddress.trim().toLowerCase()
-    );
-  
-    if (landmark) {
-      setDestination({ lat: landmark.lat, lon: landmark.lon, title: landmark.title});
-      setCameraSettings({
-        center: [landmark.lon, landmark.lat],
-        zoom: 14
-      });
-      return;
-    }
-  
-    const result = await geocodeAddress(destinationAddress);
-    if (result) {
-      setDestination({ ...result, title: result.title || destinationAddress });
-      setCameraSettings({
-        center: [result.lon, result.lat],
-        zoom: 14
-      });
-    } else {
-      alert("Could not find this location. Please try a different address.");
-    }
-  };
+const updateDestination = async () => {
+  if (!destinationAddress.trim()) {
+    alert("Please enter a destination address");
+    return;
+  }
+
+  // 🔍 أولا: جرب نلاقيها في الـ landmarks (بما فيهم verified)
+  const landmark = landmarks.find(
+    (lm) => lm.title.toLowerCase() === destinationAddress.trim().toLowerCase()
+  );
+
+  if (landmark) {
+    setDestination({ lat: landmark.lat, lon: landmark.lon, title: landmark.title });
+    setCameraSettings({
+      center: [landmark.lon, landmark.lat],
+      zoom: 14
+    });
+    return;
+  }
+
+  // 📍 إذا ما لقيناها ضمن المعالم، جرب نعمل Geocoding على الإنترنت
+  const result = await geocodeAddress(destinationAddress);
+  if (result) {
+    setDestination({ ...result, title: result.title || destinationAddress });
+    setCameraSettings({
+      center: [result.lon, result.lat],
+      zoom: 14
+    });
+  } else {
+    alert("Could not find this location. Please try a different address.");
+  }
+};
+
   
  const startNavigation = () => {
   if (!route || !startPoint || !destination) {
@@ -668,6 +687,12 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
       onPress={() => {
         setNavigationMode(false);
         setShowControls(true);
+        setDestination(null);
+        setStartAddress("");
+        setDestinationAddress("");
+        setRoute(null);
+        setNavigationSteps([]);
+        setRouteDetails(null);
       }}
     >
       <AntDesign name="closecircle" size={24} color="white" />
