@@ -18,9 +18,11 @@ import {
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useAuth } from './AuthContext';
 import { Picker } from '@react-native-picker/picker';
+import Constants from 'expo-constants';
+const [isRoutesListVisible, setIsRoutesListVisible] = useState(true);
 
+const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
 type ObjectId = string; // أو استخدام نوع من مكتبة أخرى مثل 'bson' إذا لزم الأمر
-
 const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
 
 interface Location {
@@ -115,8 +117,9 @@ const RoutePage: React.FC = () => {
   const [deleteError, setDeleteError] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
- const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain' | 'hybrid'>('standard');
-  
+  const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain' | 'hybrid'>('standard');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showHeaderText, setShowHeaderText] = useState(true);
 
 
   // Helper functions
@@ -581,6 +584,39 @@ const RoutePage: React.FC = () => {
     );
   };
 
+  useEffect(() => {
+      if (showHeaderText) {
+        const timer = setTimeout(() => setShowHeaderText(false), 3000);
+        return () => clearTimeout(timer);
+      }
+    }, [showHeaderText]);
+
+// دالة البحث المعدلة
+    const handleSearch = async () => {
+      if (!searchQuery.trim()) return;
+
+      try {
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchQuery)}&key=${GOOGLE_API_KEY}&language=en&region=sa`
+        );
+        const data = await response.json();
+
+        if (data.status === "OK" && data.results.length > 0) {
+          const location = data.results[0].geometry.location;
+          mapRef.current?.animateToRegion({
+            latitude: location.lat,
+            longitude: location.lng,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          });
+        } else {
+          Alert.alert("Search Error", data.error_message || "No results found");
+        }
+      } catch (err) {
+        Alert.alert("Error", "Failed to search. Check your connection.");
+      }
+    };
+
   return (
     <View style={styles.container}>
       {isMapLoading ? (
@@ -589,19 +625,7 @@ const RoutePage: React.FC = () => {
         </View>
       ) : (
         <>
-            <View style={styles.pickerContainer}>
-              <Text style={styles.label}>نوع الخريطة:</Text>
-              <Picker
-                selectedValue={mapType}
-                onValueChange={(value) => setMapType(value)}
-                style={styles.picker}
-              >
-                <Picker.Item label="الخريطة العادية" value="standard" />
-                <Picker.Item label="صور فضائية" value="satellite" />
-                <Picker.Item label="تضاريس" value="terrain" />
-                <Picker.Item label="هجين (Hybrid)" value="hybrid" />
-              </Picker>
-            </View>
+         
 
           <MapView
              ref={mapRef}
@@ -650,28 +674,90 @@ const RoutePage: React.FC = () => {
           </MapView>
 
           {/* Header with Draw Button */}
-              <View style={styles.header}>
-            <View style={styles.headerTextContainer}>
-                <Text style={styles.headerTitle}>Routes Map</Text>
-                <Text style={styles.headerSubtitle}>Click "Draw Route" to create a new route</Text>
-            </View>
-            <TouchableOpacity
-                onPress={() => setIsDrawingRoute(!isDrawingRoute)}
-                style={[
-                styles.drawButton,
-                isDrawingRoute && styles.drawButtonActive
-                ]}
+              {/* شريط البحث وزر الرسم */}
+        <View style={styles.topBar}>
+          <View style={styles.searchContainer}>
+            <TextInput
+              placeholder="Search places..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+              onSubmitEditing={handleSearch}
+            />
+            <TouchableOpacity 
+              onPress={handleSearch}
+              style={styles.searchButton}
             >
-                <MaterialIcons
-                name={isDrawingRoute ? 'close' : 'edit'}
-                size={20}
-                color="#FFD700"
-                />
-                <Text style={styles.drawButtonText}>
-                {isDrawingRoute ? 'Cancel' : 'Draw Route'}
-                </Text>
+              <MaterialIcons name="search" size={24} color="#6d4c41" />
             </TouchableOpacity>
-            </View>
+          </View>
+          
+          <TouchableOpacity
+            onPress={() => {
+              setIsDrawingRoute(!isDrawingRoute);
+              setShowHeaderText(true);
+            }}
+            style={[
+              styles.drawButton,
+              isDrawingRoute && styles.drawButtonActive
+            ]}
+          >
+            <MaterialIcons
+              name={isDrawingRoute ? 'close' : 'edit'}
+              size={20}
+              color="#FFD700"
+            />
+            <Text style={styles.drawButtonText}>
+              {isDrawingRoute ? 'Cancel' : 'Draw Route'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* نص التعليمات الشفاف */}
+        {showHeaderText && (
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>Routes Map</Text>
+            <Text style={styles.headerSubtitle}>Click "Draw Route" to create a new route</Text>
+          </View>
+        )}
+
+        {/* أيقونات التحكم في الخريطة */}
+        <View style={styles.mapControls}>
+          <TouchableOpacity 
+            onPress={() => setMapType('standard')}
+            style={[styles.mapControlButton, mapType === 'standard' && styles.activeMapType]}
+          >
+            <MaterialIcons name="map" size={24} color={mapType === 'standard' ? '#FFD700' : '#6d4c41'} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => setMapType('satellite')}
+            style={[styles.mapControlButton, mapType === 'satellite' && styles.activeMapType]}
+          >
+            <MaterialIcons name="satellite" size={24} color={mapType === 'satellite' ? '#FFD700' : '#6d4c41'} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => setMapType('hybrid')}
+            style={[styles.mapControlButton, mapType === 'hybrid' && styles.activeMapType]}
+          >
+            <MaterialIcons name="layers" size={24} color={mapType === 'hybrid' ? '#FFD700' : '#6d4c41'} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => {
+              if (location) {
+                mapRef.current?.animateToRegion({
+                  latitude: location.lat,
+                  longitude: location.lon,
+                  latitudeDelta: 0.0922,
+                  longitudeDelta: 0.0421,
+                });
+              }
+            }}
+            style={styles.mapControlButton}
+          >
+            <MaterialIcons name="my-location" size={24} color="#6d4c41" />
+          </TouchableOpacity>
+        </View>
+
           {/* Drawing Route Form */}
           {isDrawingRoute && (
               <View style={[styles.formContainer, { transform: [{ translateX: isFormVisible ? 0 :400 }] }]}>
@@ -791,15 +877,41 @@ const RoutePage: React.FC = () => {
   </TouchableOpacity>
 )}
 
-          {/* Routes List */}
-          {routes.length > 0 && (
-            <View style={styles.routesList}>
-              <Text style={styles.routesTitle}>Routes ({routes.length})</Text>
-              <ScrollView>
-                {routes.map(renderRouteItem)}
-              </ScrollView>
-            </View>
-          )}
+         {/* Routes List */}
+{routes.length > 0 && (
+  <View style={[
+    styles.routesList, 
+    !isRoutesListVisible && styles.hiddenRoutesList
+  ]}>
+    <TouchableOpacity 
+      onPress={() => setIsRoutesListVisible(!isRoutesListVisible)}
+      style={styles.toggleButton}
+    >
+      <MaterialIcons 
+        name={isRoutesListVisible ? 'keyboard-arrow-down' : 'keyboard-arrow-up'} 
+        size={24} 
+        color="#6d4c41" 
+      />
+    </TouchableOpacity>
+    <Text style={styles.routesTitle}>Routes ({routes.length})</Text>
+    <ScrollView>
+      {routes.map(renderRouteItem)}
+    </ScrollView>
+  </View>
+)}
+
+{!isRoutesListVisible && (
+  <TouchableOpacity 
+    onPress={() => setIsRoutesListVisible(true)}
+    style={styles.floatingToggleButton}
+  >
+    <MaterialIcons 
+      name="keyboard-arrow-up" 
+      size={24} 
+      color="#6d4c41" 
+    />
+  </TouchableOpacity>
+)}
 
           {/* Route Details Modal */}
           <Modal
@@ -1027,36 +1139,13 @@ const styles = StyleSheet.create({
   flex: 1,
   marginRight: 10,
 },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    margin: 0,
-    color: '#6d4c41',
-  },
+
   headerSubtitle: {
     marginTop: 5,
     fontSize: 12,
     color: '#5d4037',
   },
-  drawButton: {
-    backgroundColor: '#6d4c41',
-      paddingVertical: 10,
-      paddingHorizontal: 15,
-      borderRadius: 8,
-      flexDirection: 'row',
-     alignItems: 'center',
-     gap: 8,
-     minWidth: 120,
 
-  },
-  drawButtonActive: {
-    backgroundColor: '#f44336',
-  },
-  drawButtonText: {
-    color: '#FFD700',
-    fontWeight: 'bold',
-    marginLeft: 16,
-  },
    formContainer: {
      position: 'absolute',
   top: 100, // تأكد من أنها تحت الـ Header
@@ -1204,6 +1293,7 @@ const styles = StyleSheet.create({
     borderColor: '#f0e6e2',
     maxHeight: 300,
     width: 250,
+     zIndex: 1,
   },
   routesTitle: {
     fontSize: 16,
@@ -1498,6 +1588,122 @@ label: {
 picker: {
   height: 40,
   width: '100%',
+},
+topBar: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    zIndex: 1,
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    height: 50,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    paddingHorizontal: 10,
+  },
+  searchButton: {
+    padding: 8,
+  },
+  drawButton: {
+    backgroundColor: '#6d4c41',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  drawButtonActive: {
+    backgroundColor: '#f44336',
+  },
+  drawButtonText: {
+    color: '#FFD700',
+    fontWeight: 'bold',
+  },
+  headerText: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#6d4c41',
+  },
+ 
+  mapControls: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 25,
+    padding: 5,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1,
+  },
+  mapControlButton: {
+    padding: 8,
+    marginVertical: 5,
+  },
+  activeMapType: {
+    backgroundColor: '#6d4c41',
+    borderRadius: 20,
+  },
+ 
+hiddenRoutesList: {
+  transform: [{ translateY: 300 }],
+  opacity: 0,
+},
+toggleButton: {
+  position: 'absolute',
+  top: 5,
+  right: 5,
+  padding: 5,
+  zIndex: 2,
+},
+floatingToggleButton: {
+  position: 'absolute',
+  bottom: 20,
+  left: 20,
+  backgroundColor: 'white',
+  padding: 8,
+  borderRadius: 20,
+  borderWidth: 1,
+  borderColor: '#f0e6e2',
+  zIndex: 1,
 },
 
 
