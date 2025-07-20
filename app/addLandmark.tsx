@@ -1513,7 +1513,7 @@ const styles = StyleSheet.create({
     width: 350,
     maxWidth: "90%",
     zIndex: 2,
-    maxHeight: '80%', // أضف هذه السطر
+    maxHeight: '70%', // أضف هذه السطر
 
   },
   formTitle: {
@@ -1602,9 +1602,11 @@ const styles = StyleSheet.create({
     color: "#5d4037",
     fontSize: 16,
   },
-    landmarksList: {
-    maxHeight: 300,
-  },
+  landmarksList: {
+  maxHeight: 300,
+  marginTop: 15, // إضافة مسافة من الأعلى فقط
+  paddingBottom: 0, // إزالة أي حشو سفلي
+},
   landmarksTitle: {
     fontWeight: 'bold',
     marginBottom: 10,
@@ -2045,13 +2047,15 @@ picker: {
     maxWidth: "90%",
     zIndex: 2,
     maxHeight: '50%',
+    paddingBottom: 0, // إضافة هذا السطر لإزالة المساحة الإضافية
+
   },
   collapsedLandmarksList: {
     height: 40,
   },
-  toggleListButton: {
-      position: 'absolute',
-  top: 10,
+ toggleListButton: {
+  position: 'absolute',
+  top: -15, // تعديل الموقع ليكون أعلى القائمة
   right: 10,
   backgroundColor: 'white',
   borderRadius: 15,
@@ -2065,7 +2069,9 @@ picker: {
   shadowOffset: { width: 0, height: 1 },
   shadowOpacity: 0.2,
   shadowRadius: 2,
-  },
+  borderWidth: 1, // إضافة حد للزر
+  borderColor: '#f0e6e2',
+},
   currentLocationButton: {
       position: 'absolute',
     bottom: 80,
