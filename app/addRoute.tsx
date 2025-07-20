@@ -17,6 +17,8 @@ import {
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useAuth } from './AuthContext';
+import { Picker } from '@react-native-picker/picker';
+
 type ObjectId = string; // أو استخدام نوع من مكتبة أخرى مثل 'bson' إذا لزم الأمر
 
 const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
@@ -113,7 +115,8 @@ const RoutePage: React.FC = () => {
   const [deleteError, setDeleteError] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
+ const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain' | 'hybrid'>('standard');
+  
 
 
   // Helper functions
@@ -586,6 +589,20 @@ const RoutePage: React.FC = () => {
         </View>
       ) : (
         <>
+            <View style={styles.pickerContainer}>
+              <Text style={styles.label}>نوع الخريطة:</Text>
+              <Picker
+                selectedValue={mapType}
+                onValueChange={(value) => setMapType(value)}
+                style={styles.picker}
+              >
+                <Picker.Item label="الخريطة العادية" value="standard" />
+                <Picker.Item label="صور فضائية" value="satellite" />
+                <Picker.Item label="تضاريس" value="terrain" />
+                <Picker.Item label="هجين (Hybrid)" value="hybrid" />
+              </Picker>
+            </View>
+
           <MapView
              ref={mapRef}
               style={styles.map}
@@ -595,7 +612,7 @@ const RoutePage: React.FC = () => {
               onPanDrag={handleMapPanDrag}
               onResponderRelease={handleMapRelease}
               onResponderTerminate={handleMapRelease}
-              mapType="standard"
+              mapType={mapType}
           >
             {location && (
               <Marker
@@ -1468,6 +1485,21 @@ const styles = StyleSheet.create({
   borderColor: '#d7ccc8',
   zIndex: 3,
 },
+pickerContainer: {
+  backgroundColor: '#fff',
+  paddingHorizontal: 16,
+  paddingVertical: 8,
+},
+label: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  marginBottom: 4,
+},
+picker: {
+  height: 40,
+  width: '100%',
+},
+
 
 });
 

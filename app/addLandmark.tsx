@@ -13,13 +13,18 @@ import {
   ActivityIndicator,
   Platform
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import MapView, { Marker } from 'react-native-maps';
 import axios, { AxiosError } from 'axios';
 import { useRouter } from 'expo-router/build/hooks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons ,Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import Constants from 'expo-constants';
+const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
+
+
 
 const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
 
@@ -194,6 +199,7 @@ const LandmarkModal: React.FC<{
 
   const currentUserVote = landmark.votes.find(v => v.userId === currentUser?._id);
   const userWeight = currentUserVote?.weight || 0;
+
 
   return (
     <Modal
@@ -519,6 +525,10 @@ const LandmarkPage: React.FC = () => {
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
+ const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain' | 'hybrid'>('standard');
+ const [isLandmarksListVisible, setIsLandmarksListVisible] = useState(true);
+ const [searchQuery, setSearchQuery] = useState('');
+ const [showMapInfo, setShowMapInfo] = useState(true);
 
   // Load landmarks
   useEffect(() => {
@@ -638,6 +648,8 @@ const LandmarkPage: React.FC = () => {
       lon: coordinate.longitude,
     }));
     setShowForm(true);
+    setShowMapInfo(false); // إضافة هذا السطر
+
   };
 
   // Pick image
@@ -692,6 +704,8 @@ const LandmarkPage: React.FC = () => {
         }
       });
       
+
+
       setLandmarks(prev => [...prev, response.data]);
       setShowForm(false);
       setNewLandmark({
@@ -812,6 +826,155 @@ const LandmarkPage: React.FC = () => {
       setDeleteError(errorMessage);
     }
   };
+  const focusOnUserLocation = () => {
+  if (location && mapRef.current) {
+    mapRef.current.animateToRegion({
+      latitude: location.latitude,
+      longitude: location.longitude,
+      latitudeDelta: 0.0922,
+      longitudeDelta: 0.0421,
+    });
+  }
+}
+ const handleSearch = async () => {
+  if (!searchQuery.trim()) return;
+
+  // 1. First check local landmarks (case insensitive)
+  const landmark = landmarks.find(l =>
+    l.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  if (landmark) {
+    mapRef.current?.animateToRegion({
+      latitude: landmark.lat,
+      longitude: landmark.lon,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    });
+    return;
+  }
+
+  // 2. Try Google Geocoding API with better error handling
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchQuery)}&key=${GOOGLE_API_KEY}&language=en&region=sa` // Added region parameter for Saudi Arabia
+    );
+    const data = await response.json();
+
+    if (data.status === "OK" && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
+      mapRef.current?.animateToRegion({
+        latitude: location.lat,
+        longitude: location.lng,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      });
+      
+      // Show the first result's formatted address
+      Alert.alert(
+        "Location Found", 
+        data.results[0].formatted_address,
+        [{ text: "OK" }]
+      );
+    } else if (data.status === "ZERO_RESULTS") {
+      // Try with fuzzy search or show suggestions
+      handleFuzzySearch(searchQuery);
+    } else {
+      Alert.alert(
+        "Search Error", 
+        data.error_message || "No results found. Try a different query.",
+        [{ text: "OK" }]
+      );
+    }
+  } catch (err) {
+    console.error("Geocoding error:", err);
+    Alert.alert(
+      "Connection Error", 
+      "Failed to connect to search service. Please check your internet connection.",
+      [{ text: "OK" }]
+    );
+  }
+};
+
+const handleFuzzySearch = (query: string) => {
+  // Simple fuzzy search implementation
+  const queryLower = query.toLowerCase();
+  const similarLandmarks = landmarks.filter(l => {
+    const titleLower = l.title.toLowerCase();
+    return (
+      titleLower.includes(queryLower) ||
+      queryLower.includes(titleLower) ||
+      getSimilarity(queryLower, titleLower) > 0.7
+    );
+  });
+
+  if (similarLandmarks.length > 0) {
+    Alert.alert(
+      "Did you mean?",
+      similarLandmarks.map(l => l.title).join("\n"),
+      [
+        { text: "Cancel" },
+        ...similarLandmarks.map(l => ({
+          text: l.title,
+          onPress: () => {
+            mapRef.current?.animateToRegion({
+              latitude: l.lat,
+              longitude: l.lon,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            });
+          }
+        }))
+      ]
+    );
+  } else {
+    Alert.alert(
+      "Not Found", 
+      "No matching locations found. Try a more specific search.",
+      [{ text: "OK" }]
+    );
+  }
+};
+
+// Helper function to calculate string similarity
+const getSimilarity = (s1: string, s2: string) => {
+  let longer = s1;
+  let shorter = s2;
+  if (s1.length < s2.length) {
+    longer = s2;
+    shorter = s1;
+  }
+  const longerLength = longer.length;
+  if (longerLength === 0) return 1.0;
+  return (longerLength - editDistance(longer, shorter)) / longerLength;
+};
+
+// Levenshtein distance calculation
+const editDistance = (s1: string, s2: string) => {
+  s1 = s1.toLowerCase();
+  s2 = s2.toLowerCase();
+
+  const costs = [];
+  for (let i = 0; i <= s1.length; i++) {
+    let lastValue = i;
+    for (let j = 0; j <= s2.length; j++) {
+      if (i === 0) {
+        costs[j] = j;
+      } else {
+        if (j > 0) {
+          let newValue = costs[j - 1];
+          if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+          }
+          costs[j - 1] = lastValue;
+          lastValue = newValue;
+        }
+      }
+    }
+    if (i > 0) costs[s2.length] = lastValue;
+  }
+  return costs[s2.length];
+};
 
   return (
     <View style={styles.container}>
@@ -822,12 +985,94 @@ const LandmarkPage: React.FC = () => {
         </View>
       ) : (
         <>
+      // في جزء الـ render:
+
+   <View style={styles.searchContainer}>
+  <TextInput
+    placeholder="Search landmarks or areas..."
+    placeholderTextColor="#888"
+    value={searchQuery}
+    onChangeText={setSearchQuery}
+    onSubmitEditing={handleSearch}
+    style={styles.searchInput}
+    returnKeyType="search"
+  />
+  <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+    <MaterialIcons name="search" size={24} color="#6d4c41" />
+  </TouchableOpacity>
+
+  {/* أنواع الخريطة */}
+  <View style={{ flexDirection: 'row', marginLeft: 10 }}>
+  {/* Standard */}
+  <TouchableOpacity onPress={() => setMapType('standard')} style={{ marginHorizontal: 4 }}>
+    <Ionicons name="map" size={20} color={mapType === 'standard' ? '#FFD700' : '#6d4c41'} />
+  </TouchableOpacity>
+
+  {/* Satellite */}
+  <TouchableOpacity onPress={() => setMapType('satellite')} style={{ marginHorizontal: 4 }}>
+    <Ionicons name="earth" size={20} color={mapType === 'satellite' ? '#FFD700' : '#6d4c41'} />
+  </TouchableOpacity>
+
+  {/* Hybrid */}
+  <TouchableOpacity onPress={() => setMapType('hybrid')} style={{ marginHorizontal: 4 }}>
+    <Ionicons name="layers" size={20} color={mapType === 'hybrid' ? '#FFD700' : '#6d4c41'} />
+  </TouchableOpacity>
+
+  {/* Terrain */}
+  <TouchableOpacity onPress={() => setMapType('terrain')} style={{ marginHorizontal: 4 }}>
+    <Ionicons name="triangle" size={20} color={mapType === 'terrain' ? '#FFD700' : '#6d4c41'} />
+  </TouchableOpacity>
+</View>
+
+</View>
+
+
+ 
+
+  {/* زر الموقع الحالي */}
+  <TouchableOpacity 
+    style={styles.currentLocationButton}
+    onPress={focusOnUserLocation}
+  >
+    <MaterialIcons name="my-location" size={24} color="#6d4c41" />
+  </TouchableOpacity>
+
+  {/* قائمة Landmarks المنزلقة */}
+  <View style={[styles.landmarksListContainer]}>
+    <TouchableOpacity 
+      style={styles.toggleListButton}
+      onPress={() => setIsLandmarksListVisible(!isLandmarksListVisible)}
+    >
+      <MaterialIcons 
+        name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
+        size={24} 
+        color="#6d4c41" 
+      />
+    </TouchableOpacity>
+    
+    {isLandmarksListVisible && (
+      <ScrollView style={styles.landmarksList}>
+        <Text style={styles.landmarksTitle}>Landmarks ({landmarks.length})</Text>
+        {landmarks.map(landmark => (
+          <LandmarkListItem 
+            key={landmark._id}
+            landmark={landmark}
+            onClick={() => setSelectedLandmark(landmark)}
+            isSelected={selectedLandmark?._id === landmark._id}
+          />
+        ))}
+      </ScrollView>
+    )}
+  </View>
+
           <MapView
             ref={mapRef}
             style={styles.map}
             initialRegion={region}
             onRegionChangeComplete={setRegion}
             onPress={handleMapPress}
+            mapType={mapType}
+
           >
             {location && (
               <Marker
@@ -921,24 +1166,41 @@ const LandmarkPage: React.FC = () => {
   </View>
 )}
 
-          {landmarks.length > 0 && (
-            <ScrollView style={styles.landmarksList}>
-              <Text style={styles.landmarksTitle}>Landmarks ({landmarks.length})</Text>
-              {landmarks.map(landmark => (
-                <LandmarkListItem 
-                  key={landmark._id}
-                  landmark={landmark}
-                  onClick={() => setSelectedLandmark(landmark)}
-                  isSelected={selectedLandmark?._id === landmark._id}
-                />
-              ))}
-            </ScrollView>
-          )}
-
-          <View style={styles.mapInfo}>
-            <Text style={styles.mapTitle}>Landmarks Map</Text>
-            <Text>Press on the map to add a new landmark</Text>
+         <View style={[
+            styles.landmarksListContainer,
+            !isLandmarksListVisible && styles.collapsedLandmarksList
+          ]}>
+            <TouchableOpacity 
+              style={styles.toggleListButton}
+              onPress={() => setIsLandmarksListVisible(!isLandmarksListVisible)}
+            >
+              <MaterialIcons 
+                name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
+                size={24} 
+                color="#6d4c41" 
+              />
+            </TouchableOpacity>
+            
+            {isLandmarksListVisible && (
+              <ScrollView style={styles.landmarksList}>
+                <Text style={styles.landmarksTitle}>Landmarks ({landmarks.length})</Text>
+                {landmarks.map(landmark => (
+                  <LandmarkListItem 
+                    key={landmark._id}
+                    landmark={landmark}
+                    onClick={() => setSelectedLandmark(landmark)}
+                    isSelected={selectedLandmark?._id === landmark._id}
+                  />
+                ))}
+              </ScrollView>
+            )}
           </View>
+
+        {showMapInfo && (
+  <View style={styles.mapInfoPopup}>
+    <Text style={styles.mapInfoText}>Tap on the map to add a landmark</Text>
+  </View>
+)}
         </>
       )}
 
@@ -956,6 +1218,7 @@ const LandmarkPage: React.FC = () => {
           deleteError={deleteError}
         />
       )}
+   
     </View>
   );
 };
@@ -1101,27 +1364,8 @@ const styles = StyleSheet.create({
     color: "#5d4037",
     fontSize: 16,
   },
-  landmarksList: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    backgroundColor: "white",
-    padding: 15,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#f0e6e2",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    landmarksList: {
     maxHeight: 300,
-    width: 250,
-    maxWidth: "90%",
-    zIndex: 1,
   },
   landmarksTitle: {
     fontWeight: 'bold',
@@ -1502,6 +1746,132 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.5,
   },
+  pickerContainer: {
+  backgroundColor: '#fff',
+  paddingHorizontal: 16,
+  paddingVertical: 8,
+},
+label: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  marginBottom: 4,
+},
+picker: {
+  height: 40,
+  width: '100%',
+},
+  mapTypeContainer: {
+      position: 'absolute',
+    top: 80, // تحت شريط البحث
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    flexDirection: 'row',
+    padding: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 2,
+  },
+  mapTypeButton: {
+    padding: 8,
+    borderRadius: 15,
+    marginHorizontal: 2,
+  },
+  activeMapType: {
+    backgroundColor: '#6d4c41',
+  },
+  landmarksListContainer: {
+   position: 'absolute',
+    bottom: 20,
+    left: 20,
+    backgroundColor: "white",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#f0e6e2",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    width: 250,
+    maxWidth: "90%",
+    zIndex: 2,
+    maxHeight: '50%',
+  },
+  collapsedLandmarksList: {
+    height: 40,
+  },
+  toggleListButton: {
+    padding: 8,
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  currentLocationButton: {
+      position: 'absolute',
+    bottom: 80,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 2,
+  },
+  searchContainer: {
+       position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20, // ترك مساحة للأيقونات
+    backgroundColor: 'white',
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    height: 50,
+    alignItems: 'center',
+    flexDirection: 'row',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 2,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    paddingHorizontal: 10,
+  },
+  searchButton: {
+    padding: 8,
+  },
+  mapInfoPopup: {
+  position: 'absolute',
+  top: '45%',
+  left: '50%',
+  transform: [{ translateX: -150 }],
+  width: 300,
+  backgroundColor: 'rgba(255,255,255,0.95)',
+  padding: 15,
+  borderRadius: 10,
+  borderWidth: 1,
+  borderColor: '#ccc',
+  alignItems: 'center',
+  zIndex: 10,
+},
+mapInfoText: {
+  fontSize: 14,
+  color: '#5d4037',
+  textAlign: 'center',
+}
+
 });
 
 export default LandmarkPage;

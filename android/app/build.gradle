@@ -1,6 +1,8 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
+
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -96,6 +98,7 @@ android {
         versionName "1.0.0"
         manifestPlaceholders = [GOOGLE_MAPS_API_KEY: project.findProperty("GOOGLE_MAPS_API_KEY") ?: ""]
         manifestPlaceholders += [expoUpdateUrl: 'https://u.expo.dev/YOUR_PROJECT_ID']
+
 
 
     }
