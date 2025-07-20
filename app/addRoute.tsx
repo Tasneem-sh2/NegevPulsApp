@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -19,7 +20,6 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useAuth } from './AuthContext';
 import { Picker } from '@react-native-picker/picker';
 import Constants from 'expo-constants';
-const [isRoutesListVisible, setIsRoutesListVisible] = useState(true);
 
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
 type ObjectId = string; // أو استخدام نوع من مكتبة أخرى مثل 'bson' إذا لزم الأمر
@@ -85,6 +85,7 @@ interface ErrorResponse {
   };
 }
 
+
 const RoutePage: React.FC = () => {
   const mapRef = useRef<MapView>(null);
   const [location, setLocation] = useState<Location | null>(null);
@@ -120,6 +121,9 @@ const RoutePage: React.FC = () => {
   const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain' | 'hybrid'>('standard');
   const [searchQuery, setSearchQuery] = useState('');
   const [showHeaderText, setShowHeaderText] = useState(true);
+  const [isRoutesListVisible, setIsRoutesListVisible] = useState(true);
+  const [showBot, setShowBot] = useState(false);
+  const [currentBotRoute, setCurrentBotRoute] = useState<Route | null>(null);
 
 
   // Helper functions
@@ -195,6 +199,68 @@ const RoutePage: React.FC = () => {
 
     fetchUser();
   }, []);
+  useEffect(() => {
+  const interval = setInterval(() => {
+    if (!showBot) {
+      const unverifiedRoutes = routes.filter(r => !r.verified);
+      if (unverifiedRoutes.length > 0) {
+        const randomIndex = Math.floor(Math.random() * unverifiedRoutes.length);
+        setCurrentBotRoute(unverifiedRoutes[randomIndex]);
+        setShowBot(true);
+      }
+    }
+  }, 10000); // كل 10 ثواني
+
+  return () => clearInterval(interval);
+}, [routes, showBot]);
+const VerificationBot: React.FC<{
+  visible: boolean;
+  route: Route | null;
+  onVote: (vote: 'yes' | 'no') => void;
+  onClose: () => void;
+  onRoutePress: () => void;
+}> = ({ visible, route, onVote, onClose, onRoutePress }) => {
+  if (!visible || !route) return null;
+
+  return (
+    <View style={styles.botContainer}>
+      <View style={styles.botHeader}>
+        <TouchableOpacity onPress={onClose} style={styles.botCloseIcon}>
+          <Ionicons name="close" size={24} color="#6d4c41" />
+        </TouchableOpacity>
+        <MaterialIcons name="support-agent" size={28} color="#6d4c41" style={styles.botIcon} />
+        <Text style={styles.botTitle}>Help Verify</Text>
+      </View>
+      
+      <TouchableOpacity onPress={onRoutePress} style={styles.botContent}>
+        <Text style={styles.botQuestion}>Is this route accurate?</Text>
+        
+        <View style={styles.routePreview}>
+          <Text style={styles.botRouteName}>{route.title}</Text>
+          <Text style={styles.botRoutePoints}>{route.points.length} points</Text>
+        </View>
+      </TouchableOpacity>
+      
+      <View style={styles.botButtons}>
+        <TouchableOpacity 
+          style={[styles.botButton, styles.botYesButton]}
+          onPress={() => onVote('yes')}
+        >
+          <MaterialIcons name="thumb-up" size={20} color="white" />
+          <Text style={styles.botButtonText}>Confirm</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.botButton, styles.botNoButton]}
+          onPress={() => onVote('no')}
+        >
+          <MaterialIcons name="thumb-down" size={20} color="white" />
+          <Text style={styles.botButtonText}>Reject</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
 
   useEffect(() => {
     if (voteSuccess) {
@@ -258,6 +324,13 @@ const RoutePage: React.FC = () => {
     };
     
     setTempRoutePoints(prev => [...prev, newPoint]);
+      // تجاهل الضغط إذا كان على علامة طريق
+    if (e.nativeEvent?.markerId) {
+      return;
+    }
+
+    // إغلاق أي تفاصيل طريق مفتوحة إذا ضغط على مكان فارغ
+    setSelectedRoute(null);
   };
 
   const handleMapLongPress = (e: any) => {
@@ -286,7 +359,79 @@ const RoutePage: React.FC = () => {
   const handleMapRelease = () => {
     setIsDrawing(false);
   };
+const handleRouteVote = async (routeId: string, voteType: 'yes' | 'no') => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
 
+    setIsVoting(true);
+    setVoteError("");
+    setVoteSuccess("");
+
+    const response = await axios.put<RouteVoteResponse>(
+      `${API_BASE_URL}/routes/${routeId}/vote`,
+      { vote: voteType },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+
+    setRoutes(prevRoutes => prevRoutes.map(route => {
+      if (route._id === routeId) {
+        return {
+          ...route,
+          votes: response.data.data.votes,
+          verified: response.data.data.verified,
+          verificationData: response.data.data.verificationData,
+          _calculatedWeights: response.data.data._calculatedWeights
+        };
+      }
+      return route;
+    }));
+
+    const weight = response.data.userWeight ?? getUserWeight(user);
+    setVoteSuccess(`Vote recorded! (Weight: ${weight}x)`);
+    
+    // إغلاق الروبوت بعد التصويت
+    if (currentBotRoute?._id === routeId) {
+      setShowBot(false);
+    }
+  } catch (error: any) {
+    // ... (ابقى على كود معالجة الأخطاء كما هو)
+  } finally {
+    setIsVoting(false);
+  }
+};
+const focusOnRoute = (route: Route) => {
+  if (!route.points.length) return;
+
+  const coordinates = route.points.map(p => ({
+    latitude: p.lat,
+    longitude: p.lon
+  }));
+
+  // حساب المنطقة المحيطة بالطريق
+  const lats = coordinates.map(c => c.latitude);
+  const lons = coordinates.map(c => c.longitude);
+  
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+
+  mapRef.current?.animateToRegion({
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLon + maxLon) / 2,
+    latitudeDelta: (maxLat - minLat) * 1.5 + 0.01, // إضافة هامش إضافي
+    longitudeDelta: (maxLon - minLon) * 1.5 + 0.01
+  }, 500); // 500ms للحركة
+};
   // Route management
   const saveRoute = async () => {
     try {
@@ -334,7 +479,10 @@ const RoutePage: React.FC = () => {
       Alert.alert('Error', 'Failed to save route. Please try again.');
     }
   };
-
+  const getUnverifiedRoutes = () => {
+  return routes.filter(route => !route.verified);
+};
+/*
   const handleRouteVote = async (routeId: string, voteType: 'yes' | 'no') => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -409,7 +557,7 @@ const RoutePage: React.FC = () => {
       setIsVoting(false);
     }
   };
-
+*/
   const handleDeleteRoute = async (routeId: string) => {
     try {
       setDeleteError("");
@@ -452,26 +600,52 @@ const RoutePage: React.FC = () => {
   };
 
   // Render functions
-  const renderRouteItem = (route: Route) => (
-    <TouchableOpacity 
-      key={route._id}
-      style={styles.routeItem}
-      onPress={() => setSelectedRoute(route)}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <View style={[
-          styles.routeColor,
-          { backgroundColor: route.verified ? route.color : '#AAAAAA' }
-        ]} />
-        <View>
-          <Text style={styles.routeTitle}>{route.title}</Text>
-          <Text style={styles.verificationBadge}>
-            {route.verified ? 'Verified' : 'Pending'} ({route.points.length} points)
-          </Text>
-        </View>
+const renderRouteItem = (route: Route) => (
+  <TouchableOpacity 
+    key={route._id}
+    style={[
+      styles.routeItem,
+      !route.verified && styles.pendingRouteItem
+    ]}
+    onPress={() => {
+      setSelectedRoute(route);
+      focusOnRoute(route);
+    }}
+  >
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <View style={[
+        styles.routeColor,
+        { 
+          backgroundColor: route.verified ? route.color : '#AAAAAA',
+          borderWidth: route.verified ? 0 : 1,
+          borderColor: '#999'
+        }
+      ]} />
+      <View>
+        <Text style={[
+          styles.routeTitle,
+          !route.verified && styles.pendingRouteTitle
+        ]}>
+          {route.title}
+        </Text>
+        <Text style={styles.verificationBadge}>
+          {route.verified ? 'Verified' : 'Pending - Vote Now'} ({route.points.length} points)
+        </Text>
       </View>
-    </TouchableOpacity>
-  );
+    </View>
+  </TouchableOpacity>
+);
+const handleMarkerPress = (route: Route) => {
+  // إغلاق وضع الرسم إذا كان نشطاً
+  setIsDrawingRoute(false);
+  
+  // عرض تفاصيل الطريق
+  setSelectedRoute(route);
+  
+  // تحريك الخريطة لتركيز على الطريق
+  focusOnRoute(route);
+};
+
 
   const renderVerificationStatus = (route: Route) => {
     const yesWeight = route.verificationData?.yesWeight || 
@@ -650,16 +824,18 @@ const RoutePage: React.FC = () => {
             )}
 
             {routes.map(route => (
-              <Polyline
-                key={route._id}
-                coordinates={route.points.map(p => ({
-                  latitude: p.lat,
-                  longitude: p.lon
-                }))}
-                strokeColor={route.verified ? route.color : '#AAAAAA'}
-                strokeWidth={3}
-              />
-            ))}
+  <Polyline
+    key={route._id}
+    coordinates={route.points.map(p => ({
+      latitude: p.lat,
+      longitude: p.lon
+    }))}
+    strokeColor={route.verified ? route.color : '#AAAAAA'}
+    strokeWidth={3}
+    onPress={() => handleMarkerPress(route)} // أضف هذه السطر
+    tappable={true} // هذه الخاصية مهمة لجعل الخط قابلاً للضغط
+  />
+))}
 
             {isDrawingRoute && tempRoutePoints.length > 0 && (
               <Polyline
@@ -877,7 +1053,8 @@ const RoutePage: React.FC = () => {
   </TouchableOpacity>
 )}
 
-         {/* Routes List */}
+{/* Routes List */}
+{/* Routes List */}
 {routes.length > 0 && (
   <View style={[
     styles.routesList, 
@@ -893,11 +1070,30 @@ const RoutePage: React.FC = () => {
         color="#6d4c41" 
       />
     </TouchableOpacity>
-    <Text style={styles.routesTitle}>Routes ({routes.length})</Text>
+    <Text style={styles.routesTitle}>
+      Pending Routes ({getUnverifiedRoutes().length})
+    </Text>
     <ScrollView>
-      {routes.map(renderRouteItem)}
+      {getUnverifiedRoutes().length > 0 ? (
+        getUnverifiedRoutes().map(renderRouteItem)
+      ) : (
+        <Text style={styles.noRoutesText}>No pending routes to vote on</Text>
+      )}
     </ScrollView>
   </View>
+)}
+
+{!isRoutesListVisible && (
+  <TouchableOpacity 
+    onPress={() => setIsRoutesListVisible(true)}
+    style={styles.floatingToggleButton}
+  >
+    <MaterialIcons 
+      name="keyboard-arrow-up" 
+      size={24} 
+      color="#6d4c41" 
+    />
+  </TouchableOpacity>
 )}
 
 {!isRoutesListVisible && (
@@ -1098,6 +1294,23 @@ const RoutePage: React.FC = () => {
           </Modal>
         </>
       )}
+          <VerificationBot
+      visible={showBot}
+      route={currentBotRoute}
+      onVote={(vote) => {
+        if (currentBotRoute) {
+          handleRouteVote(currentBotRoute._id, vote);
+        }
+        setShowBot(false);
+      }}
+      onClose={() => setShowBot(false)}
+      onRoutePress={() => {
+        if (currentBotRoute) {
+          setSelectedRoute(currentBotRoute);
+          focusOnRoute(currentBotRoute);
+        }
+      }}
+    />
     </View>
   );
 };
@@ -1269,12 +1482,6 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.5,
   },
-  routePreview: {
-    marginTop: 15,
-    backgroundColor: '#f5f5f5',
-    padding: 10,
-    borderRadius: 8,
-  },
   previewTitle: {
     fontWeight: '600',
     marginBottom: 5,
@@ -1355,6 +1562,19 @@ const styles = StyleSheet.create({
   miniMapContainer: {
     flex: 1,
     height: 300,
+  },
+  pendingRouteItem: {
+  backgroundColor: '#FFF9E1',
+},
+  pendingRouteTitle: {
+    fontWeight: '600',
+    color: '#FF9800',
+  },
+  noRoutesText: {
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#757575',
+    fontStyle: 'italic',
   },
   miniMap: {
     width: '100%',
@@ -1705,8 +1925,93 @@ floatingToggleButton: {
   borderColor: '#f0e6e2',
   zIndex: 1,
 },
-
+botContainer: {
+  position: 'absolute',
+  bottom: 20,
+  right: 20,
+  width: 280,
+  backgroundColor: 'white',
+  borderRadius: 12,
+  padding: 12,
+  zIndex: 100,
+  elevation: 8,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 6,
+  borderWidth: 1,
+  borderColor: '#f0e6e2',
+},
+botHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 8,
+},
+botTitle: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#6d4c41',
+},
+botQuestion: {
+  fontSize: 14,
+  color: '#5d4037',
+  marginBottom: 8,
+  fontWeight: '500',
+},
+routePreview: {
+  backgroundColor: '#f5f5f5',
+  padding: 10,
+  borderRadius: 8,
+  marginBottom: 8,
+},
+botRouteName: {
+  fontSize: 14,
+  fontWeight: '600',
+  color: '#6d4c41',
+  marginBottom: 4,
+},
+botRoutePoints: {
+  fontSize: 12,
+  color: '#757575',
+},
+botButtons: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  gap: 8,
+},
+botButton: {
+  flex: 1,
+  paddingVertical: 8,
+  borderRadius: 8,
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'row',
+  gap: 4,
+},
+botButtonText: {
+  color: 'white',
+  fontWeight: 'bold',
+  fontSize: 14,
+},
+botCloseIcon: {
+  position: 'absolute',
+  right: 0,
+  top: 0,
+  padding: 8,
+  zIndex: 2,
+},
+botIcon: {
+  marginRight: 8,
+},
+botYesButton: {
+  backgroundColor: '#4CAF50',
+},
+botNoButton: {
+  backgroundColor: '#f44336',
+},
+botContent: {
+  marginBottom: 16,
+},
 
 });
-
 export default RoutePage;

@@ -95,7 +95,77 @@ interface ErrorResponse {
     status?: number;
   };
 }
+interface VerificationBotProps {
+  visible: boolean;
+  landmark: Landmark | null;
+  onVote: (vote: 'yes' | 'no') => void;
+  onClose: () => void;
+  onLandmarkPress: () => void; // هذه الخاصية مطلوبة
+}
+const VerificationBot: React.FC<{
+  visible: boolean;
+  landmark: Landmark | null;
+  onVote: (vote: 'yes' | 'no') => void;
+  onClose: () => void;
+  onLandmarkPress: () => void;
+}> = ({ visible, landmark, onVote, onClose, onLandmarkPress }) => {
+  if (!visible || !landmark) return null;
 
+  return (
+    <View style={styles.botContainer}>
+      {/* Header مع أيقونة قريبة */}
+      <View style={styles.botHeader}>
+        <TouchableOpacity onPress={onClose} style={styles.botCloseIcon}>
+          <Ionicons name="close" size={24} color="#6d4c41" />
+        </TouchableOpacity>
+        <MaterialIcons name="support-agent" size={28} color="#6d4c41" style={styles.botIcon} />
+        <Text style={styles.botTitle}>Help Verify</Text>
+      </View>
+      
+      {/* محتوى البطاقة */}
+      <TouchableOpacity onPress={onLandmarkPress} style={styles.botContent}>
+        <Text style={styles.botQuestion}>Is this landmark accurate?</Text>
+        
+        {landmark.imageUrl && (
+          <Image 
+            source={{ uri: landmark.imageUrl }}
+            style={styles.botLandmarkImage}
+          />
+        )}
+        
+        <View style={styles.landmarkLocationContainer}>
+          <Text style={styles.botLandmarkName}>{landmark.title}</Text>
+          <MaterialIcons name="location-on" size={20} color="#6d4c41" />
+        </View>
+        
+        {landmark.description && (
+          <Text style={styles.botLandmarkDescription} numberOfLines={2}>
+            {landmark.description}
+          </Text>
+        )}
+      </TouchableOpacity>
+      
+      {/* أزرار التصويت */}
+      <View style={styles.botButtons}>
+        <TouchableOpacity 
+          style={[styles.botButton, styles.botYesButton]}
+          onPress={() => onVote('yes')}
+        >
+          <MaterialIcons name="thumb-up" size={20} color="white" />
+          <Text style={styles.botButtonText}>Confirm</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.botButton, styles.botNoButton]}
+          onPress={() => onVote('no')}
+        >
+          <MaterialIcons name="thumb-down" size={20} color="white" />
+          <Text style={styles.botButtonText}>Reject</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
 // Components
 const LandmarkListItem: React.FC<{
   landmark: Landmark;
@@ -107,7 +177,8 @@ const LandmarkListItem: React.FC<{
       onPress={onClick}
       style={[
         styles.listItem,
-        isSelected && styles.selectedListItem
+        isSelected && styles.selectedListItem,
+        !landmark.verified && styles.pendingListItem
       ]}
     >
       <View style={styles.listItemContent}>
@@ -120,7 +191,11 @@ const LandmarkListItem: React.FC<{
           }
         ]} />
         <View style={styles.listItemTextContainer}>
-          <Text style={[styles.listItemTitle, isSelected && styles.selectedListItemTitle]}>
+          <Text style={[
+            styles.listItemTitle, 
+            isSelected && styles.selectedListItemTitle,
+            !landmark.verified && styles.pendingListItemTitle
+          ]}>
             {landmark.title}
           </Text>
           <View style={styles.listItemStatus}>
@@ -132,7 +207,7 @@ const LandmarkListItem: React.FC<{
             ) : (
               <>
                 <MaterialIcons name="schedule" size={14} color="#FF9800" />
-                <Text style={styles.pendingText}>Pending</Text>
+                <Text style={styles.pendingText}>Pending Verification</Text>
               </>
             )}
           </View>
@@ -210,7 +285,7 @@ const LandmarkModal: React.FC<{
     >
       <TouchableOpacity 
         style={styles.modalOverlay}
-        activeOpacity={1}
+        activeOpacity={0.7} // هنا نضيفها بشكل صحيح
         onPress={onClose}
       >
         <ScrollView 
@@ -529,8 +604,10 @@ const LandmarkPage: React.FC = () => {
  const [isLandmarksListVisible, setIsLandmarksListVisible] = useState(true);
  const [searchQuery, setSearchQuery] = useState('');
  const [showMapInfo, setShowMapInfo] = useState(true);
-
-  // Load landmarks
+const [showBot, setShowBot] = useState(false);
+const [currentBotLandmark, setCurrentBotLandmark] = useState<Landmark | null>(null);
+  
+// Load landmarks
   useEffect(() => {
     const loadLandmarks = async () => {
       try {
@@ -547,7 +624,13 @@ const LandmarkPage: React.FC = () => {
     };
     loadLandmarks();
   }, []);
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setShowMapInfo(false);
+  }, 3000); // 3 ثواني
 
+  return () => clearTimeout(timer);
+}, []);
   // Get user location
   useEffect(() => {
     const getLocation = async () => {
@@ -639,19 +722,39 @@ const LandmarkPage: React.FC = () => {
   }, [deleteSuccess, deleteError]);
 
   // Handle map press
-  const handleMapPress = (e: any) => {
-    const { coordinate } = e.nativeEvent;
-    setClickedLocation(coordinate);
-    setNewLandmark(prev => ({
-      ...prev,
-      lat: coordinate.latitude,
-      lon: coordinate.longitude,
-    }));
-    setShowForm(true);
-    setShowMapInfo(false); // إضافة هذا السطر
+const handleMapPress = (e: any) => {
+  // تجاهل الضغط إذا كان على معلم موجود
+  if (e.nativeEvent?.markerId) {
+    return;
+  }
+  
+  // إغلاق أي تفاصيل معلم مفتوحة
+  setSelectedLandmark(null);
+  
+  // فتح نافذة الإضافة
+  const { coordinate } = e.nativeEvent;
+  setClickedLocation(coordinate);
+  setNewLandmark(prev => ({
+    ...prev,
+    lat: coordinate.latitude,
+    lon: coordinate.longitude,
+  }));
+  setShowForm(true);
+};
 
-  };
-
+const handleMarkerPress = (marker: Landmark) => {
+  // إغلاق نافذة الإضافة إذا كانت مفتوحة
+  setShowForm(false);
+  
+  // عرض تفاصيل المعلم
+  setSelectedLandmark(marker);
+  mapRef.current?.animateToRegion({
+    latitude: marker.lat,
+    longitude: marker.lon,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
+};
   // Pick image
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -668,7 +771,54 @@ const LandmarkPage: React.FC = () => {
       }));
     }
   };
+const showRandomLandmarkForVerification = () => {
+  const unverified = landmarks.filter(l => !l.verified);
+  console.log('Unverified landmarks:', unverified.length); // إضافة هذا السطر
+  
+  if (unverified.length > 0) {
+    const randomIndex = Math.floor(Math.random() * unverified.length);
+    setCurrentBotLandmark(unverified[randomIndex]);
+    setShowBot(true);
+    console.log('Showing bot for landmark:', unverified[randomIndex].title); // إضافة هذا السطر
+  } else {
+    console.log('No unverified landmarks available'); // إضافة هذا السطر
+  }
+};
+useEffect(() => {
+  const interval = setInterval(() => {
+    if (!showBot && landmarks.filter(l => !l.verified).length > 0) {
+      console.log('Checking for unverified landmarks...'); // إضافة هذا السطر
+      showRandomLandmarkForVerification();
+    }
+  }, 10000); // غيرت إلى 10 ثواني فقط للاختبار
 
+  return () => clearInterval(interval);
+}, [landmarks, showBot]);
+
+// في الـ return الرئيسي، أضف:
+// في المكون الرئيسي (LandmarkPage)، عدل عرض VerificationBot ليصبح:
+<VerificationBot
+  visible={showBot}
+  landmark={currentBotLandmark}
+  onVote={(vote) => {
+    if (currentBotLandmark) {
+      handleLandmarkVote(currentBotLandmark._id, vote);
+    }
+    setShowBot(false);
+    setTimeout(showRandomLandmarkForVerification, 60000);
+  }}
+  onClose={() => setShowBot(false)}
+  onLandmarkPress={() => {
+    if (currentBotLandmark) {
+      mapRef.current?.animateToRegion({
+        latitude: currentBotLandmark.lat,
+        longitude: currentBotLandmark.lon,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+    }
+  }}
+/>
   // Add new landmark
   const addLandmark = async () => {
     try {
@@ -721,6 +871,30 @@ const LandmarkPage: React.FC = () => {
       Alert.alert("Error", "Failed to add landmark. Please try again.");
     }
   };
+const getUnverifiedLandmarks = () => {
+  // إذا كان هناك معلم محدد، نستخدم موقعه كمركز للتصفية
+  const center = selectedLandmark ? {
+    lat: selectedLandmark.lat,
+    lon: selectedLandmark.lon
+  } : location ? {
+    lat: location.latitude,
+    lon: location.longitude
+  } : null;
+
+  if (!center) {
+    return landmarks.filter(l => !l.verified);
+  }
+
+  // تصفية المعالم ضمن نصف درجة (حوالي 55 كم) من المركز
+  return landmarks.filter(l => {
+    if (l.verified) return false;
+    
+    const latDiff = Math.abs(l.lat - center.lat);
+    const lonDiff = Math.abs(l.lon - center.lon);
+    
+    return latDiff < 0.5 && lonDiff < 0.5;
+  });
+};
 
   // Handle landmark vote
   const handleLandmarkVote = async (landmarkId: string, voteType: 'yes' | 'no') => {
@@ -985,8 +1159,6 @@ const editDistance = (s1: string, s2: string) => {
         </View>
       ) : (
         <>
-      // في جزء الـ render:
-
    <View style={styles.searchContainer}>
   <TextInput
     placeholder="Search landmarks or areas..."
@@ -1045,26 +1217,40 @@ const editDistance = (s1: string, s2: string) => {
     >
       <MaterialIcons 
         name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
-        size={24} 
+        size={20} 
         color="#6d4c41" 
       />
     </TouchableOpacity>
     
     {isLandmarksListVisible && (
       <ScrollView style={styles.landmarksList}>
-        <Text style={styles.landmarksTitle}>Landmarks ({landmarks.length})</Text>
-        {landmarks.map(landmark => (
-          <LandmarkListItem 
-            key={landmark._id}
-            landmark={landmark}
-            onClick={() => setSelectedLandmark(landmark)}
-            isSelected={selectedLandmark?._id === landmark._id}
-          />
-        ))}
+        <Text style={styles.landmarksTitle}>
+          Pending Landmarks ({getUnverifiedLandmarks().length})
+        </Text>
+        {getUnverifiedLandmarks().length > 0 ? (
+          getUnverifiedLandmarks().map(landmark => (
+            <LandmarkListItem 
+              key={landmark._id}
+              landmark={landmark}
+              onClick={() => {
+                setSelectedLandmark(landmark);
+                // تحريك الخريطة إلى موقع المعلم
+                mapRef.current?.animateToRegion({
+                  latitude: landmark.lat,
+                  longitude: landmark.lon,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                });
+              }}
+              isSelected={selectedLandmark?._id === landmark._id}
+            />
+          ))
+        ) : (
+          <Text style={styles.noLandmarksText}>No pending landmarks in this area</Text>
+        )}
       </ScrollView>
-    )}
-  </View>
-
+      )}
+    </View>
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -1072,7 +1258,6 @@ const editDistance = (s1: string, s2: string) => {
             onRegionChangeComplete={setRegion}
             onPress={handleMapPress}
             mapType={mapType}
-
           >
             {location && (
               <Marker
@@ -1092,7 +1277,9 @@ const editDistance = (s1: string, s2: string) => {
                 title={landmark.title}
                 description={landmark.verified ? '' : ' (Pending)'}
                 pinColor={landmark.verified ? landmark.color : '#AAAAAA'}
-                onPress={() => setSelectedLandmark(landmark)}
+                onPress={() => handleMarkerPress(landmark)}
+                // هذه الخاصية مهمة لمنع انتشار الحدث
+                stopPropagation={true}
               />
             ))}
           </MapView>
@@ -1110,6 +1297,8 @@ const editDistance = (s1: string, s2: string) => {
     <ScrollView 
       contentContainerStyle={styles.scrollContainer}
       keyboardShouldPersistTaps="handled"
+      scrollEnabled={true}
+    showsVerticalScrollIndicator={true}
     >
       <View style={styles.formContent}>
         <Text style={styles.formTitle}>Add New Landmark</Text>
@@ -1176,48 +1365,97 @@ const editDistance = (s1: string, s2: string) => {
             >
               <MaterialIcons 
                 name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
-                size={24} 
+                size={20} 
                 color="#6d4c41" 
               />
             </TouchableOpacity>
             
-            {isLandmarksListVisible && (
-              <ScrollView style={styles.landmarksList}>
-                <Text style={styles.landmarksTitle}>Landmarks ({landmarks.length})</Text>
-                {landmarks.map(landmark => (
-                  <LandmarkListItem 
-                    key={landmark._id}
-                    landmark={landmark}
-                    onClick={() => setSelectedLandmark(landmark)}
-                    isSelected={selectedLandmark?._id === landmark._id}
-                  />
-                ))}
-              </ScrollView>
-            )}
+      {isLandmarksListVisible && (
+        <ScrollView style={styles.landmarksList}>
+          <Text style={styles.landmarksTitle}>
+            Landmarks Pending Verification ({landmarks.filter(l => !l.verified).length})
+          </Text>
+          
+          {landmarks.filter(l => !l.verified).length > 0 ? (
+            landmarks.filter(l => !l.verified).map(landmark => (
+              <LandmarkListItem 
+                key={landmark._id}
+                landmark={landmark}
+                onClick={() => {
+                  // إخفاء النموذج أولاً
+                  setShowForm(false);
+                  
+                  // تحريك الخريطة
+                  mapRef.current?.animateToRegion({
+                    latitude: landmark.lat,
+                    longitude: landmark.lon,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  }, 500); // 500ms للحركة
+                  
+                  // عرض التفاصيل بعد انتهاء الحركة
+                  setTimeout(() => {
+                    setSelectedLandmark(landmark);
+                  }, 600);
+                }}
+                isSelected={selectedLandmark?._id === landmark._id}
+              />
+            ))
+          ) : (
+            <Text style={styles.noLandmarksText}>No landmarks pending verification</Text>
+          )}
+        </ScrollView>
+      )}
           </View>
 
-        {showMapInfo && (
-  <View style={styles.mapInfoPopup}>
-    <Text style={styles.mapInfoText}>Tap on the map to add a landmark</Text>
-  </View>
-)}
+      {showMapInfo && !showForm && !selectedLandmark && (
+        <View style={styles.mapInfoPopup}>
+          <Text style={styles.mapInfoText}>Tap on the map to add a landmark</Text>
+        </View>
+      )}
         </>
       )}
 
-      {selectedLandmark && (
-        <LandmarkModal 
-          landmark={selectedLandmark}
-          currentUser={currentUser}
-          onClose={() => setSelectedLandmark(null)}
-          onVote={handleLandmarkVote}
-          onDelete={handleDeleteLandmark}
-          isVoting={isVoting}
-          voteSuccess={voteSuccess}
-          voteError={voteError}
-          deleteSuccess={deleteSuccess}
-          deleteError={deleteError}
-        />
-      )}
+       {selectedLandmark && (
+      <LandmarkModal 
+        landmark={selectedLandmark}
+        currentUser={currentUser}
+        onClose={() => {
+          setSelectedLandmark(null);
+          setShowForm(false); // تأكيد إغلاق نموذج الإضافة
+        }}        
+        onVote={handleLandmarkVote}
+        onDelete={handleDeleteLandmark}
+        isVoting={isVoting}
+        voteSuccess={voteSuccess}
+        voteError={voteError}
+        deleteSuccess={deleteSuccess}
+        deleteError={deleteError}
+      />
+    )}
+       {/* تأكد من وجود هذا السطر في المكان الصحيح */}
+    <VerificationBot
+  visible={showBot}
+  landmark={currentBotLandmark}
+  onVote={(vote) => {
+    if (currentBotLandmark) {
+      handleLandmarkVote(currentBotLandmark._id, vote);
+    }
+    setShowBot(false);
+    setTimeout(showRandomLandmarkForVerification, 60000);
+  }}
+  onClose={() => setShowBot(false)}
+  onLandmarkPress={() => {
+    if (currentBotLandmark && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: currentBotLandmark.lat,
+        longitude: currentBotLandmark.lon,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+    }
+  }}
+/>
    
     </View>
   );
@@ -1402,6 +1640,13 @@ const styles = StyleSheet.create({
   },
   selectedListItemTitle: {
     fontWeight: 'bold',
+  },
+  pendingListItem: {
+  backgroundColor: '#FFF9E1',
+  },
+  pendingListItemTitle: {
+    fontWeight: '600',
+    color: '#FF9800',
   },
   listItemStatus: {
     flexDirection: 'row',
@@ -1805,9 +2050,21 @@ picker: {
     height: 40,
   },
   toggleListButton: {
-    padding: 8,
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+      position: 'absolute',
+  top: 10,
+  right: 10,
+  backgroundColor: 'white',
+  borderRadius: 15,
+  width: 30,
+  height: 30,
+  justifyContent: 'center',
+  alignItems: 'center',
+  zIndex: 3,
+  elevation: 3,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.2,
+  shadowRadius: 2,
   },
   currentLocationButton: {
       position: 'absolute',
@@ -1852,6 +2109,12 @@ picker: {
   searchButton: {
     padding: 8,
   },
+  noLandmarksText: {
+  textAlign: 'center',
+  marginTop: 20,
+  color: '#757575',
+  fontStyle: 'italic',
+},
   mapInfoPopup: {
   position: 'absolute',
   top: '45%',
@@ -1870,8 +2133,119 @@ mapInfoText: {
   fontSize: 14,
   color: '#5d4037',
   textAlign: 'center',
-}
+},
+botContainer: {
+  position: 'absolute',
+  bottom: 20,
+  right: 20,
+  width: 280, // عرض أصغر قليلاً
+  backgroundColor: 'white',
+  borderRadius: 12, // زوايا أكثر استدارة
+  padding: 12, // تقليل الحشو
+  zIndex: 100,
+  elevation: 8,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 6,
+  borderWidth: 1,
+  borderColor: '#f0e6e2',
+},
+botHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 8, // تقليل المسافة
+},
+botTitle: {
+  fontSize: 16, // تصغير حجم الخط
+  fontWeight: '600',
+  color: '#6d4c41',
+},
+botQuestion: {
+  fontSize: 14, // تصغير حجم الخط
+  color: '#5d4037',
+  marginBottom: 8, // تقليل المسافة
+  fontWeight: '500',
+},
+botLandmarkImage: {
+  width: '100%',
+  height: 100, // تصغير ارتفاع الصورة
+  borderRadius: 8,
+  marginBottom: 8,
+  borderWidth: 1,
+  borderColor: '#f0e6e2',
+},
+botLandmarkName: {
+  fontSize: 14, // تصغير حجم الخط
+  fontWeight: '600',
+  color: '#6d4c41',
+  marginBottom: 4,
+},
+botLandmarkDescription: {
+  fontSize: 12, // تصغير حجم الخط
+  color: '#757575',
+  lineHeight: 18,
+},
+botButtons: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  gap: 8, // تقليل المسافة بين الأزرار
+},
+botButton: {
+  flex: 1,
+  paddingVertical: 8, // تقليل الحشو
+  borderRadius: 8,
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'row',
+  gap: 4, // تقليل المسافة بين الأيقونة والنص
+},
+botButtonText: {
+  color: 'white',
+  fontWeight: 'bold',
+  fontSize: 14, // تصغير حجم الخط
+},
+    botCloseIcon: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    padding: 8,
+    zIndex: 2,
+  },
+  botIcon: {
+    marginRight: 8,
+  },
+botImage: {
+  width: 40,
+  height: 40,
+  marginRight: 10,
+},
 
+
+  botYesButton: {
+    backgroundColor: '#4CAF50',
+  },
+  botNoButton: {
+    backgroundColor: '#f44336',
+  },
+
+botCloseButton: {
+  alignItems: 'center',
+  padding: 8,
+},
+botCloseText: {
+  color: '#6d4c41',
+  textDecorationLine: 'underline',
+},
+landmarkLocationContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 4,
+},
+botContent: {
+  marginBottom: 16,
+},
 });
 
 export default LandmarkPage;

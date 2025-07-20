@@ -36,6 +36,8 @@ export default function LocalPage() {
   const  t  = useTranslations();
   const router = useRouter();
   const [role, setRole] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false); // Added loading state
   // Then in your component:
   const [userData, setUserData] = useState<UserData>({
     _id: '',           // Initialize with empty string
@@ -51,47 +53,56 @@ export default function LocalPage() {
     }
   });
   const [requestSent, setRequestSent] = useState(false);
+  const BASE_URL =  process.env.EXPO_PUBLIC_API_URL || "https://negevpulsapp.onrender.com";
+
   const [superLocalRequests, setSuperLocalRequests] = useState<SuperLocalRequest[]>([]);
   useFocusEffect(
-      React.useCallback(() => {
-        const fetchData = async () => {
-          const token = await AsyncStorage.getItem('token');
-          if (token) {
-            try {
-              const response = await axios.get('https://negevpulsapp.onrender.com/api/auth/me', {
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
-              if (response.data?.success) {
-                const user = response.data.user;
-                setUserData({
-                  _id: user._id,
-                  name: user.name || user.email.split('@')[0],
-                  email: user.email,
-                  points: 0,
-                  isSuperlocal: user.isSuperlocal || false,
-                  verifiedLandmarksAdded: user.verifiedLandmarksAdded ?? 0,
-                  verifiedRoutesAdded: user.verifiedRoutesAdded ?? 0,
-                  votingStats: {
-                    correctVotes: user.votingStats?.correctVotes ?? 0,
-                    totalVotes: user.votingStats?.totalVotes ?? 0
-                  }
-                });
+    React.useCallback(() => {
+      const fetchData = async () => {
+        const token = await AsyncStorage.getItem('token');
+        if (!token) return;
+
+        try {
+          const response = await axios.get(`${BASE_URL}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+          if (response.data?.success) {
+            const user = response.data.user;
+            console.log('Fetched user data:', user);
+            
+            setUserData({
+              _id: user._id,
+              name: user.name || user.email.split('@')[0],
+              email: user.email,
+              points: user.points || 0,
+              isSuperlocal: user.isSuperlocal,
+              verifiedLandmarksAdded: user.verifiedLandmarksAdded || 0,
+              verifiedRoutesAdded: user.verifiedRoutesAdded || 0,
+              votingStats: {
+                correctVotes: user.votingStats?.correctVotes || 0,
+                totalVotes: user.votingStats?.totalVotes || 0
               }
-            } catch (error) {
-              console.error('Error refreshing user data:', error);
-            }
+            });
           }
-        };
-        fetchData();
-      }, [])
-    );
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          setError('Failed to load user data. Please check your connection.');
+          // Optional: Retry logic could go here
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchData();
+    }, [])
+  );
 
   // In local.tsx
 useEffect(() => {
   const fetchUserData = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const response = await axios.get('https://negevpulsapp.onrender.com/api/auth/me', {
+      const response = await axios.get(`${BASE_URL}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -140,21 +151,44 @@ useEffect(() => {
   };
   decodeToken();
 }, []);
- const getUserStatus = () => {
-  // This should be the first check
+// Update your getUserStatus function to be more precise:
+const getUserStatus = () => {
+  console.log('Calculating status with data:', {
+    isSuperlocal: userData.isSuperlocal,
+    landmarks: userData.verifiedLandmarksAdded,
+    routes: userData.verifiedRoutesAdded,
+    votes: userData.votingStats
+  });
+
+  // 1. First check superlocal status
   if (userData.isSuperlocal) {
     return 'SuperLocal Resident';
   }
-  
+
+  // 2. Calculate verification metrics
   const totalVerified = userData.verifiedLandmarksAdded + userData.verifiedRoutesAdded;
-  const votingAccuracy = userData.votingStats.totalVotes > 0 
-    ? userData.votingStats.correctVotes / userData.votingStats.totalVotes 
-    : 0;
+  const hasEnoughVerifications = totalVerified >= 2;
   
-  if (totalVerified >= 2 || (votingAccuracy >= 0.8 && userData.votingStats.totalVotes >= 5)) {
+  // 3. Calculate voting metrics
+  const hasEnoughVotes = userData.votingStats.totalVotes >= 5;
+  const votingAccuracy = hasEnoughVotes 
+    ? userData.votingStats.correctVotes / userData.votingStats.totalVotes
+    : 0;
+  const hasHighAccuracy = votingAccuracy >= 0.8;
+
+  console.log('Status metrics:', {
+    totalVerified,
+    hasEnoughVerifications,
+    hasEnoughVotes,
+    votingAccuracy,
+    hasHighAccuracy
+  });
+
+  // 4. Determine status
+  if (hasEnoughVerifications || (hasEnoughVotes && hasHighAccuracy)) {
     return 'Active Resident';
   }
-  
+
   return 'Regular Resident';
 };
   const userStatus = getUserStatus();
@@ -388,16 +422,6 @@ useEffect(() => {
           </TouchableOpacity>
         </View>
 
-        {/* Keep the rest of your existing components */}
-        {!userData.isSuperlocal && !requestSent && (
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.superLocalButton]}
-            onPress={handleRequestSuperLocal}
-          >
-            <MaterialIcons name="verified" size={24} color="#FFD700" />
-            <Text style={styles.superLocalButtonText}>Request Super Local Status</Text>
-          </TouchableOpacity>
-        )}
 
         {requestSent && (
           <View style={styles.requestStatus}>

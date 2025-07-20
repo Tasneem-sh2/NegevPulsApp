@@ -180,6 +180,21 @@ export default function MainIndex() {
             {language === 'he' && "הכפרים הבלתי מוכרים בנגב הם ביתם של כ-70,000 בדואים החיים ב-35 כפרים המשתרעים על פני כ-180,000 דונם (1.4% משטח ישראל). בשל חוסר ההכרה הרשמי, קהילות אלו סובלות ממחסור חמור בתשתיות ושירותים בסיסיים כמו חשמל, מים וביוב, ונאלצות להסתמך על גנרטורים ומיכלי מים. מדיניות הממשלה משקפת הזנחה מערכתית, כאשר הבדואים אינם מוכרים כאוכלוסייה ילידית, מה שמונע מהם זכויות לפי החוק הבינלאומי ומעמיק את אי השוויון עם הרוב היהודי."}
           </Text>
         </View>
+        {/* Application Description Section */}
+        <View style={styles.paragraphContainer}>
+          <Text style={[
+            styles.paragraphText,
+            { 
+              writingDirection: language === 'ar' || language === 'he' ? 'rtl' : 'ltr',
+              textAlign: language === 'ar' || language === 'he' ? 'right' : 'left'
+            }
+          ]}>
+            {language === 'en' && "This app is more than just a platform for displaying villages and their photos. It is a tool for preserving memory and asserting presence through community-powered mapping. Instead of waiting for external authorities to recognize these villages, this platform empowers local residents to document, update, and map their communities on their own terms — a grassroots form of resistance against marginalization."}
+            {language === 'ar' && "هذا التطبيق ليس فقط لعرض القرى وصورها، بل هو أداة لحفظ الذاكرة وإثبات الوجود من خلال التوثيق الجماعي. بدلاً من انتظار جهات خارجية لتقرر ما إذا كانت هذه القرى تستحق الظهور على الخريطة، يسمح التطبيق للسكان أنفسهم بإضافة وتحديث قراهم كما يرونها هم، مما يشكل شكلاً من أشكال المقاومة في وجه التهميش."}
+            {language === 'he' && "האפליקציה הזו אינה רק פלטפורמה להצגת כפרים ותמונותיהם, אלא כלי לשימור זיכרון ולהצהרת נוכחות דרך מיפוי קהילתי. במקום להמתין לגופים חיצוניים שיחליטו האם הכפרים ראויים להופיע על המפה, הפלטפורמה מאפשרת לתושבים עצמם להוסיף ולעדכן את כפריהם – כלי התנגדות מול ההדרה."}
+          </Text>
+        </View>
+
 
         {/* Villages Grid */}
         <View style={styles.villagesGrid}>

@@ -7,6 +7,8 @@ import { IconSymbol } from '@/frontend/components/ui/IconSymbol';
 import TabBarBackground from '@/frontend/components/ui/TabBarBackground';
 import { Colors } from '@/frontend/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { Feather } from '@expo/vector-icons';
+
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -61,7 +63,17 @@ export default function TabLayout() {
       <IconSymbol size={28} name="map.fill" color={color} />
     ),
   }}
-/>
+  />
+  <Tabs.Screen
+    name="logout"
+    options={{
+      title: 'LogOut',
+      tabBarIcon: ({ color }) => (
+        <Feather name="log-out" size={24} color={color} />
+      ),
+    }}
+  />
+
  
     </Tabs>
   );
