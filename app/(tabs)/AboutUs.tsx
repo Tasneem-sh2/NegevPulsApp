@@ -1,89 +1,135 @@
-import { View, Text, StyleSheet, ScrollView, Linking } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useTranslations } from '@/frontend/constants/locales';
-import { I18nManager } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Linking, TouchableOpacity } from 'react-native';
+import { MaterialIcons, FontAwesome5, Ionicons, Feather } from '@expo/vector-icons';
 
 export default function AboutUs() {
-  const t = useTranslations();
-  
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Header Section */}
-      <View style={styles.header}>
-        <Text style={styles.mainTitle}>{t.about.title}</Text>
-        <Text style={styles.subtitle}>{t.about.subtitle}</Text>
-      </View>
-
-      {/* Project Overview */}
-      <View style={styles.section}>
-        <Text style={styles.heading}>{t.about.missionTitle}</Text>
-        <Text style={styles.paragraph}>{t.about.missionText}</Text>
-      </View>
-
-      {/* Problem Definition */}
-      <View style={styles.section}>
-        <Text style={styles.heading}>{t.about.problemTitle}</Text>
-        <View style={styles.listItem}>
-          <MaterialIcons name="fiber-manual-record" size={14} color="#6d4c41" />
-          <Text style={styles.listText}>{t.about.problemList.lackData}</Text>
+      {/* Hero Section */}
+      <View style={styles.hero}>
+        <View style={styles.heroContent}>
+          <Text style={styles.heroTitle}>About NegevPulse</Text>
+          <Text style={styles.heroSubtitle}>Bridging the gap for unrecognized villages</Text>
         </View>
-        <View style={styles.listItem}>
-          <MaterialIcons name="fiber-manual-record" size={14} color="#6d4c41" />
-          <Text style={styles.listText}>{t.about.problemList.delays}</Text>
-        </View>
-        <View style={styles.listItem}>
-          <MaterialIcons name="fiber-manual-record" size={14} color="#6d4c41" />
-          <Text style={styles.listText}>{t.about.problemList.limitedInfo}</Text>
-        </View>
+        <View style={styles.heroDecoration} />
       </View>
 
-      {/* Project Goal */}
-      <View style={styles.section}>
-        <Text style={styles.heading}>{t.about.goalTitle}</Text>
-        <Text style={styles.paragraph}>{t.about.goalText}</Text>
-      </View>
-
-      {/* How It Works */}
-      <View style={styles.section}>
-        <Text style={styles.heading}>{t.about.howItWorksTitle}</Text>
-        <View style={styles.listItem}>
-          <Text style={styles.number}>1.</Text>
-          <Text style={styles.listText}>
-            <Text style={styles.bold}>{t.about.step1.split(':')[0]}</Text>: {t.about.step1.split(':')[1]}
+      {/* Content Sections */}
+      <View style={styles.content}>
+        {/* Story Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="book" size={24} color="#6D4C41" />
+            <Text style={styles.sectionTitle}>Our Story</Text>
+          </View>
+          <Text style={styles.sectionText}>
+            NegevPulse is a graduation project developed by three fourth-year Software Engineering students 
+            at Sami Shamoon College of Engineering. Our mission is to empower marginalized communities 
+            in the Negev region through technology.
           </Text>
+          <View style={styles.sectionIcon}>
+            <FontAwesome5 name="university" size={20} color="#8D6E63" />
+          </View>
         </View>
-        <View style={styles.listItem}>
-          <Text style={styles.number}>2.</Text>
-          <Text style={styles.listText}>
-            <Text style={styles.bold}>{t.about.step2.split(':')[0]}</Text>: {t.about.step2.split(':')[1]}
-          </Text>
-        </View>
-        <View style={styles.listItem}>
-          <Text style={styles.number}>3.</Text>
-          <Text style={styles.listText}>
-            <Text style={styles.bold}>{t.about.step3.split(':')[0]}</Text>: {t.about.step3.split(':')[1]}
-          </Text>
-        </View>
-      </View>
 
-      {/* Our Vision */}
-      <View style={styles.section}>
-        <Text style={styles.heading}>{t.about.visionTitle}</Text>
-        <Text style={styles.paragraph}>{t.about.visionText}</Text>
-      </View>
+        {/* Problem Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="alert-circle" size={24} color="#6D4C41" />
+            <Text style={styles.sectionTitle}>The Challenge</Text>
+          </View>
+          {[
+            "Over 35 unrecognized villages exist physically but don't appear on official maps",
+            "No reliable digital mapping exists for emergency services, deliveries, or visitors",
+            "These villages are visible on satellite imagery but absent from digital maps"
+          ].map((item, i) => (
+            <View key={i} style={styles.listItem}>
+              <MaterialIcons name="fiber-manual-record" size={12} color="#D4A59A" />
+              <Text style={styles.listText}>{item}</Text>
+            </View>
+          ))}
+        </View>
 
-      {/* Contact Us */}
-      <View style={[styles.section, styles.contact]}>
-        <Text style={styles.heading}>{t.about.contactTitle}</Text>
-        <Text style={styles.paragraph}>
-          {t.about.contactText}{' '}
-          <Text
-            style={styles.contactLink}
-            onPress={() => Linking.openURL('mailto:support@example.com')}
+        {/* Solution Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="bulb" size={24} color="#6D4C41" />
+            <Text style={styles.sectionTitle}>Our Solution</Text>
+          </View>
+          <Text style={styles.sectionText}>
+            NegevPulse introduces a <Text style={styles.highlight}>three-tier crowdsourcing</Text> system where 
+            residents can map their communities.
+          </Text>
+          
+          {[
+            { level: "Regular Residents", detail: "Can submit landmarks/roads (Vote weight: 1)", icon: "user" },
+            { level: "Active Residents", detail: "Verified contributors (Vote weight: 2)", icon: "user-check" },
+            { level: "Super Locals", detail: "Community leaders (Vote weight: 4)", icon: "user-tie" }
+          ].map((item, i) => (
+            <View key={i} style={styles.solutionItem}>
+              <View style={styles.solutionIcon}>
+                <FontAwesome5 name={item.icon} size={16} color="#6D4C41" />
+              </View>
+              <View style={styles.solutionText}>
+                <Text style={styles.solutionLevel}>{item.level}</Text>
+                <Text style={styles.solutionDetail}>{item.detail}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Verification Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="shield-checkmark" size={24} color="#6D4C41" />
+            <Text style={styles.sectionTitle}>Verification Process</Text>
+          </View>
+          <Text style={styles.sectionText}>
+            For a landmark/road to be approved, it must meet two criteria:
+          </Text>
+          {[
+            "Achieve 5.6 weighted votes (equivalent to 2 Super Locals + 1 Active)",
+            "Maintain 80% approval rate from all voters"
+          ].map((item, i) => (
+            <View key={i} style={styles.listItem}>
+              <Feather name="check-circle" size={16} color="#8D6E63" />
+              <Text style={styles.listText}>{item}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Tech Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="code" size={24} color="#6D4C41" />
+            <Text style={styles.sectionTitle}>Technical Details</Text>
+          </View>
+          <Text style={styles.sectionText}>
+            Currently available on Android, with future plans for iOS expansion. Inspired by the best of 
+            Waze's community features and Google Maps' reliability.
+          </Text>
+          <View style={styles.techIcons}>
+            <FontAwesome5 name="android" size={24} color="#8D6E63" />
+            <FontAwesome5 name="apple" size={24} color="#8D6E63" style={{ marginHorizontal: 20 }} />
+            <FontAwesome5 name="waze" size={24} color="#8D6E63" />
+            <FontAwesome5 name="google" size={24} color="#8D6E63" style={{ marginLeft: 20 }} />
+          </View>
+        </View>
+
+        {/* CTA Section */}
+        <View style={[styles.section, styles.ctaSection]}>
+          <Ionicons name="hand-left" size={32} color="#6D4C41" style={styles.ctaIcon} />
+          <Text style={styles.ctaTitle}>Join Our Movement</Text>
+          <Text style={styles.ctaText}>
+            Help us map the unmapped. Contact us at:
+          </Text>
+          <TouchableOpacity 
+            style={styles.contactButton}
+            onPress={() => Linking.openURL('mailto:negevpulse.support@gmail.com')}
           >
-            support@example.com
-          </Text>
-        </Text>
+            <MaterialIcons name="email" size={20} color="white" />
+            <Text style={styles.contactButtonText}>negevpulse.support@gmail.com</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
   );
@@ -91,88 +137,183 @@ export default function AboutUs() {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 20,
-    paddingHorizontal: 15,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFF8E1',
   },
-  header: {
-    backgroundColor: '#6d4c41',
-    paddingVertical: 25,
-    borderRadius: 12,
-    marginBottom: 20,
+  hero: {
+    position: 'relative',
+    height: 220,
+    backgroundColor: '#5D4037',
+    marginBottom: 30,
+  },
+  heroContent: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 25,
+    zIndex: 2,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 3,
   },
-  mainTitle: {
-    fontSize: 28,
+  heroDecoration: {
+    position: 'absolute',
+    bottom: -30,
+    left: 0,
+    right: 0,
+    height: 60,
+    backgroundColor: '#5D4037',
+    transform: [{ skewY: '-5deg' }],
+    zIndex: 1,
+  },
+  heroTitle: {
+    fontSize: 32,
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#FFD700',
     textAlign: 'center',
+    fontFamily: 'sans-serif-medium',
+  },
+  heroSubtitle: {
+    fontSize: 18,
+    color: '#FFD54F',
+    textAlign: 'center',
+    fontFamily: 'sans-serif',
+  },
+  content: {
     paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   section: {
     backgroundColor: 'white',
+    borderRadius: 12,
     padding: 20,
-    borderRadius: 10,
+    marginBottom: 20,
+    shadowColor: '#5D4037',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  heading: {
-    fontSize: 22,
-    color: '#6d4c41',
-    fontWeight: '600',
-    marginBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
-    paddingBottom: 8,
+    borderBottomColor: '#EFEBE9',
+    paddingBottom: 10,
   },
-  paragraph: {
+  sectionTitle: {
+    fontSize: 22,
+    color: '#5D4037',
+    fontWeight: '600',
+    marginLeft: 10,
+    fontFamily: 'sans-serif-medium',
+  },
+  sectionText: {
     fontSize: 16,
-    color: '#5d4037',
+    color: '#5D4037',
     lineHeight: 24,
-    marginBottom: 5,
+    marginBottom: 15,
+    fontFamily: 'sans-serif',
+  },
+  sectionIcon: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: '#EFEBE9',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  highlight: {
+    color: '#8D6E63',
+    fontWeight: 'bold',
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   listText: {
-    fontSize: 16,
-    color: '#5d4037',
-    marginLeft: 8,
+    fontSize: 15,
+    color: '#5D4037',
+    marginLeft: 10,
     flex: 1,
     lineHeight: 22,
+    fontFamily: 'sans-serif',
   },
-  number: {
+  solutionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    backgroundColor: '#FFF8E1',
+    borderRadius: 8,
+    padding: 12,
+  },
+  solutionIcon: {
+    backgroundColor: '#EFEBE9',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  solutionText: {
+    flex: 1,
+  },
+  solutionLevel: {
     fontSize: 16,
-    color: '#6d4c41',
-    fontWeight: 'bold',
-    marginRight: 5,
+    color: '#5D4037',
+    fontWeight: '600',
+    fontFamily: 'sans-serif-medium',
   },
-  bold: {
-    fontWeight: 'bold',
+  solutionDetail: {
+    fontSize: 14,
+    color: '#8D6E63',
+    fontFamily: 'sans-serif',
   },
-  contact: {
+  techIcons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 15,
+  },
+  ctaSection: {
+    backgroundColor: '#5D4037',
     alignItems: 'center',
   },
-  contactLink: {
-    color: '#8d6e63',
+  ctaIcon: {
+    marginBottom: 10,
+  },
+  ctaTitle: {
+    fontSize: 24,
+    color: 'white',
     fontWeight: 'bold',
+    marginBottom: 5,
+    textAlign: 'center',
+    fontFamily: 'sans-serif-medium',
+  },
+  ctaText: {
+    fontSize: 16,
+    color: '#FFD54F',
+    textAlign: 'center',
+    marginBottom: 15,
+    fontFamily: 'sans-serif',
+  },
+  contactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8D6E63',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    marginTop: 10,
+  },
+  contactButtonText: {
+    fontSize: 16,
+    color: 'white',
+    marginLeft: 10,
+    fontFamily: 'sans-serif-medium',
   },
 });

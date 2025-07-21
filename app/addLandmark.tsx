@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import { 
   View, 
@@ -600,13 +599,15 @@ const LandmarkPage: React.FC = () => {
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
- const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain' | 'hybrid'>('standard');
- const [isLandmarksListVisible, setIsLandmarksListVisible] = useState(true);
- const [searchQuery, setSearchQuery] = useState('');
- const [showMapInfo, setShowMapInfo] = useState(true);
-const [showBot, setShowBot] = useState(false);
-const [currentBotLandmark, setCurrentBotLandmark] = useState<Landmark | null>(null);
-  
+  const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain' | 'hybrid'>('standard');
+  const [isLandmarksListVisible, setIsLandmarksListVisible] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showMapInfo, setShowMapInfo] = useState(true);
+  const [showBot, setShowBot] = useState(false);
+  const [currentBotLandmark, setCurrentBotLandmark] = useState<Landmark | null>(null);
+  const [showNearbyOnly, setShowNearbyOnly] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'verified' | 'unverified'>('all');
+  const [botDisabled, setBotDisabled] = useState(false);
 // Load landmarks
   useEffect(() => {
     const loadLandmarks = async () => {
@@ -721,17 +722,17 @@ useEffect(() => {
     }
   }, [deleteSuccess, deleteError]);
 
-  // Handle map press
+// 1. تعديل handleMapPress لإخفاء الروبوت عند إضافة معلم
 const handleMapPress = (e: any) => {
-  // تجاهل الضغط إذا كان على معلم موجود
-  if (e.nativeEvent?.markerId) {
-    return;
-  }
+  if (e.nativeEvent?.markerId) return;
   
-  // إغلاق أي تفاصيل معلم مفتوحة
   setSelectedLandmark(null);
+  setShowBot(false); // إخفاء الروبوت
   
-  // فتح نافذة الإضافة
+  // تعطيل الروبوت لمدة دقيقتين
+  setBotDisabled(true);
+  setTimeout(() => setBotDisabled(false), 120000);
+  
   const { coordinate } = e.nativeEvent;
   setClickedLocation(coordinate);
   setNewLandmark(prev => ({
@@ -741,7 +742,55 @@ const handleMapPress = (e: any) => {
   }));
   setShowForm(true);
 };
+// 2. دالة لحساب المسافة بين نقطتين
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371e3; // نصف قطر الأرض بالمتر
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lon2-lon1) * Math.PI/180;
 
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c; // المسافة بالمتر
+};
+// دالة واحدة معدلة لجميع الاستخدامات
+const getNearbyLandmarks = (landmarksList: Landmark[] = landmarks, radius = 300) => { // تقليل نصف القطر إلى 300 متر
+  if (!location) return landmarksList;
+  
+  return landmarksList.filter(landmark => {
+    const distance = calculateDistance(
+      location.latitude, 
+      location.longitude,
+      landmark.lat,
+      landmark.lon
+    );
+    return distance <= radius;
+  });
+};
+
+// تعديل دالة getDisplayedLandmarks لاستخدام الدالة المعدلة
+const getDisplayedLandmarks = () => {
+  const filtered = getFilteredLandmarks();
+  return showNearbyOnly ? getNearbyLandmarks(filtered) : filtered;
+};
+// 5. دالة للحصول على المعالم حسب الفلتر
+const getFilteredLandmarks = () => {
+  const allLandmarks = landmarks; // استخدام جميع المعالم بدلاً من القريبة فقط
+  
+  switch(filter) {
+    case 'verified':
+      return allLandmarks.filter(l => l.verified);
+    case 'unverified':
+      return allLandmarks.filter(l => !l.verified);
+    default:
+      return allLandmarks;
+  }
+};
+// 6. دالة لتحديث الفلتر
 const handleMarkerPress = (marker: Landmark) => {
   // إغلاق نافذة الإضافة إذا كانت مفتوحة
   setShowForm(false);
@@ -772,33 +821,46 @@ const handleMarkerPress = (marker: Landmark) => {
     }
   };
 const showRandomLandmarkForVerification = () => {
-  const unverified = landmarks.filter(l => !l.verified);
-  console.log('Unverified landmarks:', unverified.length); // إضافة هذا السطر
+  if (!location) return;
+
+  // تصفية المعالم غير الموثقة ضمن نطاق 500 متر فقط
+  const unverifiedNearby = landmarks.filter(landmark => {
+    if (landmark.verified) return false;
+    
+    const distance = calculateDistance(
+      location.latitude,
+      location.longitude,
+      landmark.lat,
+      landmark.lon
+    );
+    return distance <= 500; // 500 متر فقط
+  });
+
+  console.log('Unverified nearby landmarks:', unverifiedNearby.length);
   
-  if (unverified.length > 0) {
-    const randomIndex = Math.floor(Math.random() * unverified.length);
-    setCurrentBotLandmark(unverified[randomIndex]);
+  if (unverifiedNearby.length > 0) {
+    const randomIndex = Math.floor(Math.random() * unverifiedNearby.length);
+    setCurrentBotLandmark(unverifiedNearby[randomIndex]);
     setShowBot(true);
-    console.log('Showing bot for landmark:', unverified[randomIndex].title); // إضافة هذا السطر
+    console.log('Showing bot for nearby landmark:', unverifiedNearby[randomIndex].title);
   } else {
-    console.log('No unverified landmarks available'); // إضافة هذا السطر
+    console.log('No unverified landmarks available nearby');
   }
 };
 useEffect(() => {
   const interval = setInterval(() => {
-    if (!showBot && landmarks.filter(l => !l.verified).length > 0) {
-      console.log('Checking for unverified landmarks...'); // إضافة هذا السطر
+    if (!showBot && !botDisabled && location) { // التأكد من وجود الموقع أولاً
       showRandomLandmarkForVerification();
     }
-  }, 10000); // غيرت إلى 10 ثواني فقط للاختبار
+  }, 10000); // كل 10 ثواني
 
   return () => clearInterval(interval);
-}, [landmarks, showBot]);
+}, [landmarks, showBot, botDisabled, location]); // إضافة location إلى dependencies
 
 // في الـ return الرئيسي، أضف:
 // في المكون الرئيسي (LandmarkPage)، عدل عرض VerificationBot ليصبح:
 <VerificationBot
-  visible={showBot}
+  visible={showBot && !botDisabled}
   landmark={currentBotLandmark}
   onVote={(vote) => {
     if (currentBotLandmark) {
@@ -1263,11 +1325,12 @@ const editDistance = (s1: string, s2: string) => {
               <Marker
                 coordinate={location}
                 title="Your Location"
-                pinColor="#FFD700"
+                pinColor="#6d4c41" // تغيير من الأصفر (#FFD700) إلى البني
+
               />
             )}
             
-            {landmarks.map(landmark => (
+            {getDisplayedLandmarks().map(landmark => (
               <Marker
                 key={landmark._id}
                 coordinate={{
@@ -1275,10 +1338,9 @@ const editDistance = (s1: string, s2: string) => {
                   longitude: landmark.lon
                 }}
                 title={landmark.title}
-                description={landmark.verified ? '' : ' (Pending)'}
-                pinColor={landmark.verified ? landmark.color : '#AAAAAA'}
+                description={landmark.verified ? 'Verified' : 'Pending Verification'}
+                pinColor={landmark.verified ? '#4CAF50' : '#FFD700'}
                 onPress={() => handleMarkerPress(landmark)}
-                // هذه الخاصية مهمة لمنع انتشار الحدث
                 stopPropagation={true}
               />
             ))}
@@ -1369,7 +1431,6 @@ const editDistance = (s1: string, s2: string) => {
                 color="#6d4c41" 
               />
             </TouchableOpacity>
-            
       {isLandmarksListVisible && (
         <ScrollView style={styles.landmarksList}>
           <Text style={styles.landmarksTitle}>
@@ -1411,7 +1472,7 @@ const editDistance = (s1: string, s2: string) => {
       {showMapInfo && !showForm && !selectedLandmark && (
         <View style={styles.mapInfoPopup}>
           <Text style={styles.mapInfoText}>Tap on the map to add a landmark</Text>
-        </View>
+        </View> 
       )}
         </>
       )}
@@ -1433,28 +1494,63 @@ const editDistance = (s1: string, s2: string) => {
         deleteError={deleteError}
       />
     )}
+      <View style={styles.filterContainer}>
+        <TouchableOpacity 
+          style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
+          onPress={() => setFilter('all')}
+        >
+          <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>All</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.filterButton, filter === 'verified' && styles.activeFilter]}
+          onPress={() => setFilter('verified')}
+        >
+          <Text style={[styles.filterText, filter === 'verified' && styles.activeFilterText]}>Verified</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.filterButton, filter === 'unverified' && styles.activeFilter]}
+          onPress={() => setFilter('unverified')}
+        >
+          <Text style={[styles.filterText, filter === 'unverified' && styles.activeFilterText]}>Pending</Text>
+        </TouchableOpacity>
+
+        <View style={styles.separator} />
+
+        <TouchableOpacity 
+          style={styles.nearbyToggle}
+          onPress={() => setShowNearbyOnly(!showNearbyOnly)}
+        >
+          <MaterialIcons 
+            name={showNearbyOnly ? "location-on" : "location-off"} 
+            size={16} 
+            color={showNearbyOnly ? "#4CAF50" : "#f44336"} 
+          />
+        </TouchableOpacity>
+      </View>
        {/* تأكد من وجود هذا السطر في المكان الصحيح */}
     <VerificationBot
-  visible={showBot}
-  landmark={currentBotLandmark}
-  onVote={(vote) => {
-    if (currentBotLandmark) {
-      handleLandmarkVote(currentBotLandmark._id, vote);
-    }
-    setShowBot(false);
-    setTimeout(showRandomLandmarkForVerification, 60000);
-  }}
-  onClose={() => setShowBot(false)}
-  onLandmarkPress={() => {
-    if (currentBotLandmark && mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: currentBotLandmark.lat,
-        longitude: currentBotLandmark.lon,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      });
-    }
-  }}
+      visible={showBot && !botDisabled}
+      landmark={currentBotLandmark}
+      onVote={(vote) => {
+        if (currentBotLandmark) {
+          handleLandmarkVote(currentBotLandmark._id, vote);
+        }
+        setShowBot(false);
+        setTimeout(showRandomLandmarkForVerification, 60000);
+      }}
+      onClose={() => setShowBot(false)}
+      onLandmarkPress={() => {
+        if (currentBotLandmark && mapRef.current) {
+          mapRef.current.animateToRegion({
+            latitude: currentBotLandmark.lat,
+            longitude: currentBotLandmark.lon,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          });
+        }
+      }}
 />
    
     </View>
@@ -1462,6 +1558,64 @@ const editDistance = (s1: string, s2: string) => {
 };
 
 const styles = StyleSheet.create({
+  nearbyToggle: {
+  position: 'absolute',
+  top: 80,
+  right: 20,
+  backgroundColor: 'white',
+  padding: 10,
+  borderRadius: 20,
+  flexDirection: 'row',
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 3,
+  zIndex: 2,
+},
+nearbyToggleText: {
+  marginLeft: 5,
+  color: '#6d4c41',
+},
+filterContainer: {
+  position: 'absolute',
+  top: 80,
+  left: 20,
+  backgroundColor: 'rgba(255,255,255,0.9)', // جعل الخلفية شبه شفافة
+  borderRadius: 20,
+  flexDirection: 'row',
+  padding: 5,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 3,
+  zIndex: 2,
+},
+filterButton: {
+  paddingHorizontal: 12,
+  paddingVertical: 8,
+  borderRadius: 15,
+  marginHorizontal: 2,
+},
+activeFilter: {
+  backgroundColor: '#8d6e63', // تغيير اللون إلى بني فاتح
+},
+filterText: {
+  color: '#5d4037', // لون بني غامق
+  fontWeight: '500', // زيادة سماكة الخط
+},
+activeFilterText: {
+  color: 'white',
+  fontWeight: '500',
+},
+separator: {
+  width: 1,
+  height: 20,
+  backgroundColor: '#d7ccc8',
+  marginHorizontal: 8,
+},
   container: {
     flex: 1,
     backgroundColor: "#fff"
@@ -1492,30 +1646,29 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 5,
   },
-  formContainer: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -175 }, { translateY: -200 }],
-    backgroundColor: "white",
-    padding: 25,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#f0e6e2",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-    width: 350,
-    maxWidth: "90%",
-    zIndex: 2,
-    maxHeight: '70%', // أضف هذه السطر
-
+formContainer: {
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  transform: [{ translateX: -175 }, { translateY: -200 }],
+  backgroundColor: "white",
+  padding: 25,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: "#f0e6e2",
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 10,
   },
+  shadowOpacity: 0.15,
+  shadowRadius: 20,
+  elevation: 10,
+  width: 350,
+  maxWidth: "90%",
+  zIndex: 2,
+  maxHeight: '70%',
+},
   formTitle: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -2121,9 +2274,9 @@ picker: {
   color: '#757575',
   fontStyle: 'italic',
 },
-  mapInfoPopup: {
+mapInfoPopup: {
   position: 'absolute',
-  top: '45%',
+  top: '50%',
   left: '50%',
   transform: [{ translateX: -150 }],
   width: 300,
@@ -2226,8 +2379,6 @@ botImage: {
   height: 40,
   marginRight: 10,
 },
-
-
   botYesButton: {
     backgroundColor: '#4CAF50',
   },
@@ -2253,5 +2404,4 @@ botContent: {
   marginBottom: 16,
 },
 });
-
 export default LandmarkPage;

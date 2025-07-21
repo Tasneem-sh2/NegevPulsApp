@@ -1,7 +1,7 @@
 export default {
   expo: {
-    name: "myapp",
-    slug: "myapp",
+    name: "myApp",
+    slug: "myApp",
     version: "1.0.0",
     sdkVersion: "50.0.0", // حسب نسخة Expo اللي عندك
     extra: {

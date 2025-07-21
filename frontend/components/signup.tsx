@@ -30,24 +30,61 @@ const Signup = () => {
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
 
   const handleChange = (name: keyof SignupData, value: string) => {
     setData((prevData) => ({ ...prevData, [name]: value }));
   };
 
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  const validatePassword = (password: string) => {
+    // يجب أن تحتوي على حرف كبير، حرف صغير، رقم، رمز، و8 أحرف على الأقل
+    const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    return re.test(password);
+  };
+
   const handleSubmit = async () => {
+    setError("");
+
+    // التحقق من صحة البريد الإلكتروني
+    if (!validateEmail(data.email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    // التحقق من صحة كلمة المرور
+    if (!validatePassword(data.password)) {
+      setError("Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character");
+      return;
+    }
+
     if (data.password !== data.confirmPassword) {
       setError("Passwords do not match");
       return;
     }
 
     setIsSubmitting(true);
-    setError("");
     setSuccessMessage("");
 
     try {
-      const url = `https://negevpulsapp.onrender.com/api/signup`;
-      const { data: res } = await axios.post(url, data);
+      // التحقق من عدم استخدام البريد الإلكتروني مسبقاً
+      const checkEmailUrl = `https://negevpulsapp.onrender.com/api/check-email`;
+      const emailCheck = await axios.post(checkEmailUrl, { email: data.email });
+      
+      if (emailCheck.data.exists) {
+        setError("This email is already registered");
+        return;
+      }
+
+      // إنشاء الحساب
+      const signupUrl = `https://negevpulsapp.onrender.com/api/signup`;
+      const { data: res } = await axios.post(signupUrl, data);
 
       setSuccessMessage("Account created successfully!");
 
@@ -60,7 +97,7 @@ const Signup = () => {
         role: "local",
       });
 
-      // Optionally navigate to login after 2 seconds
+      // الانتقال إلى صفحة الدخول بعد 2 ثانية
       setTimeout(() => {
         router.push('./login');
       }, 2000);
@@ -68,7 +105,7 @@ const Signup = () => {
     } catch (error: any) {
       console.error('API call failed:', error);
       if (error.response) {
-        setError(error.response.data.message);
+        setError(error.response.data.message || "Registration failed");
       } else {
         setError('An unexpected error occurred');
       }
@@ -107,49 +144,51 @@ const Signup = () => {
               placeholderTextColor="#8d6e63"
             />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={data.password}
-              onChangeText={(text) => handleChange('password', text)}
-              secureTextEntry
-              placeholderTextColor="#8d6e63"
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm Password"
-              value={data.confirmPassword}
-              onChangeText={(text) => handleChange('confirmPassword', text)}
-              secureTextEntry
-              placeholderTextColor="#8d6e63"
-            />
-
-            <View style={styles.roleContainer}>
-              <Text style={styles.roleLabel}>Account Type:</Text>
-              <View style={styles.roleButtons}>
-                <TouchableOpacity
-                  style={[styles.roleButton, data.role === 'local' &&
-styles.activeRole]}
-                  onPress={() => handleChange('role', 'local')}
-                >
-                  <Text style={[styles.roleText, data.role === 'local'
-&& styles.activeRoleText]}>
-                    Local Resident
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.roleButton, data.role === 'emergency'
-&& styles.activeRole]}
-                  onPress={() => handleChange('role', 'emergency')}
-                >
-                  <Text style={[styles.roleText, data.role ===
-'emergency' && styles.activeRoleText]}>
-                    Emergency Responder
-                  </Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Password"
+                value={data.password}
+                onChangeText={(text) => handleChange('password', text)}
+                secureTextEntry={!showPassword}
+                placeholderTextColor="#8d6e63"
+              />
+              <TouchableOpacity 
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <MaterialIcons 
+                  name={showPassword ? 'visibility-off' : 'visibility'} 
+                  size={24} 
+                  color="#8d6e63" 
+                />
+              </TouchableOpacity>
             </View>
+
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Confirm Password"
+                value={data.confirmPassword}
+                onChangeText={(text) => handleChange('confirmPassword', text)}
+                secureTextEntry={!showConfirmPassword}
+                placeholderTextColor="#8d6e63"
+              />
+              <TouchableOpacity 
+                style={styles.eyeIcon}
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                <MaterialIcons 
+                  name={showConfirmPassword ? 'visibility-off' : 'visibility'} 
+                  size={24} 
+                  color="#8d6e63" 
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.passwordHint}>
+              Password must contain: 8+ characters, uppercase, lowercase, number, and special character
+            </Text>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -233,37 +272,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     color: '#5d4037',
   },
-  roleContainer: {
+  passwordContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  passwordInput: {
+    paddingRight: 50,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: 12,
+    zIndex: 1,
+  },
+  passwordHint: {
+    fontSize: 12,
+    color: '#8d6e63',
     marginBottom: 20,
-  },
-  roleLabel: {
-    fontSize: 16,
-    color: '#6d4c41',
-    marginBottom: 10,
-  },
-  roleButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  roleButton: {
-    flex: 1,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 5,
-  },
-  activeRole: {
-    backgroundColor: '#6d4c41',
-    borderColor: '#6d4c41',
-  },
-  roleText: {
-    color: '#6d4c41',
-    fontWeight: '500',
-  },
-  activeRoleText: {
-    color: '#FFD700',
+    textAlign: 'center',
   },
   button: {
     backgroundColor: '#6d4c41',

@@ -22,7 +22,8 @@ export default function Login() {
   const [language, setLanguage] = useState<LocaleKeys>('en');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+// Add this state variable at the top with other state declarations
+const [showPassword, setShowPassword] = useState(false);
   // Initialize translations without language parameter if not supported
   const t = useTranslations();
 
@@ -131,15 +132,27 @@ export default function Login() {
           placeholderTextColor="#8d6e63"
           textAlign={language === 'ar' || language === 'he' ? 'right' : 'left'}
         />
-        <TextInput
-          style={styles.input}
-          placeholder={t.auth.login.password}
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          placeholderTextColor="#8d6e63"
-          textAlign={language === 'ar' || language === 'he' ? 'right' : 'left'}
-        />
+        <View style={{ position: 'relative' }}>
+          <TextInput
+            style={styles.input}
+            placeholder={t.auth.login.password}
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+            placeholderTextColor="#8d6e63"
+            textAlign={language === 'ar' || language === 'he' ? 'right' : 'left'}
+          />
+          <TouchableOpacity 
+            style={{ position: 'absolute', right: 15, top: 15 }}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <MaterialIcons 
+              name={showPassword ? 'visibility-off' : 'visibility'} 
+              size={24} 
+              color="#8d6e63" 
+            />
+          </TouchableOpacity>
+        </View>
         
         <TouchableOpacity 
           style={styles.button} 

@@ -1,6 +1,6 @@
 // contexts/AuthContext.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios, { AxiosError } from 'axios'; // Add this import
+import axios, { AxiosError } from 'axios';
 import { useRouter } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
@@ -9,11 +9,13 @@ interface User {
   email: string;
   role: string;
   isSuperlocal?: boolean;
+  userType?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  isAuthenticated: boolean; // أضف هذا
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -23,27 +25,28 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
-
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const isAuthenticated = !!user && !!token;
+
 
   useEffect(() => {
     const loadAuthData = async () => {
       try {
         const [userData, tokenData] = await AsyncStorage.multiGet(['user', 'token']);
-        
         if (userData[1] && tokenData[1]) {
           setUser(JSON.parse(userData[1]));
           setToken(tokenData[1]);
+        } else {
+          setUser(null); // تأكد من ضبط null عند عدم وجود بيانات
+          setToken(null);
         }
       } catch (error) {
-        setError('Failed to load authentication data');
-        console.error('Failed to load auth data', error);
-      } finally {
-        setLoading(false);
+        setUser(null); // في حالة الخطأ
+        setToken(null);
       }
     };
 
@@ -86,7 +89,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
       await AsyncStorage.multiRemove(['user', 'token']);
       setUser(null);
       setToken(null);
-      router.push('/login');
+      router.replace('/');
     } catch (error) {
       setError('Logout failed');
       console.error('Logout error:', error);
@@ -96,7 +99,15 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading, error }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      isAuthenticated,
+      login, 
+      logout, 
+      loading, 
+      error 
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -109,4 +120,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
 export default AuthProvider;

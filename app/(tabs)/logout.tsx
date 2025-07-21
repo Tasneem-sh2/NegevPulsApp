@@ -1,11 +1,11 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react'; // أضفنا useEffect هنا
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslations } from '@/frontend/constants/locales';
 import type { LocaleKeys } from '@/frontend/constants/locales/types';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useAuth } from '../AuthContext';
 
-// Define a type to match the expected structure of translations
 interface LogoutTranslation {
   auth: {
     logout: {
@@ -19,13 +19,36 @@ interface LogoutTranslation {
 export default function Logout() {
   const router = useRouter();
   const [language, setLanguage] = React.useState<LocaleKeys>('en');
-  const t = useTranslations() as LogoutTranslation; // type assertion
+  const t = useTranslations() as LogoutTranslation;
+const { user, logout, loading: authLoading } = useAuth(); // غير اسم loading إلى authLoading
+  const { isAuthenticated, loading } = useAuth();
 
-const handleLogout = () => {
-  // Clear tokens, local storage, etc. if used
-  router.replace('/');
-};
 
+  useEffect(() => {
+    if (!isAuthenticated && !loading) {
+      router.replace('/');
+    }
+  }, [isAuthenticated, loading]);
+
+  if (!isAuthenticated || loading) {
+    return <ActivityIndicator />;
+  }
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  // ثم استخدم authLoading بدلاً من loading في جميع أنحاء الملف
+  if (!user || authLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6d4c41" />
+      </View>
+    );
+  }
 
   const changeLanguage = (lang: LocaleKeys) => {
     setLanguage(lang);
@@ -36,16 +59,14 @@ const handleLogout = () => {
       styles.container,
       { direction: language === 'ar' || language === 'he' ? 'rtl' : 'ltr' }
     ]}>
-      {/* Language Selector */}
       <View style={styles.languageSelector}>
         {(['en', 'ar', 'he'] as LocaleKeys[]).map((lang) => (
           <TouchableOpacity
             key={lang}
             onPress={() => changeLanguage(lang)}
-            style={[styles.languageButton, language === lang &&
-                    styles.activeLanguage]}
+            style={[styles.languageButton, language === lang && styles.activeLanguage]}
           >
-            <Text style={styles.languageText}>
+            <Text style={[styles.languageText, language === lang && styles.activeLanguageText]}>
               {lang === 'en' ? 'EN' : lang === 'ar' ? 'عربي' : 'עברית'}
             </Text>
           </TouchableOpacity>
@@ -60,14 +81,22 @@ const handleLogout = () => {
       <View style={styles.messageContainer}>
         <Text style={styles.messageText}>{t.auth.logout.message}</Text>
 
-        <TouchableOpacity style={styles.button} onPress={handleLogout}>
-          <Text style={styles.buttonText}>{t.auth.logout.button}</Text>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={handleLogout}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFD700" />
+          ) : (
+            <Text style={styles.buttonText}>{t.auth.logout.button}</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
   );
 }
-
+// بقية كود الـ styles كما هي
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -75,6 +104,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     padding: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     alignItems: 'center',
@@ -151,5 +185,8 @@ const styles = StyleSheet.create({
   languageText: {
     color: '#6d4c41',
     fontWeight: 'bold',
+  },
+  activeLanguageText: {
+    color: '#FFD700',
   },
 });
