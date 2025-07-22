@@ -4,18 +4,30 @@ const Joi = require('joi');
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-      password: { 
-      type: String,
-      required: true,
-      select: false, // Hide by default in queries
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    email: { 
+      type: String, 
+      required: true, 
+      unique: true,
       validate: {
         validator: function(v) {
-          // Basic check for bcrypt hash format
-          return /^\$2[aby]\$\d+\$/.test(v);
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
         },
-        message: props => `${props.value} is not a valid bcrypt hash!`
+        message: props => `${props.value} is not a valid email address!`
+      }
+    },
+    password: { 
+      type: String,
+      required: true,
+      select: false,
+      validate: {
+        validator: function(v) {
+          // Check for bcrypt hash format or strong password before hashing
+          if (/^\$2[aby]\$\d+\$/.test(v)) return true; // Already hashed
+          return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(v);
+        },
+        message: props => `Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character`
       }
     },
     role: { 
@@ -84,19 +96,42 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
     return false;
   }
 };
+// Add virtual fullName field
+userSchema.virtual('fullName').get(function() {
+  return `${this.firstName} ${this.lastName}`;
+});
 
-// Validation schema
+// Password hashing middleware
+userSchema.pre('save', async function(next) {
+  if (this.isModified('password')) {
+    try {
+      // Only hash if not already hashed
+      if (!/^\$2[aby]\$\d+\$/.test(this.password)) {
+        this.password = await bcrypt.hash(this.password, 10);
+      }
+    } catch (error) {
+      return next(error);
+    }
+  }
+  next();
+});
+
+// Change the validation schema to match your frontend
 const validateUser = (data) => {
   const schema = Joi.object({
-    name: Joi.string().min(3).max(50).required().label("Name"),
+    firstName: Joi.string().min(2).max(50).required().label("First Name"),
+    lastName: Joi.string().min(2).max(50).required().label("Last Name"),
     email: Joi.string().email().required().label("Email"),
-    password: Joi.string().min(6).required().label("Password"),
+    password: Joi.string()
+      .min(8)
+      .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#])'))
+      .required()
+      .label("Password"),
     confirmPassword: Joi.string().valid(Joi.ref("password")).required().label("Confirm Password"),
     role: Joi.string().valid("local", "emergency", "admin").required().label("Role"),
   });
   return schema.validate(data);
 };
-
 // At the bottom of models/User.js:
 const User = mongoose.model('User', userSchema);
 // Change this at the bottom of User.js:
