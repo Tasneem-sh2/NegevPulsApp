@@ -151,7 +151,6 @@ useEffect(() => {
   };
   decodeToken();
 }, []);
-// Update your getUserStatus function to be more precise:
 const getUserStatus = () => {
   console.log('Calculating status with data:', {
     isSuperlocal: userData.isSuperlocal,
@@ -160,32 +159,25 @@ const getUserStatus = () => {
     votes: userData.votingStats
   });
 
-  // 1. First check superlocal status
+  // 1. First check superlocal status from database field
   if (userData.isSuperlocal) {
     return 'SuperLocal Resident';
   }
 
-  // 2. Calculate verification metrics
+  // 2. Check for Active Resident status
   const totalVerified = userData.verifiedLandmarksAdded + userData.verifiedRoutesAdded;
   const hasEnoughVerifications = totalVerified >= 2;
   
-  // 3. Calculate voting metrics
-  const hasEnoughVotes = userData.votingStats.totalVotes >= 5;
-  const votingAccuracy = hasEnoughVotes 
-    ? userData.votingStats.correctVotes / userData.votingStats.totalVotes
-    : 0;
-  const hasHighAccuracy = votingAccuracy >= 0.8;
-
-  console.log('Status metrics:', {
-    totalVerified,
-    hasEnoughVerifications,
-    hasEnoughVotes,
-    votingAccuracy,
-    hasHighAccuracy
-  });
-
+  // 3. Check voting accuracy for potential SuperLocal status
+  const hasEnoughCorrectVotes = userData.votingStats.correctVotes >= 10;
+  
   // 4. Determine status
-  if (hasEnoughVerifications || (hasEnoughVotes && hasHighAccuracy)) {
+  if (hasEnoughCorrectVotes) {
+    // Even if not marked as super in DB, if they have 10 correct votes, consider them Super
+    return 'SuperLocal Resident';
+  }
+  
+  if (hasEnoughVerifications) {
     return 'Active Resident';
   }
 

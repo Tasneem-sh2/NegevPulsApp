@@ -54,7 +54,12 @@ const userSchema = new mongoose.Schema(
     verifiedLandmarksAdded: {
       type: Number,
       default: 0
-    }
+    },
+    verifiedRoutesAdded: {
+      type: Number,
+     default: 0
+    },
+
   });
 // Add method to calculate weight
 userSchema.methods.getVoteWeight = function() {
@@ -66,6 +71,9 @@ userSchema.methods.getVoteWeight = function() {
   } 
   // Users who have added verified landmarks get higher weight
   else if (this.verifiedLandmarksAdded && this.verifiedLandmarksAdded > 0) {
+    weight = 2.0;
+  }
+    else if (this.verifiedRoutesAdded && this.verifiedRoutesAdded > 0) {
     weight = 2.0;
   }
   // Users with high reputation get higher weight

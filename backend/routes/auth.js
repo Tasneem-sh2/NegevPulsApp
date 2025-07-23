@@ -5,8 +5,10 @@ const router = express.Router();
 const { User } = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const SuperLocalRequest = require('../models/SuperLocalRequest'); // You'll need to create this model
+const SuperLocalRequest = require('../models/SuperLocalRequest');
 const mongoose = require('mongoose');
+const auth = require('../middleware/auth'); // Add this import
+
   // routes/auth.js
 router.post('/login', async (req, res) => {
   try {
@@ -92,103 +94,49 @@ router.get('/me', async (req, res) => {
     res.status(401).json({ message: 'Not authenticated' });
   }
 });
-router.post('/request-super', async (req, res) => {
+// Example improved superlocal requests endpoint
+router.get('/api/auth/superlocal/requests', auth, async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWTPRIVATEKEY);
-
-    // 1. Find user with proper error handling
-    const user = await User.findById(decoded.userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // 2. Check if already Super Local
-    if (user.isSuperlocal) {
-      return res.status(400).json({ 
-        message: 'User is already a Super Local' 
+    // Verify admin role
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Unauthorized' 
       });
     }
 
-    // 3. Check for existing pending request
-    const existingRequest = await SuperLocalRequest.findOne({
-      userId: decoded.userId,
-      status: 'pending'
-    });
-
-    if (existingRequest) {
-      return res.status(400).json({
-        message: 'You already have a pending request'
-      });
-    }
-
-    // 4. Create new request with user details
-    const newRequest = await SuperLocalRequest.create({
-      userId: decoded.userId,
-      name: user.name || user.email.split('@')[0], // Fallback to email prefix if name not available
-      email: user.email,
-      status: 'pending'
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Super Local request submitted!',
-      request: {
-        _id: newRequest._id,
-        userId: newRequest.userId,
-        name: newRequest.name,
-        email: newRequest.email,
-        status: newRequest.status,
-        createdAt: newRequest.createdAt
-      }
-    });
-
-  } catch (error) {
-    console.error('Error submitting request:', error);
-    res.status(500).json({ 
-      message: 'Server error',
-      error: error.message
-    });
-  }
-});
-
-// Get all super local requests
-router.get('/superlocal/requests', async (req, res) => {
-  try {
-    // Verify admin token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
-    
-    const decoded = jwt.verify(token, process.env.JWTPRIVATEKEY);
-    if (decoded.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
-
-    // Fetch requests with user data
-    const requests = await SuperLocalRequest.find({})
+    const requests = await SuperLocalRequest.find({ status: 'pending' })
       .populate('userId', 'name email')
-      .lean();
+      .lean(); // Convert to plain JS objects
+
+    if (!requests) {
+      return res.status(404).json({
+        success: false,
+        message: 'No requests found'
+      });
+    }
 
     res.json({
       success: true,
       requests: requests.map(req => ({
         _id: req._id,
         userId: req.userId._id,
-        name: req.userId.name,
-        email: req.userId.email,
+        name: req.userId.name || 'Unknown',
+        email: req.userId.email || 'No email',
         status: req.status,
         createdAt: req.createdAt
       }))
     });
   } catch (error) {
-    console.error('Error fetching requests:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching superlocal requests:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error fetching requests',
+      error: error.message // Only include in development
+    });
   }
 });
-// Handle request decision
+// Handle request decision (approve/reject)
 router.patch('/superlocal/requests/:requestId', async (req, res) => {
   try {
     // Verify admin token
@@ -201,46 +149,40 @@ router.patch('/superlocal/requests/:requestId', async (req, res) => {
     const { status } = req.body;
     const { requestId } = req.params;
 
-    // Find the request first
-    const request = await SuperLocalRequest.findById(requestId).populate('userId');
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    // Find and update the request
+    const request = await SuperLocalRequest.findByIdAndUpdate(
+      requestId,
+      { status },
+      { new: true }
+    );
+
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
 
-    let updatedUser = null;
-    
-    // If approved, upgrade user
+    // If approved, update user's super local status
     if (status === 'approved') {
-      updatedUser = await User.findByIdAndUpdate(
-        request.userId._id,
-        { $set: { isSuperlocal: true } }, // Use $set operator
-        { new: true } // Return the updated document
-      );
-      
-      if (!updatedUser) {
-        return res.status(404).json({ message: 'User not found' });
-      }
+      await User.findByIdAndUpdate(request.userId, { 
+        isSuperlocal: true
+      });
     }
-
-    // Delete the request
-    await SuperLocalRequest.findByIdAndDelete(requestId);
 
     res.json({
       success: true,
-      message: `Request ${status} and removed`,
-      updatedUser: status === 'approved' ? {
-        _id: updatedUser._id,
-        isSuperlocal: updatedUser.isSuperlocal
-      } : null
+      message: `Request ${status} successfully`,
+      request: request
     });
   } catch (error) {
     console.error('Error updating request:', error);
     res.status(500).json({ 
-      message: 'Server error',
+      success: false,
+      message: 'Failed to update request',
       error: error.message 
     });
   }
 });
-
-
 module.exports = router;

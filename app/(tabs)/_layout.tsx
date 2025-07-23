@@ -7,21 +7,21 @@ import TabBarBackground from '@/frontend/components/ui/TabBarBackground';
 import { Colors } from '@/frontend/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Feather } from '@expo/vector-icons';
+// Adjust the import path for your AuthContext as needed:
 import { useAuth } from '../AuthContext';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const pathname = usePathname();
-  const { user, isAuthenticated, loading } = useAuth();
-  
+  const { isAuthenticated, loading } = useAuth();
 
   if (pathname === '/(tabs)') {
     return <Redirect href="/" />;
   }
-    if (loading) {
-    return <ActivityIndicator />; // عرض مؤشر تحميل أثناء الانتظار
-  }
 
+  if (loading) {
+    return <ActivityIndicator size="large" color="#6d4c41" />;
+  }
 
   return (
     <Tabs
@@ -42,52 +42,57 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => (
+            <IconSymbol size={28} name="house.fill" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="ContactUs"
         options={{
           title: 'Contact Us',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="envelope.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => (
+            <IconSymbol size={28} name="envelope.fill" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="AboutUs"
         options={{
           title: 'About Us',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="info.circle.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => (
+            <IconSymbol size={28} name="info.circle.fill" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="EmergencyPage"
         options={{
           title: 'Map',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="map.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => (
+            <IconSymbol size={28} name="map.fill" color={color} />
+          ),
         }}
       />
-
       <Tabs.Screen
         name="local"
         options={{
           title: 'Local',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="map.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => (
+            <IconSymbol size={28} name="map.fill" color={color} />
+          ),
           tabBarItemStyle: { display: 'none' },
         }}
       />
-
-      {isAuthenticated && (
         <Tabs.Screen
           name="logout"
           options={{
             title: 'LogOut',
-            tabBarIcon: ({ color }) => (
+            tabBarIcon: ({ color }: { color: string }) => (
               <Feather name="log-out" size={24} color={color} />
             ),
           }}
         />
-      )}
     </Tabs>
-  
   );
 }

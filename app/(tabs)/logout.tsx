@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'; // أضفنا useEffect هنا
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslations } from '@/frontend/constants/locales';
@@ -20,19 +20,16 @@ export default function Logout() {
   const router = useRouter();
   const [language, setLanguage] = React.useState<LocaleKeys>('en');
   const t = useTranslations() as LogoutTranslation;
-const { user, logout, loading: authLoading } = useAuth(); // غير اسم loading إلى authLoading
-  const { isAuthenticated, loading } = useAuth();
 
+  const { user, logout, loading: authLoading, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (!isAuthenticated && !loading) {
+    // Redirect unauthenticated users
+    if (!authLoading && !isAuthenticated) {
       router.replace('/');
     }
-  }, [isAuthenticated, loading]);
+  }, [isAuthenticated, authLoading]);
 
-  if (!isAuthenticated || loading) {
-    return <ActivityIndicator />;
-  }
   const handleLogout = async () => {
     try {
       await logout();
@@ -41,8 +38,7 @@ const { user, logout, loading: authLoading } = useAuth(); // غير اسم loadi
     }
   };
 
-  // ثم استخدم authLoading بدلاً من loading في جميع أنحاء الملف
-  if (!user || authLoading) {
+  if (authLoading || !user) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#6d4c41" />
@@ -50,9 +46,7 @@ const { user, logout, loading: authLoading } = useAuth(); // غير اسم loadi
     );
   }
 
-  const changeLanguage = (lang: LocaleKeys) => {
-    setLanguage(lang);
-  };
+  const changeLanguage = (lang: LocaleKeys) => setLanguage(lang);
 
   return (
     <View style={[
@@ -80,13 +74,12 @@ const { user, logout, loading: authLoading } = useAuth(); // غير اسم loadi
 
       <View style={styles.messageContainer}>
         <Text style={styles.messageText}>{t.auth.logout.message}</Text>
-
-        <TouchableOpacity 
-          style={styles.button} 
+        <TouchableOpacity
+          style={styles.button}
           onPress={handleLogout}
-          disabled={loading}
+          disabled={authLoading}
         >
-          {loading ? (
+          {authLoading ? (
             <ActivityIndicator color="#FFD700" />
           ) : (
             <Text style={styles.buttonText}>{t.auth.logout.button}</Text>
@@ -96,6 +89,7 @@ const { user, logout, loading: authLoading } = useAuth(); // غير اسم loadi
     </View>
   );
 }
+
 // بقية كود الـ styles كما هي
 const styles = StyleSheet.create({
   container: {

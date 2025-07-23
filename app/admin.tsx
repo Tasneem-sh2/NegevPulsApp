@@ -1,19 +1,20 @@
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 
 interface User {
   _id: string;
@@ -21,9 +22,8 @@ interface User {
   email: string;
   role: string;
   createdAt: string;
-  isSuperlocalLocal?: boolean;
+  isSuperlocal?: boolean;
 }
-
 interface SuperLocalRequest {
   _id: string;
   userId: string;
@@ -31,7 +31,6 @@ interface SuperLocalRequest {
   email: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
-  avatar?: string;
 }
 
 export default function AdminDashboard() {
@@ -39,155 +38,180 @@ export default function AdminDashboard() {
   const [showRequests, setShowRequests] = useState(false);
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState({
+    users: false,
+    requests: false,
+    general: false
+  });
   const [error, setError] = useState<string | null>(null);
   const [showUsers, setShowUsers] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [processingRequests, setProcessingRequests] = useState<Record<string, boolean>>({});
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://10.0.0.14:8082";
-
+  const [verificationRadius, setVerificationRadius] = useState(500);
+  const [isUpdatingRadius, setIsUpdatingRadius] = useState(false);
+  const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://negevpulsapp.onrender.com";
+  
   const fetchUsers = async () => {
     try {
-      setLoading(true);
+      setLoading(prev => ({ ...prev, users: true }));
       setError(null);
-      console.log(`Fetching from: ${baseUrl}/api/users`);
-
+      
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         throw new Error('Authentication token not found');
       }
 
-      const response = await axios.get(`${baseUrl}/api/users`, {
-        timeout: 5000,
+      const response = await axios.get(`${BASE_URL}/api/users`, {
+        timeout: 10000,
         headers: {
           'Accept': 'application/json',
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (response.data?.success) {
-        setUsers(response.data.data || []);
-      } else {
-        throw new Error('Invalid response format');
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Invalid response format');
       }
+
+      setUsers(response.data.data || []);
     } catch (error) {
       let errorMessage = 'Failed to fetch users';
+      
       if (axios.isAxiosError(error)) {
-        errorMessage = error.response?.data?.message || 
-            error.message || 
-                'Network error occurred';
+        if (error.code === 'ECONNABORTED') {
+          errorMessage = 'Request timeout. Please check your connection.';
+        } else if (error.response) {
+          errorMessage = error.response.data?.message || 
+                       `Server error: ${error.response.status}`;
+        } else if (error.request) {
+          errorMessage = 'No response from server. Check your network.';
+        } else {
+          errorMessage = error.message;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
       }
+
       setError(errorMessage);
       console.error('Fetch error:', error);
-      Alert.alert('Error', errorMessage);
+      
+      if (!errorMessage.includes('token')) {
+        Alert.alert('Error', errorMessage);
+      }
     } finally {
-      setLoading(false);
+      setLoading(prev => ({ ...prev, users: false }));
       setRefreshing(false);
     }
   };
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchUsers();
-  };
-
-  useEffect(() => {
-    if (showUsers) {
-      fetchUsers();
+const fetchSuperLocalRequests = async () => {
+  try {
+    setLoading(prev => ({ ...prev, requests: true }));
+    const token = await AsyncStorage.getItem('token');
+    
+    if (!token) {
+      throw new Error('No authentication token found');
     }
-  }, [showUsers]);
 
-  useEffect(() => {
-    fetchSuperLocalRequests();
-  }, []);
-
-  const fetchSuperLocalRequests = async () => {
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('token');
-      
-      if (!token) {
-        throw new Error('No authentication token found');
+    const response = await axios.get(
+      "https://negevpulsapp.onrender.com/api/auth/superlocal/requests", // Changed from /api/auth/superlocal/requests
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        validateStatus: (status) => status < 500
       }
+    );
 
-      const response = await axios.get(
-        `${baseUrl}/api/auth/superlocal/requests`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+    console.log('API Response:', {
+      status: response.status,
+      data: response.data,
+      headers: response.headers
+    });
 
-      console.log('API Response:', response.data);
-
-      if (response.data?.success) {
-        const requests = response.data.requests.map((request: SuperLocalRequest) => ({
-          ...request,
-          name: request.name || 'Unknown',
-          email: request.email || 'No email'
-        }));
-        
-        setSuperLocalRequests(requests);
-        await AsyncStorage.setItem(
-          'superLocalRequests',
-          JSON.stringify(requests)
-        );
-      } else {
-        throw new Error('Invalid response format');
-      }
-    } catch (error) {
-      console.error('Error fetching requests:', error);
-      
-      const cachedRequests = await AsyncStorage.getItem('superLocalRequests');
-      if (cachedRequests) {
-        setSuperLocalRequests(JSON.parse(cachedRequests));
-        Alert.alert(
-          'Warning',
-          'Using cached data. Could not fetch latest requests.'
-        );
-      } else {
-        Alert.alert(
-          'Error',
-          'Failed to load requests. Please check your connection.'
-        );
-      }
-    } finally {
-      setLoading(false);
+    if (response.status === 401) {
+      // Token expired or invalid
+      await AsyncStorage.removeItem('token');
+      router.replace('/');
+      return;
     }
-  };
 
-  const handleRequestDecision = async (requestId: string, decision: 'approve' | 'reject') => {
-    try {
-      setProcessingRequests(prev => ({ ...prev, [requestId]: true }));
-      
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        Alert.alert('Error', 'Authentication token not found');
-        return;
+    if (response.status === 500) {
+      throw new Error('Server encountered an error. Please try again later.');
+    }
+
+    if (!response.data?.success) {
+      throw new Error(response.data?.message || 'Invalid response format');
+    }
+
+    const requests = response.data.requests?.map((request: SuperLocalRequest) => ({
+      ...request,
+      name: request.name || 'Unknown',
+      email: request.email || 'No email'
+    })) || [];
+    
+    setSuperLocalRequests(requests);
+    await AsyncStorage.setItem('superLocalRequests', JSON.stringify(requests));
+  } catch (error) {
+    console.error('Error fetching requests:', error);
+    
+    let errorMessage = 'Failed to load requests';
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        // Server responded with error status
+        errorMessage = error.response.data?.message || 
+                      `Server error (${error.response.status})`;
+      } else {
+        errorMessage = error.message;
       }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
 
-      const status = decision === 'approve' ? 'approved' : 'rejected';
-      
-      // Optimistic UI update - remove the request immediately
-      setSuperLocalRequests(prev => 
-        prev.filter(req => req._id !== requestId)
+    const cachedRequests = await AsyncStorage.getItem('superLocalRequests');
+    if (cachedRequests) {
+      setSuperLocalRequests(JSON.parse(cachedRequests));
+      Alert.alert(
+        'Warning',
+        `${errorMessage}. Using cached data.`
       );
+    } else {
+      Alert.alert('Error', errorMessage);
+    }
+  } finally {
+    setLoading(prev => ({ ...prev, requests: false }));
 
-      const response = await axios.patch(
-        `${baseUrl}/api/auth/superlocal/requests/${requestId}`,
-        { status },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+  }
+};
+
+const handleRequestDecision = async (requestId: string, decision: 'approve' | 'reject') => {
+  try {
+    setProcessingRequests(prev => ({ ...prev, [requestId]: true }));
+    
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      Alert.alert('Error', 'Authentication token not found');
+      return;
+    }
+
+    const status = decision === 'approve' ? 'approved' : 'rejected';
+    
+    setSuperLocalRequests(prev => 
+      prev.filter(req => req._id !== requestId)
+    );
+
+    const response = await axios.patch(
+      `${BASE_URL}/api/superlocal/requests/${requestId}`, // Changed from /api/auth/superlocal/requests
+      { status },
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-      ).catch(error => {
-        // Revert optimistic update on error
-        fetchSuperLocalRequests(); // Refresh the list
-        throw error;
-      });
+      }
+    ).catch(error => {
+      fetchSuperLocalRequests();
+      throw error;
+    });
       
       if (response.data?.success) {
         // If approved, update the users list if it's being shown
@@ -220,6 +244,11 @@ export default function AdminDashboard() {
       setProcessingRequests(prev => ({ ...prev, [requestId]: false }));
     }
   };
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchUsers();
+    fetchSuperLocalRequests();
+  };
 
   const handleLogout = async () => {
     try {
@@ -230,6 +259,73 @@ export default function AdminDashboard() {
       Alert.alert('Error', 'Failed to logout. Please try again.');
     }
   };
+
+  useEffect(() => {
+    if (showUsers) {
+      fetchUsers();
+    }
+  }, [showUsers]);
+
+  useEffect(() => {
+    fetchSuperLocalRequests();
+  }, []);
+
+// Define fetchVerificationRadius first
+// In your admin.tsx component:
+const fetchVerificationRadius = async () => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const response = await axios.get(`${BASE_URL}/api/settings/verification-radius`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setVerificationRadius(response.data.radius);
+  } catch (error) {
+    console.error('Error fetching radius:', error);
+    // Set default if API fails
+    setVerificationRadius(500);
+  }
+};
+
+const updateVerificationRadius = async () => {
+  try {
+    setIsUpdatingRadius(true);
+    const token = await AsyncStorage.getItem('token');
+    const response = await axios.post(
+      `${BASE_URL}/api/admin/settings/verification-radius`, 
+      { radius: verificationRadius },
+      { 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        }
+      }
+    );
+    
+    if (response.data.success) {
+      Alert.alert('Success', response.data.message);
+      setVerificationRadius(response.data.radius);
+    } else {
+      Alert.alert('Error', response.data.message || 'Failed to update radius');
+    }
+  } catch (error) {
+    console.error('Error updating radius:', error);
+    
+    let errorMessage = 'Failed to update radius';
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        errorMessage = error.response.data?.message || errorMessage;
+      }
+    }
+    
+    Alert.alert('Error', errorMessage);
+  } finally {
+    setIsUpdatingRadius(false);
+  }
+};
+// Call fetchVerificationRadius in useEffect
+useEffect(() => {
+  fetchVerificationRadius();
+}, []);
 
   return (
     <View style={styles.container}>
@@ -242,16 +338,8 @@ export default function AdminDashboard() {
               style={styles.logoutButton}
               onPress={handleLogout}
             >
-              <MaterialIcons name="logout" size={24} color="#FFD700" />
+              <MaterialIcons name="logout" size={20} color="#FFD700" />
               <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={() => router.push('/addVillage')}
-            >
-              <MaterialIcons name="add" size={20} color="#FFD700" />
-              <Text style={styles.addButtonText}>Add Village</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -272,22 +360,58 @@ export default function AdminDashboard() {
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
+            <FontAwesome name="users" size={24} color="#5d4037" />
             <Text style={styles.statLabel}>Total Users</Text>
             <Text style={styles.statValue}>{users.length}</Text>
           </View>
           <View style={styles.statCard}>
+            <MaterialIcons name="report" size={24} color="#5d4037" />
             <Text style={styles.statLabel}>Active Reports</Text>
-            <Text style={styles.statValue}>4</Text>
+            <Text style={styles.statValue}>0</Text>
           </View>
           <View style={styles.statCard}>
+            <MaterialIcons name="pending-actions" size={24} color="#5d4037" />
             <Text style={styles.statLabel}>Pending Requests</Text>
             <Text style={styles.statValue}>
               {superLocalRequests.filter(req => req.status === 'pending').length}
             </Text>
           </View>
-          <View style={[styles.statCard, { borderBottomColor: '#8d6e63' }]}>
+          <View style={styles.statCard}>
+            <MaterialIcons name="health-and-safety" size={24} color="#5d4037" />
             <Text style={styles.statLabel}>System Health</Text>
-            <Text style={[styles.statValue, { color: '#8d6e63' }]}>100%</Text>
+            <Text style={styles.statValue}>100%</Text>
+          </View>
+        </View>
+        <View style={styles.toolCard}>
+          <View style={styles.toolHeader}>
+            <MaterialIcons name="settings" size={24} color="#5d4037" />
+            <Text style={styles.toolTitle}>Verification Settings</Text>
+          </View>
+
+          <View style={styles.radiusControl}>
+            <Text style={styles.radiusLabel}>Verification Radius: {verificationRadius}m</Text>
+            <Slider
+              style={styles.radiusSlider}
+              minimumValue={100}
+              maximumValue={5000}
+              step={100}
+              value={verificationRadius}
+              onValueChange={setVerificationRadius}
+              minimumTrackTintColor="#6d4c41"
+              maximumTrackTintColor="#d7ccc8"
+              thumbTintColor="#6d4c41"
+            />
+            <TouchableOpacity 
+              style={styles.updateRadiusButton}
+              onPress={updateVerificationRadius}
+              disabled={isUpdatingRadius}
+            >
+              {isUpdatingRadius ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text style={styles.updateRadiusButtonText}>Update Radius</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
         
@@ -295,15 +419,23 @@ export default function AdminDashboard() {
         <View style={styles.toolsContainer}>
           {/* User Management */}
           <View style={styles.toolCard}>
-            <Text style={styles.toolTitle}>User Management</Text>
+            <View style={styles.toolHeader}>
+              <MaterialIcons name="people" size={24} color="#5d4037" />
+              <Text style={styles.toolTitle}>User Management</Text>
+            </View>
             <View style={styles.buttonGroup}>
               <TouchableOpacity 
                 style={[styles.button, { backgroundColor: '#6d4c41' }]}
                 onPress={() => setShowUsers(!showUsers)}
+                disabled={loading.users}
               >
-                <Text style={styles.buttonText}>
-                  {showUsers ? 'Hide Users' : 'View All Users'}
-                </Text>
+                {loading.users ? (
+                  <ActivityIndicator color="#FFD700" size="small" />
+                ) : (
+                  <Text style={styles.buttonText}>
+                    {showUsers ? 'Hide Users' : 'View All Users'}
+                  </Text>
+                )}
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.button, { backgroundColor: '#8d6e63' }]}
@@ -315,8 +447,8 @@ export default function AdminDashboard() {
 
             {showUsers && (
               <View style={styles.usersTable}>
-                {loading && !refreshing ? (
-                  <ActivityIndicator size="large" color="#8b5e3c" />
+                {loading.users ? (
+                  <ActivityIndicator size="large" color="#8b5e3c" style={styles.loader} />
                 ) : error ? (
                   <View style={styles.errorContainer}>
                     <MaterialIcons name="error-outline" size={40} color="#d9534f" />
@@ -348,7 +480,7 @@ export default function AdminDashboard() {
                     scrollEnabled={false}
                     renderItem={({ item }) => (
                       <View style={styles.userRow}>
-                        <Text style={styles.userCell}>{item.name}</Text>
+                        <Text style={styles.userCell}>{item.name || 'N/A'}</Text>
                         <Text style={styles.userCell}>{item.email}</Text>
                         <Text style={[
                           styles.userCell,
@@ -359,7 +491,7 @@ export default function AdminDashboard() {
                           {item.role}
                         </Text>
                         <Text style={styles.userCell}>
-                          {item.isSuperlocalLocal ? 'Yes' : 'No'}
+                          {item.isSuperlocal ? 'Yes' : 'No'}
                         </Text>
                       </View>
                     )}
@@ -379,7 +511,10 @@ export default function AdminDashboard() {
 
           {/* Super Local Requests */}
           <View style={styles.toolCard}>
-            <Text style={styles.toolTitle}>Super Local Requests</Text>
+            <View style={styles.toolHeader}>
+              <MaterialIcons name="supervisor-account" size={24} color="#5d4037" />
+              <Text style={styles.toolTitle}>Super Local Requests</Text>
+            </View>
             <View style={styles.buttonGroup}>
               <TouchableOpacity 
                 style={[styles.button, { backgroundColor: '#6d4c41' }]}
@@ -387,17 +522,22 @@ export default function AdminDashboard() {
                   setShowRequests(!showRequests);
                   fetchSuperLocalRequests();
                 }}
+                disabled={loading.requests}
               >
-                <Text style={styles.buttonText}>
-                  {showRequests ? 'Hide Requests' : 'View Requests'}
-                </Text>
+                {loading.requests ? (
+                  <ActivityIndicator color="#FFD700" size="small" />
+                ) : (
+                  <Text style={styles.buttonText}>
+                    {showRequests ? 'Hide Requests' : 'View Requests'}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
 
             {showRequests && (
               <View style={styles.usersTable}>
-                {loading ? (
-                  <ActivityIndicator size="large" color="#8b5e3c" />
+                {loading.requests ? (
+                  <ActivityIndicator size="large" color="#8b5e3c" style={styles.loader} />
                 ) : (
                   <FlatList
                     data={superLocalRequests}
@@ -406,9 +546,8 @@ export default function AdminDashboard() {
                     renderItem={({ item }) => (
                       <View style={styles.requestRow}>
                         <View style={styles.requestInfo}>
-                          
                           <View style={styles.requestDetails}>
-                            <Text style={styles.requestName}>{item.name}</Text>
+                            <Text style={styles.requestName}>{item.name || 'N/A'}</Text>
                             <Text style={styles.requestEmail}>{item.email}</Text>
                             <View style={styles.statusContainer}>
                               <Text style={styles.requestLabel}>Status: </Text>
@@ -419,11 +558,7 @@ export default function AdminDashboard() {
                             <View style={styles.statusContainer}>
                               <Text style={styles.requestLabel}>Date: </Text>
                               <Text style={styles.requestDate}>
-                                {new Date(item.createdAt).toLocaleDateString('en-US', {
-                                  month: 'numeric',
-                                  day: 'numeric',
-                                  year: 'numeric'
-                                })}
+                                {new Date(item.createdAt).toLocaleDateString()}
                               </Text>
                             </View>
                           </View>
@@ -460,6 +595,13 @@ export default function AdminDashboard() {
                       <View style={styles.emptyState}>
                         <MaterialIcons name="list-alt" size={50} color="#8d6e63" />
                         <Text style={styles.emptyText}>No requests found</Text>
+                        <TouchableOpacity 
+                          style={styles.refreshButton}
+                          onPress={fetchSuperLocalRequests}
+                        >
+                          <MaterialIcons name="refresh" size={20} color="#FFD700" />
+                          <Text style={styles.refreshText}>Refresh</Text>
+                        </TouchableOpacity>
                       </View>
                     }
                   />
@@ -476,23 +618,10 @@ export default function AdminDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  requestLabel: {
-    fontSize: 14,
-    color: '#5d4037',
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#6d4c41',
+    backgroundColor: '#5d4037',
     paddingTop: 50,
     paddingBottom: 20,
     shadowColor: '#000',
@@ -519,18 +648,6 @@ const styles = StyleSheet.create({
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  logoutText: {
-    color: '#FFD700',
-    marginLeft: 5,
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#8d6e63',
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -538,10 +655,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FFD700',
   },
-  addButtonText: {
+  logoutText: {
     color: '#FFD700',
-    fontWeight: 'bold',
     marginLeft: 5,
+    fontWeight: 'bold',
   },
   content: {
     flex: 1,
@@ -564,14 +681,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
-    borderBottomWidth: 3,
-    borderBottomColor: '#6d4c41',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#f0e6e2',
+    borderColor: '#e0e0e0',
   },
   statLabel: {
     color: '#8d6e63',
     fontSize: 14,
+    marginTop: 5,
     marginBottom: 5,
   },
   statValue: {
@@ -593,22 +710,31 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#f0e6e2',
+    borderColor: '#e0e0e0',
+  },
+  toolHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
   },
   toolTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#6d4c41',
+    marginLeft: 10,
+    color: '#5d4037',
   },
   buttonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginTop: 10,
   },
   button: {
+    flex: 1,
     padding: 12,
     borderRadius: 6,
-    marginBottom: 10,
+    marginHorizontal: 5,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -626,6 +752,31 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
+  loader: {
+    marginVertical: 20,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  requestLabel: {
+    fontSize: 14,
+    color: '#5d4037',
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  pending: {
+    color: '#f0ad4e',
+  },
+  approved: {
+    color: '#5cb85c',
+  },
+  rejected: {
+    color: '#d9534f',
+  },
   requestDetails: {
     flex: 1,
     marginLeft: 10,
@@ -641,18 +792,6 @@ const styles = StyleSheet.create({
     color: '#8d6e63',
     marginBottom: 4,
   },
-  pending: {
-    color: '#f0ad4e',
-    fontWeight: 'bold',
-  },
-  approved: {
-    color: '#5cb85c',
-    fontWeight: 'bold',
-  },
-  rejected: {
-    color: '#d9534f',
-    fontWeight: 'bold',
-  },
   requestDate: {
     fontSize: 12,
     color: '#a1887f',
@@ -666,7 +805,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f0f0f0',
   },
   headerRow: {
-    backgroundColor: '#6d4c41',
+    backgroundColor: '#5d4037',
   },
   headerCell: {
     color: '#FFD700',
@@ -678,6 +817,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     color: '#5d4037',
+    fontSize: 12,
   },
   requestRow: {
     flexDirection: 'row',
@@ -691,11 +831,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  requestAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
   },
   requestActions: {
     flexDirection: 'row',
@@ -718,6 +853,7 @@ const styles = StyleSheet.create({
   requestButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 12,
   },
   errorContainer: {
     padding: 20,
@@ -733,7 +869,7 @@ const styles = StyleSheet.create({
   refreshButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#6d4c41',
+    backgroundColor: '#5d4037',
     padding: 10,
     borderRadius: 5,
     marginTop: 10,
@@ -765,4 +901,27 @@ const styles = StyleSheet.create({
     color: '#5cb85c',
     fontWeight: 'bold',
   },
+  radiusControl: {
+  marginTop: 15,
+},
+radiusLabel: {
+  fontSize: 14,
+  color: '#5d4037',
+  marginBottom: 10,
+},
+radiusSlider: {
+  width: '100%',
+  height: 40,
+},
+updateRadiusButton: {
+  backgroundColor: '#6d4c41',
+  padding: 12,
+  borderRadius: 6,
+  marginTop: 15,
+  alignItems: 'center',
+},
+updateRadiusButtonText: {
+  color: '#FFD700',
+  fontWeight: 'bold',
+},
 });

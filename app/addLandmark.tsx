@@ -22,7 +22,8 @@ import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
-
+// Add this state
+const [verificationRadius, setVerificationRadius] = useState(500);
 
 
 const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
@@ -449,8 +450,9 @@ const LandmarkModal: React.FC<{
             </View>
 
             {/* Vote Buttons */}
-            {!landmark.verified && landmark.status !== 'disputed' && (
-              <View style={styles.voteButtons}>
+            {!landmark.verified && landmark.status !== 'disputed' && 
+              landmark.createdBy.toString() !== currentUser?._id && (
+                <View style={styles.voteButtons}>
                 <TouchableOpacity
                   onPress={() => onVote(landmark._id, 'yes')}
                   disabled={isVoting}
@@ -539,18 +541,19 @@ const LandmarkModal: React.FC<{
               {currentUser && (
                 <TouchableOpacity 
                   onPress={() => onDelete(landmark._id)}
-                  disabled={
-                    (landmark.createdBy?.toString() ?? '') !== currentUser._id && 
-                    currentUser.role !== 'admin'
-                  }
-                  style={[
-                    styles.deleteButton,
-                    (landmark.createdBy.toString() !== currentUser._id && 
-                    currentUser.role !== 'admin') && styles.disabledButton
-                  ]}
-                >
-                  <Text style={styles.deleteButtonText}>Delete Landmark</Text>
-                </TouchableOpacity>
+                    disabled={
+                      (landmark.createdBy?.toString() ?? '') !== currentUser._id || 
+                      landmark.verified || // إضافة هذا الشرط
+                      currentUser.role !== 'admin'
+                    }
+                    style={[
+                      styles.deleteButton,
+                      ((landmark.createdBy.toString() !== currentUser._id && 
+                      currentUser.role !== 'admin') || landmark.verified) && styles.disabledButton
+                    ]}
+                  >
+                    <Text style={styles.deleteButtonText}>Delete Landmark</Text>
+                  </TouchableOpacity>
               )}
               <TouchableOpacity 
                 onPress={onClose}
@@ -670,7 +673,21 @@ useEffect(() => {
 
     getLocation();
   }, []);
-
+// Add this useEffect to fetch the radius when component mounts
+useEffect(() => {
+  const fetchVerificationRadius = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/settings/verification-radius`);
+      setVerificationRadius(response.data.radius);
+    } catch (error) {
+      console.error('Error fetching verification radius:', error);
+      // Use default if API fails
+      setVerificationRadius(500);
+    }
+  };
+  
+  fetchVerificationRadius();
+}, []);
   // Fetch current user
   useEffect(() => {
     const fetchUser = async () => {
@@ -820,10 +837,11 @@ const handleMarkerPress = (marker: Landmark) => {
       }));
     }
   };
+// Update the showRandomLandmarkForVerification function
+// Update the showRandomLandmarkForVerification function to use the dynamic radius
 const showRandomLandmarkForVerification = () => {
   if (!location) return;
 
-  // تصفية المعالم غير الموثقة ضمن نطاق 500 متر فقط
   const unverifiedNearby = landmarks.filter(landmark => {
     if (landmark.verified) return false;
     
@@ -833,20 +851,16 @@ const showRandomLandmarkForVerification = () => {
       landmark.lat,
       landmark.lon
     );
-    return distance <= 500; // 500 متر فقط
+    return distance <= verificationRadius; // Use the dynamic radius
   });
 
-  console.log('Unverified nearby landmarks:', unverifiedNearby.length);
-  
   if (unverifiedNearby.length > 0) {
     const randomIndex = Math.floor(Math.random() * unverifiedNearby.length);
     setCurrentBotLandmark(unverifiedNearby[randomIndex]);
     setShowBot(true);
-    console.log('Showing bot for nearby landmark:', unverifiedNearby[randomIndex].title);
-  } else {
-    console.log('No unverified landmarks available nearby');
   }
 };
+// Add this useEffect to show the bot periodically
 useEffect(() => {
   const interval = setInterval(() => {
     if (!showBot && !botDisabled && location) { // التأكد من وجود الموقع أولاً
@@ -915,9 +929,6 @@ useEffect(() => {
           'Authorization': `Bearer ${token}`
         }
       });
-      
-
-
       setLandmarks(prev => [...prev, response.data]);
       setShowForm(false);
       setNewLandmark({
@@ -964,6 +975,12 @@ const getUnverifiedLandmarks = () => {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         router.push('/login');
+        return;
+      }
+        // تحقق أن المستخدم ليس هو المنشئ
+      const landmarkObj = landmarks.find(l => l._id === landmarkId);
+      if (landmarkObj && landmarkObj.createdBy.toString() === currentUser?._id) {
+        setVoteError("You cannot vote on your own landmark");
         return;
       }
 
@@ -1030,6 +1047,12 @@ const getUnverifiedLandmarks = () => {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         router.push('/login');
+        return;
+      }
+      // تحقق أن المعلم غير موثق وأن المستخدم هو المنشئ أو مدير
+      const landmarkToDelete = landmarks.find(l => l._id === landmarkId);
+      if (landmarkToDelete?.verified && currentUser?.role !== 'admin') {
+        setDeleteError("Cannot delete verified landmarks");
         return;
       }
 
@@ -1221,7 +1244,8 @@ const editDistance = (s1: string, s2: string) => {
         </View>
       ) : (
         <>
-   <View style={styles.searchContainer}>
+// في الجزء الخاص بعرض أنواع الخرائط في searchContainer
+<View style={styles.searchContainer}>
   <TextInput
     placeholder="Search landmarks or areas..."
     placeholderTextColor="#888"
@@ -1236,32 +1260,79 @@ const editDistance = (s1: string, s2: string) => {
   </TouchableOpacity>
 
   {/* أنواع الخريطة */}
-  <View style={{ flexDirection: 'row', marginLeft: 10 }}>
-  {/* Standard */}
-  <TouchableOpacity onPress={() => setMapType('standard')} style={{ marginHorizontal: 4 }}>
-    <Ionicons name="map" size={20} color={mapType === 'standard' ? '#FFD700' : '#6d4c41'} />
-  </TouchableOpacity>
+  <View style={styles.mapTypeContainer}>
+    {/* Standard */}
+    <TouchableOpacity 
+      onPress={() => setMapType('standard')} 
+      style={[
+        styles.mapTypeButton,
+        mapType === 'standard' && styles.activeMapType
+      ]}
+    >
+      <Ionicons 
+        name="map" 
+        size={20} 
+        color={mapType === 'standard' ? 'white' : '#6d4c41'} 
+      />
+    </TouchableOpacity>
 
-  {/* Satellite */}
-  <TouchableOpacity onPress={() => setMapType('satellite')} style={{ marginHorizontal: 4 }}>
-    <Ionicons name="earth" size={20} color={mapType === 'satellite' ? '#FFD700' : '#6d4c41'} />
-  </TouchableOpacity>
+    {/* Satellite */}
+    <TouchableOpacity 
+      onPress={() => setMapType('satellite')} 
+      style={[
+        styles.mapTypeButton,
+        mapType === 'satellite' && styles.activeMapType
+      ]}
+    >
+      <Ionicons 
+        name="earth" 
+        size={20} 
+        color={mapType === 'satellite' ? 'white' : '#6d4c41'} 
+      />
+    </TouchableOpacity>
 
-  {/* Hybrid */}
-  <TouchableOpacity onPress={() => setMapType('hybrid')} style={{ marginHorizontal: 4 }}>
-    <Ionicons name="layers" size={20} color={mapType === 'hybrid' ? '#FFD700' : '#6d4c41'} />
-  </TouchableOpacity>
+    {/* Hybrid */}
+    <TouchableOpacity 
+      onPress={() => setMapType('hybrid')} 
+      style={[
+        styles.mapTypeButton,
+        mapType === 'hybrid' && styles.activeMapType
+      ]}
+    >
+      <Ionicons 
+        name="layers" 
+        size={20} 
+        color={mapType === 'hybrid' ? 'white' : '#6d4c41'} 
+      />
+    </TouchableOpacity>
 
-  {/* Terrain */}
-  <TouchableOpacity onPress={() => setMapType('terrain')} style={{ marginHorizontal: 4 }}>
-    <Ionicons name="triangle" size={20} color={mapType === 'terrain' ? '#FFD700' : '#6d4c41'} />
+    {/* Terrain */}
+    <TouchableOpacity 
+      onPress={() => setMapType('terrain')} 
+      style={[
+        styles.mapTypeButton,
+        mapType === 'terrain' && styles.activeMapType
+      ]}
+    >
+      <Ionicons 
+        name="triangle" 
+        size={20} 
+        color={mapType === 'terrain' ? 'white' : '#6d4c41'} 
+      />
+    </TouchableOpacity>
+  </View>
+
+  <TouchableOpacity 
+    style={styles.nearbyButton}
+    onPress={() => setShowNearbyOnly(!showNearbyOnly)}
+  >
+    <MaterialIcons 
+      name={showNearbyOnly ? "location-on" : "location-off"} 
+      size={24} 
+      color={showNearbyOnly ? "#4CAF50" : "#6d4c41"} 
+    />
   </TouchableOpacity>
 </View>
-
-</View>
-
-
- 
 
   {/* زر الموقع الحالي */}
   <TouchableOpacity 
@@ -1272,20 +1343,28 @@ const editDistance = (s1: string, s2: string) => {
   </TouchableOpacity>
 
   {/* قائمة Landmarks المنزلقة */}
-  <View style={[styles.landmarksListContainer]}>
-    <TouchableOpacity 
-      style={styles.toggleListButton}
-      onPress={() => setIsLandmarksListVisible(!isLandmarksListVisible)}
-    >
-      <MaterialIcons 
-        name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
-        size={20} 
-        color="#6d4c41" 
-      />
-    </TouchableOpacity>
-    
-    {isLandmarksListVisible && (
-      <ScrollView style={styles.landmarksList}>
+// في الجزء الخاص بالقائمة المنزلقة
+<View style={[
+  styles.landmarksListContainer,
+  !isLandmarksListVisible && styles.collapsedLandmarksList
+]}>
+  <TouchableOpacity 
+    style={styles.toggleListButton}
+    onPress={() => setIsLandmarksListVisible(!isLandmarksListVisible)}
+  >
+    <MaterialIcons 
+      name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
+      size={24} 
+      color="#6d4c41" 
+    />
+  </TouchableOpacity>
+  
+  {isLandmarksListVisible && (
+    <>
+      <ScrollView 
+        style={styles.landmarksList}
+        contentContainerStyle={styles.landmarksListContent}
+      >
         <Text style={styles.landmarksTitle}>
           Pending Landmarks ({getUnverifiedLandmarks().length})
         </Text>
@@ -1296,7 +1375,6 @@ const editDistance = (s1: string, s2: string) => {
               landmark={landmark}
               onClick={() => {
                 setSelectedLandmark(landmark);
-                // تحريك الخريطة إلى موقع المعلم
                 mapRef.current?.animateToRegion({
                   latitude: landmark.lat,
                   longitude: landmark.lon,
@@ -1311,8 +1389,9 @@ const editDistance = (s1: string, s2: string) => {
           <Text style={styles.noLandmarksText}>No pending landmarks in this area</Text>
         )}
       </ScrollView>
-      )}
-    </View>
+    </>
+  )}
+</View>
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -1416,58 +1495,8 @@ const editDistance = (s1: string, s2: string) => {
     </View>
   </View>
 )}
-
-         <View style={[
-            styles.landmarksListContainer,
-            !isLandmarksListVisible && styles.collapsedLandmarksList
-          ]}>
-            <TouchableOpacity 
-              style={styles.toggleListButton}
-              onPress={() => setIsLandmarksListVisible(!isLandmarksListVisible)}
-            >
-              <MaterialIcons 
-                name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
-                size={20} 
-                color="#6d4c41" 
-              />
-            </TouchableOpacity>
-      {isLandmarksListVisible && (
-        <ScrollView style={styles.landmarksList}>
-          <Text style={styles.landmarksTitle}>
-            Landmarks Pending Verification ({landmarks.filter(l => !l.verified).length})
-          </Text>
-          
-          {landmarks.filter(l => !l.verified).length > 0 ? (
-            landmarks.filter(l => !l.verified).map(landmark => (
-              <LandmarkListItem 
-                key={landmark._id}
-                landmark={landmark}
-                onClick={() => {
-                  // إخفاء النموذج أولاً
-                  setShowForm(false);
-                  
-                  // تحريك الخريطة
-                  mapRef.current?.animateToRegion({
-                    latitude: landmark.lat,
-                    longitude: landmark.lon,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                  }, 500); // 500ms للحركة
-                  
-                  // عرض التفاصيل بعد انتهاء الحركة
-                  setTimeout(() => {
-                    setSelectedLandmark(landmark);
-                  }, 600);
-                }}
-                isSelected={selectedLandmark?._id === landmark._id}
-              />
-            ))
-          ) : (
-            <Text style={styles.noLandmarksText}>No landmarks pending verification</Text>
-          )}
-        </ScrollView>
-      )}
-          </View>
+  <View>
+      </View>
 
       {showMapInfo && !showForm && !selectedLandmark && (
         <View style={styles.mapInfoPopup}>
@@ -1518,16 +1547,7 @@ const editDistance = (s1: string, s2: string) => {
 
         <View style={styles.separator} />
 
-        <TouchableOpacity 
-          style={styles.nearbyToggle}
-          onPress={() => setShowNearbyOnly(!showNearbyOnly)}
-        >
-          <MaterialIcons 
-            name={showNearbyOnly ? "location-on" : "location-off"} 
-            size={16} 
-            color={showNearbyOnly ? "#4CAF50" : "#f44336"} 
-          />
-        </TouchableOpacity>
+
       </View>
        {/* تأكد من وجود هذا السطر في المكان الصحيح */}
     <VerificationBot
@@ -1755,11 +1775,6 @@ formContainer: {
     color: "#5d4037",
     fontSize: 16,
   },
-  landmarksList: {
-  maxHeight: 300,
-  marginTop: 15, // إضافة مسافة من الأعلى فقط
-  paddingBottom: 0, // إزالة أي حشو سفلي
-},
   landmarksTitle: {
     fontWeight: 'bold',
     marginBottom: 10,
@@ -1890,10 +1905,6 @@ formContainer: {
   },
   verifiedBadgeText: {
     color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  pendingBadgeText: {
-    color: '#FF9800',
     fontWeight: 'bold',
   },
   landmarkImage: {
@@ -2161,32 +2172,28 @@ picker: {
   width: '100%',
 },
   mapTypeContainer: {
-      position: 'absolute',
-    top: 80, // تحت شريط البحث
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 20,
     flexDirection: 'row',
+    marginLeft: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
     padding: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 2,
   },
+  
   mapTypeButton: {
-    padding: 8,
+    padding: 5,
     borderRadius: 15,
     marginHorizontal: 2,
   },
+  
   activeMapType: {
     backgroundColor: '#6d4c41',
   },
+  
   landmarksListContainer: {
-   position: 'absolute',
+    position: 'absolute',
     bottom: 20,
     left: 20,
+    right: 20,
     backgroundColor: "white",
     borderRadius: 12,
     borderWidth: 1,
@@ -2196,35 +2203,44 @@ picker: {
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    width: 250,
-    maxWidth: "90%",
     zIndex: 2,
     maxHeight: '50%',
-    paddingBottom: 0, // إضافة هذا السطر لإزالة المساحة الإضافية
-
   },
+  
   collapsedLandmarksList: {
     height: 40,
+    paddingBottom: 0,
   },
- toggleListButton: {
-  position: 'absolute',
-  top: -15, // تعديل الموقع ليكون أعلى القائمة
-  right: 10,
-  backgroundColor: 'white',
-  borderRadius: 15,
-  width: 30,
-  height: 30,
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 3,
-  elevation: 3,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.2,
-  shadowRadius: 2,
-  borderWidth: 1, // إضافة حد للزر
-  borderColor: '#f0e6e2',
-},
+  
+  toggleListButton: {
+    position: 'absolute',
+    top: -15,
+    right: 10,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 3,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: '#f0e6e2',
+  },
+  
+  landmarksList: {
+    maxHeight: 300,
+    marginTop: 15,
+    paddingBottom: 0,
+  },
+  
+  landmarksListContent: {
+    paddingBottom: 15,
+  },
   currentLocationButton: {
       position: 'absolute',
     bottom: 80,
@@ -2243,10 +2259,10 @@ picker: {
     zIndex: 2,
   },
   searchContainer: {
-       position: 'absolute',
+    position: 'absolute',
     top: 20,
     left: 20,
-    right: 20, // ترك مساحة للأيقونات
+    right: 20,
     backgroundColor: 'white',
     borderRadius: 25,
     paddingHorizontal: 15,
@@ -2260,6 +2276,7 @@ picker: {
     elevation: 3,
     zIndex: 2,
   },
+  
   searchInput: {
     flex: 1,
     height: 40,
@@ -2402,6 +2419,59 @@ landmarkLocationContainer: {
 },
 botContent: {
   marginBottom: 16,
+},
+nearbyButton: {
+  marginLeft: 10,
+  padding: 8,
+},
+pendingIndicatorContainer: {
+  position: 'absolute',
+  bottom: 20,
+  right: 20,
+  alignItems: 'flex-end',
+},
+pendingIndicator: {
+  backgroundColor: 'white',
+  borderRadius: 25,
+  width: 50,
+  height: 50,
+  justifyContent: 'center',
+  alignItems: 'center',
+  flexDirection: 'row',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 3,
+  zIndex: 2,
+},
+pendingBadge: {
+  position: 'absolute',
+  top: -5,
+  right: -5,
+  backgroundColor: '#FF9800',
+  borderRadius: 10,
+  width: 20,
+  height: 20,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+pendingBadgeText: {
+  color: 'white',
+  fontSize: 12,
+  fontWeight: 'bold',
+},
+pendingLandmarksPopup: {
+  backgroundColor: 'white',
+  borderRadius: 12,
+  maxHeight: 300,
+  width: 250,
+  marginTop: 10,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 3,
 },
 });
 export default LandmarkPage;

@@ -5,18 +5,21 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const { User } = require('./models/User');
-const { Update } = require('./models/Update'); // Correct import
 const Village = require('./models/Village');
 const Landmark = require('./models/Landmark');
+const Settings = require('./models/Settings');
+const Route = require('./models/Route');
+const SuperLocalRequest = require('./models/SuperLocalRequest');
+const auth = require('./middleware/auth'); // Ensure this path is correct
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const landmarksRoute = require('./routes/landmarks');
 const villageRoutes = require('./routes/villages.js') ;
-const updateRoute = require('./routes/Update'); // Import the update route
 const usersRoutes = require('./routes/users');
 const router = express.Router();  // Add this line
 const routes = require('./routes/routes');
 const authRoutes = require('./routes/auth');
+const jwt = require('jsonwebtoken'); // Add at the top with other requires
 
 
 const app = express();
@@ -75,7 +78,6 @@ app.post("/api/check-email", async (req, res) => {
   }
 });
 // Signup route
-// Update the signup endpoint to handle firstName/lastName
 // Replace or modify your existing signup route with this:
 app.post("/api/signup", async (req, res) => {
   try {
@@ -117,31 +119,6 @@ app.post("/api/signup", async (req, res) => {
     });
   }
 });
-// Submit update route
-app.post('/api/submitUpdate', upload.array('images', 10), async (req, res) => {
-    try {
-        console.log('Request body:', req.body);
-        console.log('Uploaded files:', req.files);
-
-        const { firstName, lastName, villageName, updateType, description } = req.body;
-        const imagePaths = req.files.map(file => file.path);
-
-        const newUpdate = new Update({
-            firstName,
-            lastName,
-            villageName,
-            updateType,
-            description,
-            images: imagePaths,
-          });
-          await newUpdate.save();
-          
-        res.status(201).json({ message: 'Update submitted successfully!', update: newUpdate });
-    } catch (error) {
-        console.error('Error while handling request:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
 
 // Login route
 app.post("/api/auth/login", async (req, res) => {
@@ -180,6 +157,23 @@ app.post("/api/auth/login", async (req, res) => {
     res.status(500).send({ message: "Server error" });
   }
 });
+// Add this middleware to verify admin access
+const verifyAdmin = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'Access denied' });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWTPRIVATEKEY);
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(400).json({ message: 'Invalid token' });
+  }
+};
+
 app.get('/api/fix-user', async (req, res) => {
   try {
     // 1. Delete existing
@@ -319,38 +313,6 @@ app.post('/api/landmarks', async (req, res) => {
   }
 });
 
-/* 
-// Improved vote endpoint
-app.post("/api/landmarks/:id/vote", async (req, res) => {
-  
-  const { id } = req.params;
-  const { vote } = req.body;
-
-  if (!vote || !['yes', 'no'].includes(vote)) {
-    return res.status(400).json({ message: "Invalid vote type" });
-  }
-
-  const landmark = await Landmark.findById(id);
-  if (!landmark) return res.status(404).json({ message: "Landmark not found" });
-
-  if (vote === "yes") landmark.yesVotes += 1;
-  if (vote === "no") landmark.noVotes += 1;
-
-  await landmark.save();
-  res.json(landmark);
-});
-
-app.delete("/update/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    await Landmark.findByIdAndDelete(id);
-    res.status(200).json({ message: "Landmark deleted" });
-  } catch (error) {
-    console.error("Error deleting landmark:", error);
-    res.status(500).json({ error: "Server error deleting landmark" });
-  }
-});
-*/
 // Get all routes
 app.get('/api/routes', async (req, res) => {
   try {
@@ -360,7 +322,50 @@ app.get('/api/routes', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Get verification radius
+router.get('/api/settings/verification-radius', async (req, res) => {
+  try {
+    const settings = await Settings.findOne();
+    res.json({ 
+      success: true,
+      radius: settings?.verificationRadius || 500 // Default 500 meters
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching verification radius' });
+  }
+});
 
+// Update verification radius (admin only)
+router.post('/api/admin/settings/verification-radius', auth, async (req, res) => {
+  try {
+    // Verify admin role
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    const { radius } = req.body;
+    
+    // Validate input
+    if (!radius || isNaN(radius) || radius < 100 || radius > 5000) {
+      return res.status(400).json({ message: 'Radius must be between 100 and 5000 meters' });
+    }
+
+    // Save to database
+    const settings = await Settings.findOneAndUpdate(
+      {}, 
+      { verificationRadius: radius },
+      { upsert: true, new: true }
+    );
+
+    res.json({ 
+      success: true,
+      message: 'Verification radius updated',
+      radius: settings.verificationRadius
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating verification radius' });
+  }
+});
 // Create new route
 // Add better error handling and validation
 app.post('/api/routes', async (req, res) => {
