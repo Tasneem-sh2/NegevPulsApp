@@ -103,6 +103,8 @@ export default function AdminDashboard() {
       setRefreshing(false);
     }
   };
+
+// Fetch super local requests - updated version
 const fetchSuperLocalRequests = async () => {
   try {
     setLoading(prev => ({ ...prev, requests: true }));
@@ -113,21 +115,16 @@ const fetchSuperLocalRequests = async () => {
     }
 
     const response = await axios.get(
-      "https://negevpulsapp.onrender.com/api/auth/superlocal/requests", // Changed from /api/auth/superlocal/requests
+      `${BASE_URL}/api/superlocal/requests`,
       {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        },
-        validateStatus: (status) => status < 500
+        }
       }
     );
 
-    console.log('API Response:', {
-      status: response.status,
-      data: response.data,
-      headers: response.headers
-    });
+    console.log('API Response:', response.data);
 
     if (response.status === 401) {
       // Token expired or invalid
@@ -136,31 +133,28 @@ const fetchSuperLocalRequests = async () => {
       return;
     }
 
-    if (response.status === 500) {
-      throw new Error('Server encountered an error. Please try again later.');
-    }
-
     if (!response.data?.success) {
       throw new Error(response.data?.message || 'Invalid response format');
     }
 
-    const requests = response.data.requests?.map((request: SuperLocalRequest) => ({
-      ...request,
+    const requests = response.data.requests?.map((request: any) => ({
+      _id: request._id,
+      userId: request.userId,
       name: request.name || 'Unknown',
-      email: request.email || 'No email'
+      email: request.email || 'No email',
+      status: request.status || 'pending',
+      createdAt: request.createdAt || new Date().toISOString()
     })) || [];
     
     setSuperLocalRequests(requests);
-    await AsyncStorage.setItem('superLocalRequests', JSON.stringify(requests));
   } catch (error) {
     console.error('Error fetching requests:', error);
     
     let errorMessage = 'Failed to load requests';
     if (axios.isAxiosError(error)) {
       if (error.response) {
-        // Server responded with error status
         errorMessage = error.response.data?.message || 
-                      `Server error (${error.response.status})`;
+                     `Server error (${error.response.status})`;
       } else {
         errorMessage = error.message;
       }
@@ -168,19 +162,9 @@ const fetchSuperLocalRequests = async () => {
       errorMessage = error.message;
     }
 
-    const cachedRequests = await AsyncStorage.getItem('superLocalRequests');
-    if (cachedRequests) {
-      setSuperLocalRequests(JSON.parse(cachedRequests));
-      Alert.alert(
-        'Warning',
-        `${errorMessage}. Using cached data.`
-      );
-    } else {
-      Alert.alert('Error', errorMessage);
-    }
+    Alert.alert('Error', errorMessage);
   } finally {
     setLoading(prev => ({ ...prev, requests: false }));
-
   }
 };
 
@@ -196,54 +180,55 @@ const handleRequestDecision = async (requestId: string, decision: 'approve' | 'r
 
     const status = decision === 'approve' ? 'approved' : 'rejected';
     
-    setSuperLocalRequests(prev => 
-      prev.filter(req => req._id !== requestId)
-    );
-
     const response = await axios.patch(
-      `${BASE_URL}/api/superlocal/requests/${requestId}`, // Changed from /api/auth/superlocal/requests
+      `${BASE_URL}/api/superlocal/requests/${requestId}`,
       { status },
       {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       }
-    ).catch(error => {
-      fetchSuperLocalRequests();
-      throw error;
-    });
-      
-      if (response.data?.success) {
-        // If approved, update the users list if it's being shown
-        if (decision === 'approve' && response.data.updatedUser) {
-          setUsers(prevUsers => 
-            prevUsers.map(user => 
-              user._id === response.data.updatedUser._id
-                ? { ...user, isSuperlocalLocal: true }
-                : user
-            )
-          );
-        }
-        
-        Alert.alert('Success', `Request ${status} successfully`);
-      } else {
-        throw new Error(response.data?.message || 'Failed to update request');
-      }
-    } catch (error) {
-      console.error('Decision error:', error);
-      
-      let errorMessage = 'Failed to process request';
-      if (axios.isAxiosError(error)) {
-        errorMessage = error.response?.data?.message || error.message;
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
+    );
 
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setProcessingRequests(prev => ({ ...prev, [requestId]: false }));
+    if (response.data?.success) {
+      // Update local state
+      setSuperLocalRequests(prev => 
+        prev.filter(req => req._id !== requestId)
+      );
+      
+      // If approved, update users list if needed
+      if (decision === 'approve' && response.data.updatedUser) {
+        setUsers(prevUsers => 
+          prevUsers.map(user => 
+            user._id === response.data.updatedUser._id
+              ? { ...user, isSuperlocal: true }
+              : user
+          )
+        );
+      }
+      
+      Alert.alert('Success', `Request ${status} successfully`);
+    } else {
+      throw new Error(response.data?.message || 'Failed to update request');
     }
-  };
+  } catch (error) {
+    console.error('Decision error:', error);
+    
+    let errorMessage = 'Failed to process request';
+    if (axios.isAxiosError(error)) {
+      errorMessage = error.response?.data?.message || error.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    Alert.alert('Error', errorMessage);
+    // Refresh requests to get current state
+    fetchSuperLocalRequests();
+  } finally {
+    setProcessingRequests(prev => ({ ...prev, [requestId]: false }));
+  }
+};
   const handleRefresh = () => {
     setRefreshing(true);
     fetchUsers();
@@ -270,15 +255,23 @@ const handleRequestDecision = async (requestId: string, decision: 'approve' | 'r
     fetchSuperLocalRequests();
   }, []);
 
-// Define fetchVerificationRadius first
-// In your admin.tsx component:
+// For fetching verification radius
+// Fetch verification radius - updated version
 const fetchVerificationRadius = async () => {
   try {
     const token = await AsyncStorage.getItem('token');
     const response = await axios.get(`${BASE_URL}/api/settings/verification-radius`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
     });
-    setVerificationRadius(response.data.radius);
+    
+    if (response.data?.success) {
+      setVerificationRadius(response.data.radius);
+    } else {
+      throw new Error(response.data?.message || 'Invalid response format');
+    }
   } catch (error) {
     console.error('Error fetching radius:', error);
     // Set default if API fails
@@ -286,6 +279,7 @@ const fetchVerificationRadius = async () => {
   }
 };
 
+// For updating verification radius
 const updateVerificationRadius = async () => {
   try {
     setIsUpdatingRadius(true);
@@ -309,14 +303,12 @@ const updateVerificationRadius = async () => {
     }
   } catch (error) {
     console.error('Error updating radius:', error);
-    
     let errorMessage = 'Failed to update radius';
     if (axios.isAxiosError(error)) {
       if (error.response) {
         errorMessage = error.response.data?.message || errorMessage;
       }
     }
-    
     Alert.alert('Error', errorMessage);
   } finally {
     setIsUpdatingRadius(false);

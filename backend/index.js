@@ -323,7 +323,7 @@ app.get('/api/routes', async (req, res) => {
   }
 });
 // Get verification radius
-router.get('/api/settings/verification-radius', async (req, res) => {
+app.get('/api/settings/verification-radius', async (req, res) => {
   try {
     const settings = await Settings.findOne();
     res.json({ 
@@ -336,7 +336,7 @@ router.get('/api/settings/verification-radius', async (req, res) => {
 });
 
 // Update verification radius (admin only)
-router.post('/api/admin/settings/verification-radius', auth, async (req, res) => {
+app.post('/api/admin/settings/verification-radius', auth, async (req, res) => {
   try {
     // Verify admin role
     if (req.user.role !== 'admin') {
@@ -397,7 +397,150 @@ app.post('/api/routes', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+// Add these endpoints to your backend/index.js
 
+// Get verification radius
+app.get('/api/settings/verification-radius', auth, async (req, res) => {
+  try {
+    // Get or create settings
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings({ verificationRadius: 500 });
+      await settings.save();
+    }
+    
+    res.json({
+      success: true,
+      radius: settings.verificationRadius
+    });
+  } catch (error) {
+    console.error('Error fetching radius:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching verification radius' 
+    });
+  }
+});
+
+// Update verification radius (admin only)
+app.post('/api/admin/settings/verification-radius', auth, async (req, res) => {
+  try {
+    // Verify admin role
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Unauthorized' 
+      });
+    }
+
+    const { radius } = req.body;
+    
+    // Validate input
+    if (!radius || isNaN(radius) || radius < 100 || radius > 5000) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Radius must be between 100 and 5000 meters' 
+      });
+    }
+
+    // Update or create settings
+    const settings = await Settings.findOneAndUpdate(
+      {}, 
+      { verificationRadius: radius },
+      { upsert: true, new: true }
+    );
+
+    res.json({ 
+      success: true,
+      message: 'Verification radius updated',
+      radius: settings.verificationRadius
+    });
+  } catch (error) {
+    console.error('Error updating radius:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error updating verification radius' 
+    });
+  }
+});
+
+// Super Local Requests endpoints
+app.get('/api/superlocal/requests', auth, async (req, res) => {
+  try {
+    // Verify admin role
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Unauthorized' 
+      });
+    }
+
+    const requests = await SuperLocalRequest.find({ status: 'pending' })
+      .populate('userId', 'name email')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      requests: requests.map(req => ({
+        _id: req._id,
+        userId: req.userId._id,
+        name: req.userId.name,
+        email: req.userId.email,
+        status: req.status,
+        createdAt: req.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching requests:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching requests' 
+    });
+  }
+});
+
+app.patch('/api/superlocal/requests/:id', auth, async (req, res) => {
+  try {
+    // Verify admin role
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Unauthorized' 
+      });
+    }
+
+    const { status } = req.body;
+    const request = await SuperLocalRequest.findById(req.params.id);
+    
+    if (!request) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Request not found' 
+      });
+    }
+
+    request.status = status;
+    await request.save();
+
+    // If approved, update user's isSuperlocal status
+    if (status === 'approved') {
+      await User.findByIdAndUpdate(request.userId, { isSuperlocal: true });
+    }
+
+    res.json({
+      success: true,
+      message: 'Request updated successfully',
+      updatedUser: status === 'approved' ? await User.findById(request.userId) : null
+    });
+  } catch (error) {
+    console.error('Error updating request:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error updating request' 
+    });
+  }
+});
+// Connect to MongoDB and start the server
 mongoose.connect(process.env.DB)
   .then(() => {
     console.log('MongoDB connected successfully');

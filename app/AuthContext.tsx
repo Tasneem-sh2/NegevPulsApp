@@ -1,4 +1,3 @@
-// contexts/AuthContext.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
 import { useRouter } from 'expo-router';
@@ -9,17 +8,17 @@ interface User {
   email: string;
   role: string;
   isSuperlocal?: boolean;
-  userType?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  isAuthenticated: boolean; // أضف هذا
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   loading: boolean;
   error: string | null;
+  initializeAuth: () => Promise<void>; // أضفنا هذه الدالة
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -30,27 +29,24 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const isAuthenticated = !!user && !!token;
 
+  const initializeAuth = async () => {
+    try {
+      const [userData, tokenData] = await AsyncStorage.multiGet(['user', 'token']);
+      
+      if (userData[1] && tokenData[1]) {
+        setUser(JSON.parse(userData[1]));
+        setToken(tokenData[1]);
+      }
+    } catch (error) {
+      console.error('Failed to initialize auth', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadAuthData = async () => {
-      try {
-        const [userData, tokenData] = await AsyncStorage.multiGet(['user', 'token']);
-        if (userData[1] && tokenData[1]) {
-          setUser(JSON.parse(userData[1]));
-          setToken(tokenData[1]);
-        } else {
-          setUser(null); // تأكد من ضبط null عند عدم وجود بيانات
-          setToken(null);
-        }
-      } catch (error) {
-        setUser(null); // في حالة الخطأ
-        setToken(null);
-      }
-    };
-
-    loadAuthData();
+    initializeAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -71,8 +67,10 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
         ['token', response.data.token]
       ]);
 
+      // تحديث الحالة مباشرة بعد تسجيل الدخول
       setUser(response.data.user);
       setToken(response.data.token);
+      
       return true;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
@@ -98,6 +96,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
     }
   };
 
+  const isAuthenticated = !!user && !!token;
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -106,7 +106,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
       login, 
       logout, 
       loading, 
-      error 
+      error,
+      initializeAuth // أضفنا الدالة للاستخدام الخارجي
     }}>
       {children}
     </AuthContext.Provider>
@@ -120,5 +121,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-export default AuthProvider;

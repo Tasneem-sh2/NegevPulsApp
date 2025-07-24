@@ -24,7 +24,6 @@ export default function Logout() {
   const { user, logout, loading: authLoading, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // Redirect unauthenticated users
     if (!authLoading && !isAuthenticated) {
       router.replace('/');
     }
