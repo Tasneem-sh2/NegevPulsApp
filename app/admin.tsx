@@ -49,7 +49,7 @@ export default function AdminDashboard() {
   const [processingRequests, setProcessingRequests] = useState<Record<string, boolean>>({});
   const [verificationRadius, setVerificationRadius] = useState(500);
   const [isUpdatingRadius, setIsUpdatingRadius] = useState(false);
-  const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://negevpulsapp.onrender.com";
+  const BASE_URL = process.env.API_BASE_URL || "https://negevpulsapp.onrender.com";
   
   const fetchUsers = async () => {
     try {
@@ -244,6 +244,7 @@ const handleRequestDecision = async (requestId: string, decision: 'approve' | 'r
       Alert.alert('Error', 'Failed to logout. Please try again.');
     }
   };
+  console.log("🚀 BASE_URL =", BASE_URL);
 
   useEffect(() => {
     if (showUsers) {

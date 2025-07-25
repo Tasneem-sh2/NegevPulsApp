@@ -95,7 +95,7 @@ router.get('/me', async (req, res) => {
   }
 });
 // Example improved superlocal requests endpoint
-router.get('/api/auth/superlocal/requests', auth, async (req, res) => {
+router.get('/superlocal/requests', auth, async (req, res) => {
   try {
     // Verify admin role
     if (req.user.role !== 'admin') {

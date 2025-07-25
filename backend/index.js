@@ -335,22 +335,17 @@ app.get('/api/settings/verification-radius', async (req, res) => {
   }
 });
 
-// Update verification radius (admin only)
 app.post('/api/admin/settings/verification-radius', auth, async (req, res) => {
   try {
-    // Verify admin role
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
     const { radius } = req.body;
-    
-    // Validate input
     if (!radius || isNaN(radius) || radius < 100 || radius > 5000) {
       return res.status(400).json({ message: 'Radius must be between 100 and 5000 meters' });
     }
 
-    // Save to database
     const settings = await Settings.findOneAndUpdate(
       {}, 
       { verificationRadius: radius },
@@ -366,6 +361,7 @@ app.post('/api/admin/settings/verification-radius', auth, async (req, res) => {
     res.status(500).json({ message: 'Error updating verification radius' });
   }
 });
+
 // Create new route
 // Add better error handling and validation
 app.post('/api/routes', async (req, res) => {
