@@ -49,55 +49,74 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
     initializeAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await axios.post<{
-        user: User;
-        token: string;
-      }>('https://negevpulsapp.onrender.com/api/auth/login', {
-        email,
-        password
-      });
+// In AuthContext.tsx
+const login = async (email: string, password: string) => {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    const response = await axios.post<{
+      user: User;
+      token: string;
+    }>('https://negevpulsapp.onrender.com/api/auth/login', {
+      email,
+      password
+    });
 
-      await AsyncStorage.multiSet([
-        ['user', JSON.stringify(response.data.user)],
-        ['token', response.data.token]
-      ]);
+    // Clear any existing auth data first
+    await AsyncStorage.multiRemove(['user', 'token']);
+    
+    // Store new auth data
+    await AsyncStorage.multiSet([
+      ['user', JSON.stringify(response.data.user)],
+      ['token', response.data.token]
+    ]);
 
-      // تحديث الحالة مباشرة بعد تسجيل الدخول
-      setUser(response.data.user);
-      setToken(response.data.token);
-      
-      return true;
-    } catch (error) {
-      const err = error as AxiosError<{ message?: string }>;
-      setError(err.response?.data?.message || 'Login failed');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Force state update by setting null first
+    setUser(null);
+    setToken(null);
+    
+    // Then set new values
+    setUser(response.data.user);
+    setToken(response.data.token);
+    
+    return true;
+  } catch (error) {
+    // Clear auth state on failed login
+    await AsyncStorage.multiRemove(['user', 'token']);
+    setUser(null);
+    setToken(null);
+    
+    const err = error as AxiosError<{ message?: string }>;
+    setError(err.response?.data?.message || 'Login failed');
+    return false;
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const logout = async () => {
-    try {
-      setLoading(true);
-      await AsyncStorage.multiRemove(['user', 'token']);
-      setUser(null);
-      setToken(null);
-      router.replace('/');
-    } catch (error) {
-      setError('Logout failed');
-      console.error('Logout error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+// In AuthContext.tsx
+const logout = async () => {
+  try {
+    setLoading(true);
+    await AsyncStorage.multiRemove(['user', 'token']);
+    // Reset state synchronously
+    setUser(null);
+    setToken(null);
+    // Force a small delay to ensure state updates propagate
+    await new Promise(resolve => setTimeout(resolve, 100));
+  } catch (error) {
+    setError('Logout failed');
+    console.error('Logout error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const isAuthenticated = !!user && !!token;
-
+// In AuthContext.tsx
+const isAuthenticated = React.useMemo(() => {
+  return !!user && !!token;
+}, [user, token]);
   return (
     <AuthContext.Provider value={{ 
       user, 

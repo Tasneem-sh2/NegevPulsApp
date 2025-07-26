@@ -1,6 +1,6 @@
 import { Tabs, Redirect, usePathname } from 'expo-router';
 import React, { useEffect } from 'react';
-import { Platform, ActivityIndicator, View } from 'react-native';
+import { Platform, ActivityIndicator, View, TouchableOpacity } from 'react-native'; // Added TouchableOpacity
 import { IconSymbol } from '@/frontend/components/ui/IconSymbol';
 import TabBarBackground from '@/frontend/components/ui/TabBarBackground';
 import { Colors } from '@/frontend/constants/Colors';
@@ -90,7 +90,7 @@ export default function TabLayout() {
         }}
       />
       
-      {/* شاشة تسجيل الخروج - تظهر فقط للمستخدمين المسجلين */}
+      {/* Logout tab - only visible when authenticated */}
       <Tabs.Screen
         name="logout"
         options={{
@@ -98,8 +98,21 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Feather name="log-out" size={24} color={color} />
           ),
-          tabBarItemStyle: {
-            display: isAuthenticated ? 'flex' : 'none'
+          tabBarButton: (props) => {
+            if (!isAuthenticated) return null;
+            
+            // Create filtered props without potentially problematic properties
+            const { onPress, style, testID, accessibilityLabel, children } = props;
+            return (
+              <TouchableOpacity
+                onPress={onPress}
+                style={style}
+                testID={testID}
+                accessibilityLabel={accessibilityLabel}
+              >
+                {children}
+              </TouchableOpacity>
+            );
           }
         }}
       />

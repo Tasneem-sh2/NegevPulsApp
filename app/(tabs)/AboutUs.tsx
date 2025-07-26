@@ -137,7 +137,7 @@ export default function AboutUs() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFF8E1',
+    backgroundColor: '#ffffffff',
   },
   hero: {
     position: 'relative',

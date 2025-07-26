@@ -23,8 +23,6 @@ import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
 // Add this state
-const [verificationRadius, setVerificationRadius] = useState(500);
-
 
 const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
 
@@ -94,6 +92,10 @@ interface ErrorResponse {
     };
     status?: number;
   };
+}
+interface Location {
+  lat: number;
+  lon: number;
 }
 interface VerificationBotProps {
   visible: boolean;
@@ -274,6 +276,7 @@ const LandmarkModal: React.FC<{
 
   const currentUserVote = landmark.votes.find(v => v.userId === currentUser?._id);
   const userWeight = currentUserVote?.weight || 0;
+  
 
 
   return (
@@ -571,6 +574,7 @@ const LandmarkModal: React.FC<{
 
 // Main Component
 const LandmarkPage: React.FC = () => {
+const [verificationRadius, setVerificationRadius] = useState(500);
   const mapRef = useRef<MapView>(null);
   const [location, setLocation] = useState<LocationCoords | null>(null);
   const [landmarks, setLandmarks] = useState<Landmark[]>([]);
@@ -681,13 +685,13 @@ useEffect(() => {
       setVerificationRadius(response.data.radius);
     } catch (error) {
       console.error('Error fetching verification radius:', error);
-      // Use default if API fails
-      setVerificationRadius(500);
+      setVerificationRadius(500); // Default value
     }
   };
   
   fetchVerificationRadius();
 }, []);
+
   // Fetch current user
   useEffect(() => {
     const fetchUser = async () => {
@@ -1243,155 +1247,123 @@ const editDistance = (s1: string, s2: string) => {
           <Text>Loading map...</Text>
         </View>
       ) : (
-        <>
-// في الجزء الخاص بعرض أنواع الخرائط في searchContainer
-<View style={styles.searchContainer}>
-  <TextInput
-    placeholder="Search landmarks or areas..."
-    placeholderTextColor="#888"
-    value={searchQuery}
-    onChangeText={setSearchQuery}
-    onSubmitEditing={handleSearch}
-    style={styles.searchInput}
-    returnKeyType="search"
-  />
-  <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-    <MaterialIcons name="search" size={24} color="#6d4c41" />
-  </TouchableOpacity>
+      <>
+    <View style={styles.topBar}>
+      <View style={styles.searchContainer}>
+        <TextInput
+          placeholder="Search landmarks or areas..."
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={handleSearch}
+          style={styles.searchInput}
+          returnKeyType="search"
+        />
+        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+          <MaterialIcons name="search" size={24} color="#6d4c41" />
+        </TouchableOpacity>
 
-  {/* أنواع الخريطة */}
-  <View style={styles.mapTypeContainer}>
-    {/* Standard */}
+        <View style={styles.filterContainer}>
+          <TouchableOpacity 
+            onPress={() => setFilter('all')} 
+            style={[
+              styles.filterButton,
+              filter === 'all' && styles.activeFilter
+            ]}
+          >
+            <Text style={[
+              styles.filterText,
+              filter === 'all' && styles.activeFilterText
+            ]}>All</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            onPress={() => setFilter('verified')} 
+            style={[
+              styles.filterButton,
+              filter === 'verified' && styles.activeFilter
+            ]}
+          >
+            <Text style={[
+              styles.filterText,
+              filter === 'verified' && styles.activeFilterText
+            ]}>Verified</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            onPress={() => setFilter('unverified')} 
+            style={[
+              styles.filterButton,
+              filter === 'unverified' && styles.activeFilter
+            ]}
+          >
+            <Text style={[
+              styles.filterText,
+              filter === 'unverified' && styles.activeFilterText
+            ]}>Pending</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity 
+          style={styles.nearbyButton}
+          onPress={() => setShowNearbyOnly(!showNearbyOnly)}
+        >
+        <MaterialIcons name="near-me" size={24} color="#6d4c41" />
+
+        </TouchableOpacity>
+        
+      </View>
+    </View>
+
+    {/* قائمة Landmarks المنزلقة */}
+    <View style={[
+      styles.landmarksListContainer,
+      !isLandmarksListVisible && styles.collapsedLandmarksList
+    ]}>
     <TouchableOpacity 
-      onPress={() => setMapType('standard')} 
-      style={[
-        styles.mapTypeButton,
-        mapType === 'standard' && styles.activeMapType
-      ]}
+      style={styles.toggleListButton}
+      onPress={() => setIsLandmarksListVisible(!isLandmarksListVisible)}
     >
-      <Ionicons 
-        name="map" 
-        size={20} 
-        color={mapType === 'standard' ? 'white' : '#6d4c41'} 
+      <MaterialIcons 
+        name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
+        size={24} 
+        color="#6d4c41" 
       />
     </TouchableOpacity>
-
-    {/* Satellite */}
-    <TouchableOpacity 
-      onPress={() => setMapType('satellite')} 
-      style={[
-        styles.mapTypeButton,
-        mapType === 'satellite' && styles.activeMapType
-      ]}
-    >
-      <Ionicons 
-        name="earth" 
-        size={20} 
-        color={mapType === 'satellite' ? 'white' : '#6d4c41'} 
-      />
-    </TouchableOpacity>
-
-    {/* Hybrid */}
-    <TouchableOpacity 
-      onPress={() => setMapType('hybrid')} 
-      style={[
-        styles.mapTypeButton,
-        mapType === 'hybrid' && styles.activeMapType
-      ]}
-    >
-      <Ionicons 
-        name="layers" 
-        size={20} 
-        color={mapType === 'hybrid' ? 'white' : '#6d4c41'} 
-      />
-    </TouchableOpacity>
-
-    {/* Terrain */}
-    <TouchableOpacity 
-      onPress={() => setMapType('terrain')} 
-      style={[
-        styles.mapTypeButton,
-        mapType === 'terrain' && styles.activeMapType
-      ]}
-    >
-      <Ionicons 
-        name="triangle" 
-        size={20} 
-        color={mapType === 'terrain' ? 'white' : '#6d4c41'} 
-      />
-    </TouchableOpacity>
-  </View>
-
-  <TouchableOpacity 
-    style={styles.nearbyButton}
-    onPress={() => setShowNearbyOnly(!showNearbyOnly)}
-  >
-    <MaterialIcons 
-      name={showNearbyOnly ? "location-on" : "location-off"} 
-      size={24} 
-      color={showNearbyOnly ? "#4CAF50" : "#6d4c41"} 
-    />
-  </TouchableOpacity>
-</View>
-
-  {/* زر الموقع الحالي */}
-  <TouchableOpacity 
-    style={styles.currentLocationButton}
-    onPress={focusOnUserLocation}
-  >
-    <MaterialIcons name="my-location" size={24} color="#6d4c41" />
-  </TouchableOpacity>
-
-  {/* قائمة Landmarks المنزلقة */}
-// في الجزء الخاص بالقائمة المنزلقة
-<View style={[
-  styles.landmarksListContainer,
-  !isLandmarksListVisible && styles.collapsedLandmarksList
-]}>
-  <TouchableOpacity 
-    style={styles.toggleListButton}
-    onPress={() => setIsLandmarksListVisible(!isLandmarksListVisible)}
-  >
-    <MaterialIcons 
-      name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
-      size={24} 
-      color="#6d4c41" 
-    />
-  </TouchableOpacity>
   
-  {isLandmarksListVisible && (
-    <>
-      <ScrollView 
-        style={styles.landmarksList}
-        contentContainerStyle={styles.landmarksListContent}
-      >
-        <Text style={styles.landmarksTitle}>
-          Pending Landmarks ({getUnverifiedLandmarks().length})
-        </Text>
-        {getUnverifiedLandmarks().length > 0 ? (
-          getUnverifiedLandmarks().map(landmark => (
-            <LandmarkListItem 
-              key={landmark._id}
-              landmark={landmark}
-              onClick={() => {
-                setSelectedLandmark(landmark);
-                mapRef.current?.animateToRegion({
-                  latitude: landmark.lat,
-                  longitude: landmark.lon,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                });
-              }}
-              isSelected={selectedLandmark?._id === landmark._id}
-            />
-          ))
-        ) : (
-          <Text style={styles.noLandmarksText}>No pending landmarks in this area</Text>
-        )}
-      </ScrollView>
-    </>
-  )}
-</View>
+    {isLandmarksListVisible && (
+        <>
+          <Text style={styles.landmarksTitle}>
+            Pending Landmarks ({getUnverifiedLandmarks().length})
+          </Text>
+          <ScrollView 
+            style={styles.landmarksList}
+            contentContainerStyle={styles.landmarksListContent}
+          >
+            {getUnverifiedLandmarks().length > 0 ? (
+              getUnverifiedLandmarks().map(landmark => (
+                <LandmarkListItem 
+                  key={landmark._id}
+                  landmark={landmark}
+                  onClick={() => {
+                    setSelectedLandmark(landmark);
+                    mapRef.current?.animateToRegion({
+                      latitude: landmark.lat,
+                      longitude: landmark.lon,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    });
+                  }}
+                  isSelected={selectedLandmark?._id === landmark._id}
+                />
+              ))
+            ) : (
+              <Text style={styles.noLandmarksText}>No pending landmarks in this area</Text>
+            )}
+          </ScrollView>
+        </>
+      )}
+    </View>
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -1425,13 +1397,44 @@ const editDistance = (s1: string, s2: string) => {
             ))}
           </MapView>
 
-          {clickedLocation && (
-            <View style={styles.locationInfo}>
-              <Text style={styles.locationTitle}>Selected Location:</Text>
-              <Text>Latitude: {clickedLocation.latitude.toFixed(6)}</Text>
-              <Text>Longitude: {clickedLocation.longitude.toFixed(6)}</Text>
+          {/* Combined map controls and nearby routes button */}
+          <View style={styles.mapControlsContainer}>
+            <View style={styles.mapControls}>
+              <TouchableOpacity 
+                onPress={() => setMapType('standard')}
+                style={[styles.mapControlButton, mapType === 'standard' && styles.activeMapType]}
+              >
+                <MaterialIcons name="map" size={24} color={mapType === 'standard' ? '#FFD700' : '#6d4c41'} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setMapType('satellite')}
+                style={[styles.mapControlButton, mapType === 'satellite' && styles.activeMapType]}
+              >
+                <MaterialIcons name="satellite" size={24} color={mapType === 'satellite' ? '#FFD700' : '#6d4c41'} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setMapType('hybrid')}
+                style={[styles.mapControlButton, mapType === 'hybrid' && styles.activeMapType]}
+              >
+                <MaterialIcons name="layers" size={24} color={mapType === 'hybrid' ? '#FFD700' : '#6d4c41'} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (location) {
+                    mapRef.current?.animateToRegion({
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      latitudeDelta: 0.0922,
+                      longitudeDelta: 0.0421,
+                    });
+                  }
+                }}
+                style={styles.mapControlButton}
+              >
+                <MaterialIcons name="my-location" size={24} color="#6d4c41" />
+              </TouchableOpacity>
             </View>
-          )}
+          </View>
 
           {showForm && (
   <View style={styles.formContainer}>
@@ -1598,38 +1601,6 @@ nearbyToggleText: {
   marginLeft: 5,
   color: '#6d4c41',
 },
-filterContainer: {
-  position: 'absolute',
-  top: 80,
-  left: 20,
-  backgroundColor: 'rgba(255,255,255,0.9)', // جعل الخلفية شبه شفافة
-  borderRadius: 20,
-  flexDirection: 'row',
-  padding: 5,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 3,
-  zIndex: 2,
-},
-filterButton: {
-  paddingHorizontal: 12,
-  paddingVertical: 8,
-  borderRadius: 15,
-  marginHorizontal: 2,
-},
-activeFilter: {
-  backgroundColor: '#8d6e63', // تغيير اللون إلى بني فاتح
-},
-filterText: {
-  color: '#5d4037', // لون بني غامق
-  fontWeight: '500', // زيادة سماكة الخط
-},
-activeFilterText: {
-  color: 'white',
-  fontWeight: '500',
-},
 separator: {
   width: 1,
   height: 20,
@@ -1773,11 +1744,6 @@ formContainer: {
   },
   cancelButtonText: {
     color: "#5d4037",
-    fontSize: 16,
-  },
-  landmarksTitle: {
-    fontWeight: 'bold',
-    marginBottom: 10,
     fontSize: 16,
   },
   listItem: {
@@ -2187,56 +2153,48 @@ picker: {
   
   activeMapType: {
     backgroundColor: '#6d4c41',
+    borderRadius: 20,
   },
   
-  landmarksListContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: "white",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#f0e6e2",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 2,
-    maxHeight: '50%',
-  },
-  
-  collapsedLandmarksList: {
-    height: 40,
-    paddingBottom: 0,
-  },
-  
-  toggleListButton: {
-    position: 'absolute',
-    top: -15,
-    right: 10,
-    backgroundColor: 'white',
-    borderRadius: 15,
-    width: 30,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 3,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    borderWidth: 1,
-    borderColor: '#f0e6e2',
-  },
-  
-  landmarksList: {
-    maxHeight: 300,
-    marginTop: 15,
-    paddingBottom: 0,
-  },
+landmarksListContainer: {
+  position: 'absolute',
+  bottom: 20,
+  left: 20,
+  backgroundColor: "white",
+  borderRadius: 12,
+  padding: 15,
+  borderWidth: 1,
+  borderColor: "#f0e6e2",
+  maxHeight: 300,
+  width: 250,
+  zIndex: 2,
+},
+collapsedLandmarksList: {
+  height: 40,
+  paddingBottom: 0,
+},
+toggleListButton: {
+  position: 'absolute',
+  top: 5,
+  right: 5,
+  padding: 5,
+  zIndex: 2,
+},
+landmarksList: {
+  maxHeight: 250,
+  marginTop: 15,
+},
+landmarksTitle: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  marginBottom: 10,
+},
+noLandmarksText: {
+  textAlign: 'center',
+  marginTop: 20,
+  color: '#757575',
+  fontStyle: 'italic',
+},
   
   landmarksListContent: {
     paddingBottom: 15,
@@ -2258,39 +2216,6 @@ picker: {
     elevation: 3,
     zIndex: 2,
   },
-  searchContainer: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    height: 50,
-    alignItems: 'center',
-    flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 2,
-  },
-  
-  searchInput: {
-    flex: 1,
-    height: 40,
-    paddingHorizontal: 10,
-  },
-  searchButton: {
-    padding: 8,
-  },
-  noLandmarksText: {
-  textAlign: 'center',
-  marginTop: 20,
-  color: '#757575',
-  fontStyle: 'italic',
-},
 mapInfoPopup: {
   position: 'absolute',
   top: '50%',
@@ -2420,10 +2345,7 @@ landmarkLocationContainer: {
 botContent: {
   marginBottom: 16,
 },
-nearbyButton: {
-  marginLeft: 10,
-  padding: 8,
-},
+
 pendingIndicatorContainer: {
   position: 'absolute',
   bottom: 20,
@@ -2473,5 +2395,84 @@ pendingLandmarksPopup: {
   shadowRadius: 4,
   elevation: 3,
 },
+topBar: {
+  position: 'absolute',
+  top: 40,
+  left: 20,
+  right: 20,
+  zIndex: 10,
+},
+searchContainer: {
+  flexDirection: 'row',
+  backgroundColor: 'white',
+  borderRadius: 25,
+  paddingHorizontal: 15,
+  height: 50,
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 3,
+},
+searchInput: {
+  flex: 1,
+  height: 40,
+  paddingHorizontal: 10,
+  fontSize: 16,
+},
+searchButton: {
+  padding: 8,
+},
+filterContainer: {
+  flexDirection: 'row',
+  marginLeft: 10,
+  backgroundColor: 'rgba(255,255,255,0.9)',
+  borderRadius: 20,
+  padding: 5,
+},
+filterButton: {
+  paddingHorizontal: 12,
+  paddingVertical: 8,
+  borderRadius: 15,
+  marginHorizontal: 2,
+},
+activeFilter: {
+  backgroundColor: '#8d6e63',
+},
+filterText: {
+  color: '#5d4037',
+  fontWeight: '500',
+  fontSize: 12,
+},
+activeFilterText: {
+  color: 'white',
+},
+nearbyButton: {
+  marginLeft: 10,
+  padding: 8,
+},
+  mapControlsContainer: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  mapControls: {
+    backgroundColor: 'white',
+    borderRadius: 25,
+    padding: 5,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mapControlButton: {
+    padding: 8,
+    marginVertical: 5,
+  },
 });
 export default LandmarkPage;

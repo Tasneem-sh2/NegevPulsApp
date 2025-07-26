@@ -17,10 +17,15 @@ export default {
       signIn: "Sign In",
       signUp: "Sign Up",
       logout: {
-        title: 'Logged Out',
-        message: 'You have been successfully logged out.',
-        button: 'Login Again',
-      },      login: {
+        title: "Logout",
+        message: "Are you sure you want to logout?",
+        button: "Logout",
+        confirmTitle: "Confirm Logout",
+        confirmMessage: "Are you sure you want to sign out?",
+        confirmButton: "Yes, Logout",
+        cancelButton: "Cancel",
+      },
+      login: {
         title: "Sign In",
         email: "Email",
         password: "Password",

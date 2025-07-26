@@ -154,7 +154,7 @@ export default function ContactUs() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#FFF8E1',
+    backgroundColor: '#ffffffff',
   },
   headerContainer: {
     marginBottom: 25,

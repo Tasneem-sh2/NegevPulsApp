@@ -14,9 +14,13 @@ export default {
       signIn: "تسجيل الدخول",
       signUp: "إنشاء حساب",
       logout:{
-        title:"تسجيل خروج",
-        message:" هل انت متأكد",
-        button:"زر",
+        title: "تسجيل الخروج",
+        message: "هل أنت متأكد أنك تريد تسجيل الخروج؟",
+        button: "خروج",
+        confirmTitle: "تأكيد تسجيل الخروج",
+        confirmMessage: "هل أنت متأكد أنك تريد تسجيل الخروج؟",
+        confirmButton: "نعم، تسجيل الخروج",
+        cancelButton: "إلغاء",
       } , // ✅ Add this line
       login: {
         title: "تسجيل الدخول",

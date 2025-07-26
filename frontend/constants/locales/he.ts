@@ -13,9 +13,13 @@ export default {
     auth: {
       signIn: "התחברות",
       logout: {
-        title: 'Logged Out',
-        message: 'You have been successfully logged out.',
-        button: 'Login Again',
+        title: "התנתקות",
+        message: "האם אתה בטוח שברצונך להתנתק?",
+        button: "התנתק",
+        confirmTitle: "אישור התנתקות",
+        confirmMessage: "האם אתה בטוח שברצונך להתנתק?",
+        confirmButton: "כן, התנתק",
+        cancelButton: "ביטול",
       },// ✅ Add this line
       signUp: "הרשמה",
       login: {

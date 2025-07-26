@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslations } from '@/frontend/constants/locales';
 import type { LocaleKeys } from '@/frontend/constants/locales/types';
@@ -12,13 +12,16 @@ interface LogoutTranslation {
       title: string;
       message: string;
       button: string;
+      confirmTitle: string;
+      confirmMessage: string;
+      confirmButton: string;
+      cancelButton: string;
     };
   };
 }
-
 export default function Logout() {
   const router = useRouter();
-  const [language, setLanguage] = React.useState<LocaleKeys>('en');
+  const [language, setLanguage] = useState<LocaleKeys>('en');
   const t = useTranslations() as LogoutTranslation;
 
   const { user, logout, loading: authLoading, isAuthenticated } = useAuth();
@@ -29,12 +32,34 @@ export default function Logout() {
     }
   }, [isAuthenticated, authLoading]);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+// In app/(tabs)/logout.tsx
+const handleLogout = async () => {
+  try {
+    await logout();
+    // Ensure navigation happens after logout completes
+    router.replace('/');
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+};
+
+  const confirmLogout = () => {
+    Alert.alert(
+      t.auth.logout.confirmTitle,
+      t.auth.logout.confirmMessage,
+      [
+        {
+          text: t.auth.logout.cancelButton,
+          style: 'cancel',
+        },
+        {
+          text: t.auth.logout.confirmButton,
+          onPress: handleLogout,
+          style: 'destructive',
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   if (authLoading || !user) {
@@ -75,7 +100,7 @@ export default function Logout() {
         <Text style={styles.messageText}>{t.auth.logout.message}</Text>
         <TouchableOpacity
           style={styles.button}
-          onPress={handleLogout}
+          onPress={confirmLogout}
           disabled={authLoading}
         >
           {authLoading ? (
@@ -89,7 +114,7 @@ export default function Logout() {
   );
 }
 
-// بقية كود الـ styles كما هي
+// Styles remain the same
 const styles = StyleSheet.create({
   container: {
     flex: 1,
