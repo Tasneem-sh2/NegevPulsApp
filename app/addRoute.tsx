@@ -19,6 +19,10 @@ import {
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useAuth } from './AuthContext';
 import Constants from 'expo-constants';
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from 'react-native-responsive-screen';
 
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
 type ObjectId = string;
@@ -161,6 +165,7 @@ const RoutePage: React.FC = () => {
   const [verificationRadius, setVerificationRadius] = useState(500);
   const [filter, setFilter] = useState<'all' | 'verified' | 'unverified'>('all');
   const [isDrawingWindowExpanded, setIsDrawingWindowExpanded] = useState(true);
+  const [isFormMinimized, setIsFormMinimized] = useState(false);
 
 
   const getUserWeight = (user: any): number => {
@@ -310,17 +315,18 @@ const RoutePage: React.FC = () => {
     return () => clearInterval(interval);
   }, [routes, showBot, isDrawingRoute, location]);
 
+const fetchVerificationRadius = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/settings/verification-radius`);
+    setVerificationRadius(response.data.radius);
+  } catch (error) {
+    console.error('Error fetching verification radius:', error);
+    setVerificationRadius(500); // Default value
+  }
+};
+
+// استدعها في useEffect
 useEffect(() => {
-  const fetchVerificationRadius = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/settings/verification-radius`);
-      setVerificationRadius(response.data.radius);
-    } catch (error) {
-      console.error('Error fetching verification radius:', error);
-      setVerificationRadius(500); // Default value
-    }
-  };
-  
   fetchVerificationRadius();
 }, []);
 
@@ -756,7 +762,6 @@ useEffect(() => {
       Alert.alert("Error", "Failed to search. Check your connection.");
     }
   };
-
   return (
     <View style={styles.container}>
       {isMapLoading ? (
@@ -765,7 +770,6 @@ useEffect(() => {
         </View>
       ) : (
         <>
-          // في الجزء العلوي من الـ return في addRoute.tsx - استبدل topBar بالكود التالي:
         <View style={styles.topBar}>
           <View style={styles.searchContainer}>
             <TextInput
@@ -906,61 +910,77 @@ useEffect(() => {
               </TouchableOpacity>
             </View>
           </View>
+
           {isDrawingRoute ? (
-            <View style={styles.drawingContainer}>
-              <View style={styles.drawingHeader}>
-                <Text style={styles.drawingTitle}>Create New Route</Text>
-                <TouchableOpacity onPress={() => {
-                  setIsDrawingRoute(false);
-                  setTempRoutePoints([]);
-                }}>
-                  <MaterialIcons name="close" size={24} color="#6d4c41" />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.routeForm}>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="Route title (e.g. Alealam St)"
-                  placeholderTextColor="#999"
-                  value={newRoute.title}
-                  onChangeText={(text) => setNewRoute({...newRoute, title: text})}
-                />
-                
-                <View style={styles.routeStats}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Points</Text>
-                    <Text style={styles.statValue}>{tempRoutePoints.length}</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Distance</Text>
-                    <Text style={styles.statValue}>
-                      {calculateTotalDistance(tempRoutePoints) > 1000 
-                        ? `${(calculateTotalDistance(tempRoutePoints)/1000).toFixed(2)} km` 
-                        : `${calculateTotalDistance(tempRoutePoints).toFixed(0)} m`}
-                    </Text>
-                  </View>
-                </View>
-                
-                <Text style={styles.instructions}>
-                  {tempRoutePoints.length === 0 
-                    ? "Tap on the map to start drawing your route"
-                    : "Continue tapping to add more points"}
-                </Text>
-                
-                <TouchableOpacity
-                  onPress={saveRoute}
-                  disabled={tempRoutePoints.length < 2 || !newRoute.title.trim()}
-                  style={[
-                    styles.saveButton, 
-                    (tempRoutePoints.length < 2 || !newRoute.title.trim()) && styles.disabledButton
-                  ]}
+              <View style={styles.drawingContainer}>
+                <TouchableOpacity 
+                  style={styles.toggleFormButton}
+                  onPress={() => setIsFormMinimized(!isFormMinimized)}
                 >
-                  <Text style={styles.saveButtonText}>
-                    {tempRoutePoints.length < 2 ? "Need 2+ points" : "Save Route"}
+                  <MaterialIcons 
+                    name={isFormMinimized ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} 
+                    size={24} 
+                    color="#6d4c41" 
+                  />
+                  <Text style={styles.toggleFormText}>
+                    {isFormMinimized ? 'Show Form' : 'Minimize Form'}
                   </Text>
                 </TouchableOpacity>
-              </View>
+                
+                {!isFormMinimized && (
+                  <>
+                    <View style={styles.formHeader}>
+                      <View style={styles.headerLeft}>
+                        <Text style={styles.minimizedText}>
+                          Drawing route with {tempRoutePoints.length} points
+                        </Text>
+                      </View>
+                      <View style={styles.headerRight}>
+                        <TouchableOpacity
+                          onPress={saveRoute}
+                          disabled={tempRoutePoints.length < 2 || !newRoute.title.trim()}
+                          style={[
+                            styles.saveButton,
+                            (tempRoutePoints.length < 2 || !newRoute.title.trim()) && styles.disabledButton
+                          ]}
+                        >
+                          <Text style={styles.saveButtonText}>Save</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setIsFormMinimized(true)}
+                          style={styles.minimizeButton}
+                        >
+                          <MaterialIcons name="keyboard-arrow-up" size={20} color="#6d4c41" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.routeForm}>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="Route title"
+                        placeholderTextColor="#999"
+                        value={newRoute.title}
+                        onChangeText={(text) => setNewRoute({...newRoute, title: text})}
+                      />
+                      
+                      <View style={styles.routeStats}>
+                        <View style={styles.statItem}>
+                          <Text style={styles.statLabel}>Distance</Text>
+                          <Text style={styles.statValue}>
+                            {calculateTotalDistance(tempRoutePoints) > 1000 
+                              ? `${(calculateTotalDistance(tempRoutePoints)/1000).toFixed(2)} km` 
+                              : `${calculateTotalDistance(tempRoutePoints).toFixed(0)} m`}
+                          </Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Text style={styles.statLabel}>Points</Text>
+                          <Text style={styles.statValue}>{tempRoutePoints.length}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </>
+                )}
             </View>
           ) : (
             <TouchableOpacity
@@ -979,7 +999,7 @@ useEffect(() => {
                 {isDrawingRoute ? 'Cancel Drawing' : 'Draw Route'}
               </Text>
             </TouchableOpacity>
-                      )}
+          )}
 
           {routes.length > 0 && (
             <View style={[
@@ -1008,7 +1028,6 @@ useEffect(() => {
               </ScrollView>
             </View>
           )}
-
           {!isRoutesListVisible && (
             <TouchableOpacity 
               onPress={() => setIsRoutesListVisible(true)}
@@ -1021,44 +1040,51 @@ useEffect(() => {
               />
             </TouchableOpacity>
           )}
-
         <Modal
-          visible={!!selectedRoute}
-          animationType="slide"
-          transparent={false}
-          onRequestClose={() => setSelectedRoute(null)}
-        >
-          {selectedRoute && (
-            <ScrollView style={styles.routeModalContainer}>
-              {/* العنوان والحالة */}
-              <View style={styles.routeModalHeader}>
-                <Text style={styles.routeModalTitle}>{selectedRoute.title}</Text>
-                <TouchableOpacity onPress={() => setSelectedRoute(null)}>
-                  <MaterialIcons name="close" size={24} color="#6d4c41" />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.routeStatusContainer}>
-                <Text style={[
-                  styles.routeStatus,
-                  selectedRoute.verified ? styles.verifiedStatus : styles.pendingStatus
-                ]}>
-                  {selectedRoute.verified ? '✅ Verified Route' : '📞 Pending Verification'}
-                </Text>
-              </View>
+            visible={!!selectedRoute}
+            animationType="slide"
+            transparent={false}
+            onRequestClose={() => setSelectedRoute(null)}
+          >
+            {selectedRoute && (
+              <View style={styles.modalContainer}>
+                {/* Header مع زر الإغلاق */}
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{selectedRoute.title}</Text>
+                  <TouchableOpacity onPress={() => setSelectedRoute(null)}>
+                    <MaterialIcons name="close" size={24} color="#6d4c41" />
+                  </TouchableOpacity>
+                </View>
 
-              {/* الخريطة المصغرة ومعلومات المسار */}
-              <View style={styles.modalRow}>
+                {/* حالة التحقق */}
+                <View style={styles.statusBadge}>
+                  {selectedRoute.verified ? (
+                    <>
+                      <MaterialIcons name="verified" size={20} color="#4CAF50" />
+                      <Text style={styles.verifiedBadgeText}>Verified Route</Text>
+                    </>
+                  ) : (
+                    <>
+                      <MaterialIcons name="schedule" size={20} color="#FF9800" />
+                      <Text style={styles.pendingBadgeText}>
+                        Pending Verification
+                        {selectedRoute.status === 'disputed' && ' (Needs Tribal Review)'}
+                      </Text>
+                    </>
+                  )}
+                </View>
+
+                {/* الخريطة المصغرة */}
                 <View style={styles.miniMapContainer}>
                   <MapView
                     style={styles.miniMap}
                     scrollEnabled={false}
                     zoomEnabled={false}
                     initialRegion={{
-                      latitude: selectedRoute.points[0].lat,
-                      longitude: selectedRoute.points[0].lon,
-                      latitudeDelta: 0.002, // تكبير الخريطة أكثر
-                      longitudeDelta: 0.002,
+                      latitude: selectedRoute.points[0]?.lat || 0,
+                      longitude: selectedRoute.points[0]?.lon || 0,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
                     }}
                   >
                     <Polyline
@@ -1071,136 +1097,127 @@ useEffect(() => {
                     />
                   </MapView>
                 </View>
-                
-                <View style={styles.routeSummary}>
-                  <Text style={styles.sectionTitle}>Route Summary</Text>
-                  <Text><Text style={styles.boldText}>Total Points:</Text> {selectedRoute.points.length}</Text>
-                  <Text>
-                    <Text style={styles.boldText}>Distance:</Text> {
-                      calculateTotalDistance(selectedRoute.points) > 1000 
-                        ? `${(calculateTotalDistance(selectedRoute.points)/1000).toFixed(2)} km` 
-                        : `${calculateTotalDistance(selectedRoute.points).toFixed(0)} meters`
-                    }
-                  </Text>
-                  <Text><Text style={styles.boldText}>Start Point:</Text></Text>
-                  <Text>Lat: {selectedRoute.points[0].lat.toFixed(6)}</Text>
-                  <Text>Lon: {selectedRoute.points[0].lon.toFixed(6)}</Text>
-                  <Text><Text style={styles.boldText}>End Point:</Text></Text>
-                  <Text>Lat: {selectedRoute.points[selectedRoute.points.length-1].lat.toFixed(6)}</Text>
-                  <Text>Lon: {selectedRoute.points[selectedRoute.points.length-1].lon.toFixed(6)}</Text>
-                </View>
-              </View>
 
-              {/* حالة التحقق */}
-              {!selectedRoute.verified && (
-                <View style={styles.verificationSection}>
+                {/* معلومات المسار */}
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Route Information</Text>
+                  <View style={styles.infoGrid}>
+                    <View style={styles.infoItem}>
+                      <Text style={styles.infoLabel}>Points</Text>
+                      <Text style={styles.infoValue}>{selectedRoute.points.length}</Text>
+                    </View>
+                    <View style={styles.infoItem}>
+                      <Text style={styles.infoLabel}>Distance</Text>
+                      <Text style={styles.infoValue}>
+                        {calculateTotalDistance(selectedRoute.points) > 1000 
+                          ? `${(calculateTotalDistance(selectedRoute.points)/1000).toFixed(2)} km` 
+                          : `${calculateTotalDistance(selectedRoute.points).toFixed(0)} m`}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* حالة التحقق */}
+                <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Verification Status</Text>
                   {renderVerificationStatus(selectedRoute)}
+                </View>
 
-                  {voteSuccess && (
-                    <View style={styles.successMessage}>
-                      <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
-                      <Text style={styles.successText}>{voteSuccess}</Text>
-                    </View>
-                  )}
-
-                  {voteError && (
-                    <View style={styles.errorMessage}>
-                      <MaterialIcons name="error" size={20} color="#f44336" />
-                      <Text style={styles.errorText}>{voteError}</Text>
-                    </View>
-                  )}
-
+                {/* أزرار التصويت (للمسارات غير الموثقة) */}
+                {!selectedRoute.verified && selectedRoute.status !== 'disputed' && (
                   <View style={styles.voteButtons}>
                     <TouchableOpacity
                       onPress={() => handleRouteVote(selectedRoute._id, 'yes')}
                       disabled={isVoting}
                       style={[
                         styles.voteButton,
-                        styles.voteYesButton,
+                        styles.yesButton,
                         isVoting && styles.disabledButton,
-                        selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'yes' && styles.selectedVote
+                        selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'yes' && styles.activeVoteButton
                       ]}
                     >
-                      <Text style={styles.voteButtonText}>
-                        {isVoting
-                          ? 'Processing...'
-                          : selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'yes'
-                            ? '✔ Voted Yes'
-                            : 'Vote Yes'}
-                      </Text>
+                      {isVoting ? (
+                        <ActivityIndicator color="white" />
+                      ) : selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'yes' ? (
+                        <Text style={styles.buttonText}>✔ Voted Yes</Text>
+                      ) : (
+                        <Text style={styles.buttonText}>Vote Yes</Text>
+                      )}
                     </TouchableOpacity>
+                    
                     <TouchableOpacity
                       onPress={() => handleRouteVote(selectedRoute._id, 'no')}
                       disabled={isVoting}
                       style={[
                         styles.voteButton,
-                        styles.voteNoButton,
+                        styles.noButton,
                         isVoting && styles.disabledButton,
-                        selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'no' && styles.selectedVote
+                        selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'no' && styles.activeVoteButton
                       ]}
                     >
-                      <Text style={styles.voteButtonText}>
-                        {isVoting
-                          ? 'Processing...'
-                          : selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'no'
-                            ? '✔ Voted No'
-                            : 'Vote No'}
-                      </Text>
+                      {isVoting ? (
+                        <ActivityIndicator color="white" />
+                      ) : selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'no' ? (
+                        <Text style={styles.buttonText}>✔ Voted No</Text>
+                      ) : (
+                        <Text style={styles.buttonText}>Vote No</Text>
+                      )}
                     </TouchableOpacity>
                   </View>
-                </View>
-              )}
+                )}
 
-              {/* نقاط المسار */}
-              <View style={styles.pointsSection}>
-                <Text style={styles.sectionTitle}>Route Points</Text>
-                <ScrollView style={styles.pointsContainer}>
-                  <View style={styles.pointsGrid}>
-                    {selectedRoute.points.map((point, index) => (
-                      <View key={index} style={styles.pointCard}>
-                        <Text style={styles.pointTitle}>Point {index + 1}</Text>
-                        <Text>Lat: {point.lat.toFixed(6)}</Text>
-                        <Text>Lon: {point.lon.toFixed(6)}</Text>
+                {/* رسائل الحالة */}
+                {(voteSuccess || voteError || deleteSuccess || deleteError) && (
+                  <View style={styles.statusMessages}>
+                    {voteSuccess && (
+                      <View style={styles.successMessage}>
+                        <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
+                        <Text style={styles.successText}>{voteSuccess}</Text>
                       </View>
-                    ))}
+                    )}
+                    {voteError && (
+                      <View style={styles.errorMessage}>
+                        <MaterialIcons name="error" size={20} color="#f44336" />
+                        <Text style={styles.errorText}>{voteError}</Text>
+                      </View>
+                    )}
+                    {deleteSuccess && (
+                      <View style={styles.successMessage}>
+                        <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
+                        <Text style={styles.successText}>{deleteSuccess}</Text>
+                      </View>
+                    )}
+                    {deleteError && (
+                      <View style={styles.errorMessage}>
+                        <MaterialIcons name="error" size={20} color="#f44336" />
+                        <Text style={styles.errorText}>{deleteError}</Text>
+                      </View>
+                    )}
                   </View>
-                </ScrollView>
-              </View>
+                )}
 
-              {/* رسائل الحذف */}
-              {deleteSuccess && (
-                <View style={styles.successMessage}>
-                  <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
-                  <Text style={styles.successText}>{deleteSuccess}</Text>
+                {/* أزرار الإجراءات */}
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    onPress={() => handleDeleteRoute(selectedRoute._id)}
+                    disabled={selectedRoute.verified}
+                    style={[
+                      styles.deleteButton,
+                      selectedRoute.verified && styles.disabledButton
+                    ]}
+                  >
+                    <Text style={styles.deleteButtonText}>Delete Route</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => setSelectedRoute(null)}
+                    style={styles.closeButton}
+                  >
+                    <Text style={styles.closeButtonText}>Close</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
-
-              {deleteError && (
-                <View style={styles.errorMessage}>
-                  <MaterialIcons name="error" size={20} color="#f44336" />
-                  <Text style={styles.errorText}>{deleteError}</Text>
-                </View>
-              )}
-
-              {/* أزرار الإجراءات */}
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  onPress={() => handleDeleteRoute(selectedRoute._id)}
-                  style={[styles.primaryButton, styles.deleteButton]}
-                >
-                  <Text style={styles.primaryButtonText}>Delete Route</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setSelectedRoute(null)}
-                  style={styles.primaryButton}
-                >
-                  <Text style={styles.primaryButtonText}>Close</Text>
-                </TouchableOpacity>
               </View>
-            </ScrollView>
-          )}
-        </Modal>
+            )}
+          </Modal>
 
           <VerificationBot
             visible={showBot && !isDrawingRoute}
@@ -1345,10 +1362,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF8E1',
     color: '#FFA000',
   },
-  miniMap: {
-    width: '100%',
-    height: '100%',
-  },
   summaryBox: {
     backgroundColor: '#f5f5f5',
     padding: 15,
@@ -1444,52 +1457,10 @@ const styles = StyleSheet.create({
     color: '#757575',
     marginTop: 5,
   },
-  successMessage: {
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-    borderRadius: 4,
-    padding: 10,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  successText: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  errorMessage: {
-    backgroundColor: 'rgba(244, 67, 54, 0.1)',
-    borderWidth: 1,
-    borderColor: '#f44336',
-    borderRadius: 4,
-    padding: 10,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  errorText: {
-    color: '#f44336',
-    fontWeight: 'bold',
-  },
 verificationSection: {
   marginTop: 10,
   marginBottom: 10,
 },
-  voteButtons: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 15,
-  },
-  voteButton: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   voteYesButton: {
     backgroundColor: '#4CAF50',
   },
@@ -1516,9 +1487,6 @@ verificationSection: {
     color: '#FFD700',
     fontWeight: 'bold',
     marginLeft: 8,
-  },
-  deleteButton: {
-    backgroundColor: '#f44336',
   },
   botContainer: {
     position: 'absolute',
@@ -1630,22 +1598,10 @@ modalRow: {
   gap: 8, // تقليل المسافة بين العناصر
   marginBottom: 8,
 },
-miniMapContainer: {
-  height: 120, // تقليل ارتفاع الخريطة أكثر
-  borderRadius: 6,
-  overflow: 'hidden',
-  marginBottom: 5,
-},
 routeSummary: {
   backgroundColor: '#f8f8f8',
   padding: 8,
   borderRadius: 6,
-},
-sectionTitle: {
-  fontSize: 14, // تصغير حجم عناوين الأقسام
-  fontWeight: '600',
-  color: '#5d4037',
-  marginBottom: 5,
 },
 verificationContainer: {
   backgroundColor: '#f8f8f8',
@@ -1668,13 +1624,6 @@ pointCard: {
   borderColor: '#f0e6e2',
   width: '48%',
   marginBottom: 5,
-},
-actionButtons: {
-  flexDirection: 'row',
-  gap: 8,
-  paddingVertical: 8,
-  position: 'relative', // تغيير من absolute إلى relative
-  marginTop: 5,
 },
 primaryButton: {
   backgroundColor: '#6d4c41',
@@ -1866,25 +1815,26 @@ drawButtonText: {
   marginLeft: 8,
   fontSize: 16,
 },
-  drawingContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    elevation: 5,
-    zIndex: 10,
-    borderWidth: 1,
-    borderColor: '#f0e6e2',
-  },
-  drawingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
+drawingContainer: {
+  position: 'absolute',
+  bottom: hp(2),
+  left: wp(5),
+  right: wp(5),
+  backgroundColor: 'white',
+  borderRadius: wp(3),
+  padding: wp(4),
+  elevation: 5,
+  zIndex: 10,
+  borderWidth: 1,
+  borderColor: '#f0e6e2',
+  maxHeight: hp(40),
+},
+drawingHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: hp(2),
+},
   drawingTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -1932,62 +1882,296 @@ drawButtonText: {
     textAlign: 'center',
     marginVertical: 8,
   },
-  saveButton: {
-    backgroundColor: '#6d4c41',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-// Add these to both StyleSheet objects
+formContainer: {
+  position: 'absolute',
+  bottom: hp(2),
+  left: wp(5),
+  right: wp(5),
+  backgroundColor: "white",
+  borderRadius: wp(3),
+  padding: wp(4),
+  elevation: 5,
+  zIndex: 10,
+  borderWidth: 1,
+  borderColor: "#f0e6e2",
+  maxHeight: hp(40),
+},
+toggleFormButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: hp(1),
+  backgroundColor: '#f5f5f5',
+  borderRadius: wp(2),
+  marginBottom: hp(1),
+},
+toggleFormText: {
+  color: '#6d4c41',
+  marginLeft: wp(2),
+  fontSize: wp(4),
+},
 standardButton: {
-  backgroundColor: '#6d4c41',
-  padding: 12,
-  borderRadius: 8,
+  backgroundColor: "#6d4c41",
+  padding: hp(1.5),
+  borderRadius: wp(2),
   alignItems: 'center',
   justifyContent: 'center',
   flexDirection: 'row',
   elevation: 2,
+  minWidth: wp(30),
 },
 standardButtonText: {
-  color: '#FFD700',
-  fontSize: 16,
+  color: "#FFD700",
+  fontSize: wp(4),
   fontWeight: 'bold',
 },
 secondaryButton: {
-  backgroundColor: '#f5f5f5',
-  padding: 12,
-  borderRadius: 8,
+  backgroundColor: "#f5f5f5",
+  padding: hp(1.5),
+  borderRadius: wp(2),
   borderWidth: 1,
-  borderColor: '#d7ccc8',
+  borderColor: "#d7ccc8",
   alignItems: 'center',
   justifyContent: 'center',
   flexDirection: 'row',
+  minWidth: wp(30),
 },
 secondaryButtonText: {
-  color: '#5d4037',
-  fontSize: 16,
+  color: "#5d4037",
+  fontSize: wp(4),
 },
 dangerButton: {
-  backgroundColor: '#f44336',
-  padding: 12,
-  borderRadius: 8,
+  backgroundColor: "#f44336",
+  padding: hp(1.5),
+  borderRadius: wp(2),
   alignItems: 'center',
   justifyContent: 'center',
   flexDirection: 'row',
+  minWidth: wp(30),
 },
 dangerButtonText: {
-  color: 'white',
-  fontSize: 16,
+  color: "white",
+  fontSize: wp(4),
   fontWeight: 'bold',
 },
+minimizedSummary: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: wp(2),
+  backgroundColor: '#f5f5f5',
+  borderRadius: wp(2),
+},
+minimizedText: {
+  color: '#6d4c41',
+  fontSize: wp(3.5),
+},
+expandButton: {
+  padding: wp(1),
+},
+formHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 10,
+},
+headerLeft: {
+  flex: 1,
+},
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10,
+},
+saveButton: {
+  backgroundColor: '#6d4c41',
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 20,
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: 80,
+},
+saveButtonText: {
+  color: 'white',
+  fontWeight: 'bold',
+  fontSize: 14,
+},
+minimizeButton: {
+  padding: 6,
+},
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#6d4c41',
+    flex: 1,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  verifiedBadgeText: {
+    color: '#4CAF50',
+    fontWeight: 'bold',
+  },
+  pendingBadgeText: {
+    color: '#FF9800',
+    fontWeight: 'bold',
+  },
+  miniMapContainer: {
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#f0e6e2',
+  },
+  miniMap: {
+    width: '100%',
+    height: '100%',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#5d4037',
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0e6e2',
+    paddingBottom: 5,
+  },
+  infoGrid: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  infoItem: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#757575',
+    marginBottom: 5,
+  },
+  infoValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#6d4c41',
+  },
+  voteButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 15,
+  },
+  voteButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  yesButton: {
+    backgroundColor: '#4CAF50',
+  },
+  noButton: {
+    backgroundColor: '#f44336',
+  },
+  activeVoteButton: {
+    borderWidth: 3,
+    borderColor: 'gold',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  statusMessages: {
+    marginTop: 15,
+  },
+  successMessage: {
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  successText: {
+    color: '#4CAF50',
+    fontWeight: 'bold',
+  },
+  errorMessage: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    borderWidth: 1,
+    borderColor: '#f44336',
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  errorText: {
+    color: '#f44336',
+    fontWeight: 'bold',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  deleteButton: {
+    backgroundColor: '#f44336',
+    padding: 15,
+    borderRadius: 8,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    backgroundColor: '#6d4c41',
+    padding: 15,
+    borderRadius: 8,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
 });
-
 export default RoutePage;
