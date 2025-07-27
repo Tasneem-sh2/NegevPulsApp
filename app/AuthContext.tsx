@@ -1,25 +1,25 @@
-// contexts/AuthContext.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
 import { useRouter } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-
+const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
+const BASE_URL = API_BASE_URL; // استخدم BASE_URL في كل مكان في التطبيق
 interface User {
   _id: string;
   email: string;
   role: string;
   isSuperlocal?: boolean;
-  userType?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  isAuthenticated: boolean; // أضف هذا
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   loading: boolean;
   error: string | null;
+  initializeAuth: () => Promise<void>; // أضفنا هذه الدالة
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -30,74 +30,90 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const isAuthenticated = !!user && !!token;
 
+const initializeAuth = async () => {
+  try {
+    const [userData, tokenData] = await AsyncStorage.multiGet(['user', 'token']);
+    
+    if (userData[1] && tokenData[1]) {
+      const parsedUser = JSON.parse(userData[1]);
+      // تحديث الحالة فقط إذا كانت مختلفة
+      setUser(prev => prev?._id === parsedUser._id ? prev : parsedUser);
+      setToken(prev => prev === tokenData[1] ? prev : tokenData[1]);
+    }
+  } catch (error) {
+    console.error('Failed to initialize auth', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
-    const loadAuthData = async () => {
-      try {
-        const [userData, tokenData] = await AsyncStorage.multiGet(['user', 'token']);
-        if (userData[1] && tokenData[1]) {
-          setUser(JSON.parse(userData[1]));
-          setToken(tokenData[1]);
-        } else {
-          setUser(null); // تأكد من ضبط null عند عدم وجود بيانات
-          setToken(null);
-        }
-      } catch (error) {
-        setUser(null); // في حالة الخطأ
-        setToken(null);
-      }
-    };
-
-    loadAuthData();
+    initializeAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await axios.post<{
-        user: User;
-        token: string;
-      }>('https://negevpulsapp.onrender.com/api/auth/login', {
-        email,
-        password
-      });
+// In AuthContext.tsx
+const login = async (email: string, password: string) => {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    const response = await axios.post<{
+      user: User;
+      token: string;
+    }>(`${BASE_URL}/api/auth/login`, {
+      email,
+      password
+    });
 
-      await AsyncStorage.multiSet([
-        ['user', JSON.stringify(response.data.user)],
-        ['token', response.data.token]
-      ]);
+    // تأكد من حفظ جميع بيانات المستخدم
+    await AsyncStorage.multiSet([
+      ['user', JSON.stringify({
+        ...response.data.user,
+        isSuperlocal: response.data.user.isSuperlocal // تأكد من حفظ هذه القيمة
+      })],
+      ['token', response.data.token]
+    ]);
 
-      setUser(response.data.user);
-      setToken(response.data.token);
-      return true;
-    } catch (error) {
-      const err = error as AxiosError<{ message?: string }>;
-      setError(err.response?.data?.message || 'Login failed');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+    setUser(response.data.user);
+    setToken(response.data.token);
+    return true;
+  } catch (error) {
+    // Clear auth state on failed login
+    await AsyncStorage.multiRemove(['user', 'token']);
+    setUser(null);
+    setToken(null);
+    
+    const err = error as AxiosError<{ message?: string }>;
+    setError(err.response?.data?.message || 'Login failed');
+    return false;
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const logout = async () => {
-    try {
-      setLoading(true);
-      await AsyncStorage.multiRemove(['user', 'token']);
-      setUser(null);
-      setToken(null);
-      router.replace('/');
-    } catch (error) {
-      setError('Logout failed');
-      console.error('Logout error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+// In AuthContext.tsx
+const logout = async () => {
+  try {
+    setLoading(true);
+    await AsyncStorage.multiRemove(['user', 'token']);
+    // Reset state synchronously
+    setUser(null);
+    setToken(null);
+    // Force a small delay to ensure state updates propagate
+    await new Promise(resolve => setTimeout(resolve, 100));
+  } catch (error) {
+    setError('Logout failed');
+    console.error('Logout error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
+// In AuthContext.tsx
+const isAuthenticated = React.useMemo(() => {
+  return !!user && !!token;
+}, [user, token]);
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -106,7 +122,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
       login, 
       logout, 
       loading, 
-      error 
+      error,
+      initializeAuth // أضفنا الدالة للاستخدام الخارجي
     }}>
       {children}
     </AuthContext.Provider>
@@ -120,5 +137,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-export default AuthProvider;

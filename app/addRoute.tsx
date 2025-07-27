@@ -19,6 +19,13 @@ import {
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useAuth } from './AuthContext';
 import Constants from 'expo-constants';
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from 'react-native-responsive-screen';
+import { useLanguage } from '@/frontend/context/LanguageProvider';
+import { useTranslations } from '@/frontend/constants/locales';
+import { I18nManager } from 'react-native';
 
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
 type ObjectId = string;
@@ -79,34 +86,39 @@ const VerificationBot: React.FC<{
   onClose: () => void;
   onRoutePress: () => void;
 }> = ({ visible, route, onVote, onClose, onRoutePress }) => {
+  const { isRTL } = useLanguage();
+  const t = useTranslations().addRoute;
+  
   if (!visible || !route) return null;
 
   return (
-    <View style={styles.botContainer}>
-      <View style={styles.botHeader}>
+    <View style={[styles.botContainer, isRTL && styles.rtlContainer]}>
+      <View style={[styles.botHeader, isRTL && styles.rtlFlex]}>
         <TouchableOpacity onPress={onClose} style={styles.botCloseIcon}>
           <Ionicons name="close" size={24} color="#6d4c41" />
         </TouchableOpacity>
         <MaterialIcons name="support-agent" size={28} color="#6d4c41" style={styles.botIcon} />
-        <Text style={styles.botTitle}>Help Verify</Text>
+        <Text style={styles.botTitle}>{t.helpVerify}</Text>
       </View>
       
       <TouchableOpacity onPress={onRoutePress} style={styles.botContent}>
-        <Text style={styles.botQuestion}>Is this route accurate?</Text>
+        <Text style={[styles.botQuestion, isRTL && styles.rtlText]}>{t.isAccurate}</Text>
         
         <View style={styles.routePreview}>
-          <Text style={styles.botRouteName}>{route.title}</Text>
-          <Text style={styles.botRoutePoints}>{route.points.length} points</Text>
+          <Text style={[styles.botRouteName, isRTL && styles.rtlText]}>{route.title}</Text>
+          <Text style={[styles.botRoutePoints, isRTL && styles.rtlText]}>
+            {route.points.length} {t.pointsCount}
+          </Text>
         </View>
       </TouchableOpacity>
       
-      <View style={styles.botButtons}>
+      <View style={[styles.botButtons, isRTL && styles.rtlFlex]}>
         <TouchableOpacity 
           style={[styles.botButton, styles.botYesButton]}
           onPress={() => onVote('yes')}
         >
           <MaterialIcons name="thumb-up" size={20} color="white" />
-          <Text style={styles.botButtonText}>Confirm</Text>
+          <Text style={styles.botButtonText}>{t.confirm}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -114,7 +126,7 @@ const VerificationBot: React.FC<{
           onPress={() => onVote('no')}
         >
           <MaterialIcons name="thumb-down" size={20} color="white" />
-          <Text style={styles.botButtonText}>Reject</Text>
+          <Text style={styles.botButtonText}>{t.reject}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -160,13 +172,33 @@ const RoutePage: React.FC = () => {
   const [currentBotRoute, setCurrentBotRoute] = useState<Route | null>(null);
   const [verificationRadius, setVerificationRadius] = useState(500);
   const [filter, setFilter] = useState<'all' | 'verified' | 'unverified'>('all');
+  const [isDrawingWindowExpanded, setIsDrawingWindowExpanded] = useState(true);
+  const [isFormMinimized, setIsFormMinimized] = useState(false);
+  const t = useTranslations().addRoute;
+  const { language, isRTL } = useLanguage();
 
+  useEffect(() => {
+    I18nManager.forceRTL(isRTL);
+  }, [isRTL]);
+  // تطبيق اتجاه النص في الأنماط:
+  const dynamicStyles = StyleSheet.create({
+    textInput: {
+      textAlign: isRTL ? 'right' : 'left',
+    },
+    flexDirection: {
+      flexDirection: isRTL ? 'row-reverse' : 'row',
+    }
+  });
   const getUserWeight = (user: any): number => {
     if (!user) return 1;
     if (user.isSuperlocal) return 4;
     if (user.reputationScore && user.reputationScore >= 70) return 2;
     return 1;
   };
+    useEffect(() => {
+    I18nManager.forceRTL(isRTL);
+  }, [isRTL]);
+  
 
   const calculateDistance = (point1: RoutePoint, point2: RoutePoint) => {
     const R = 6371e3;
@@ -308,19 +340,20 @@ const RoutePage: React.FC = () => {
     return () => clearInterval(interval);
   }, [routes, showBot, isDrawingRoute, location]);
 
-  useEffect(() => {
-    const fetchVerificationRadius = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/settings/verification-radius`);
-        setVerificationRadius(response.data.radius);
-      } catch (error) {
-        console.error('Error fetching verification radius:', error);
-        setVerificationRadius(500);
-      }
-    };
-    
-    fetchVerificationRadius();
-  }, []);
+const fetchVerificationRadius = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/settings/verification-radius`);
+    setVerificationRadius(response.data.radius);
+  } catch (error) {
+    console.error('Error fetching verification radius:', error);
+    setVerificationRadius(500); // Default value
+  }
+};
+
+// استدعها في useEffect
+useEffect(() => {
+  fetchVerificationRadius();
+}, []);
 
   useEffect(() => {
     if (voteSuccess) {
@@ -610,7 +643,7 @@ const RoutePage: React.FC = () => {
             {route.title}
           </Text>
           <Text style={styles.verificationBadge}>
-            {route.verified ? 'Verified' : 'Pending - Vote Now'} ({route.points.length} points)
+            {route.verified ? t.verified : t.pendingVerification} ({route.points.length} {t.pointsCount})
           </Text>
         </View>
       </View>
@@ -754,7 +787,6 @@ const RoutePage: React.FC = () => {
       Alert.alert("Error", "Failed to search. Check your connection.");
     }
   };
-
   return (
     <View style={styles.container}>
       {isMapLoading ? (
@@ -763,28 +795,63 @@ const RoutePage: React.FC = () => {
         </View>
       ) : (
         <>
-          <View style={styles.filterContainer}>
+        <View style={styles.topBar}>
+          <View style={styles.searchContainer}>
+            <TextInput
+              placeholder={t.searchPlaceholder}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+              onSubmitEditing={handleSearch}
+            />
             <TouchableOpacity 
-              style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
-              onPress={() => setFilter('all')}
+              onPress={handleSearch}
+              style={styles.searchButton}
             >
-              <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>All</Text>
+              <MaterialIcons name="search" size={24} color="#6d4c41" />
             </TouchableOpacity>
             
+            <View style={styles.filterContainer}>
+              <TouchableOpacity 
+                style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
+                onPress={() => setFilter('all')}
+              >
+                <Text style={styles.filterText}>{t.filterAll}</Text>
+
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.filterButton, filter === 'verified' && styles.activeFilter]}
+                onPress={() => setFilter('verified')}
+              >
+                <Text style={styles.filterText}>{t.filterVerified}</Text>
+
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.filterButton, filter === 'unverified' && styles.activeFilter]}
+                onPress={() => setFilter('unverified')}
+              >
+                <Text style={styles.filterText}>{t.filterPending}</Text>
+
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity 
-              style={[styles.filterButton, filter === 'verified' && styles.activeFilter]}
-              onPress={() => setFilter('verified')}
+              style={styles.nearbyButton}
+              onPress={() => {
+                const nearby = showRoutesWithinRadius();
+                Alert.alert(
+                  'Nearby Routes',
+                  `There are ${nearby.length} routes within ${verificationRadius}m\n${nearby.filter(r => r.verified).length} verified\n${nearby.filter(r => !r.verified).length} pending`,
+                  [{ text: 'OK' }]
+                );
+              }}
             >
-              <Text style={[styles.filterText, filter === 'verified' && styles.activeFilterText]}>Verified</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.filterButton, filter === 'unverified' && styles.activeFilter]}
-              onPress={() => setFilter('unverified')}
-            >
-              <Text style={[styles.filterText, filter === 'unverified' && styles.activeFilterText]}>Pending</Text>
+              <MaterialIcons name="near-me" size={24} color="#6d4c41" />
             </TouchableOpacity>
           </View>
+        </View>
 
           <MapView
             ref={mapRef}
@@ -797,6 +864,7 @@ const RoutePage: React.FC = () => {
             onResponderTerminate={handleMapRelease}
             mapType={mapType}
           >
+
             {location && (
               <Marker
                 coordinate={{
@@ -832,126 +900,133 @@ const RoutePage: React.FC = () => {
             )}
           </MapView>
 
-          <View style={styles.topBar}>
-            <View style={styles.searchContainer}>
-              <TextInput
-                placeholder="Search places..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                style={styles.searchInput}
-                onSubmitEditing={handleSearch}
-              />
+          {/* Combined map controls and nearby routes button */}
+          <View style={styles.mapControlsContainer}>
+            <View style={styles.mapControls}>
               <TouchableOpacity 
-                onPress={handleSearch}
-                style={styles.searchButton}
+                onPress={() => setMapType('standard')}
+                style={[styles.mapControlButton, mapType === 'standard' && styles.activeMapType]}
               >
-                <MaterialIcons name="search" size={24} color="#6d4c41" />
+                <MaterialIcons name="map" size={24} color={mapType === 'standard' ? '#FFD700' : '#6d4c41'} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setMapType('satellite')}
+                style={[styles.mapControlButton, mapType === 'satellite' && styles.activeMapType]}
+              >
+                <MaterialIcons name="satellite" size={24} color={mapType === 'satellite' ? '#FFD700' : '#6d4c41'} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setMapType('hybrid')}
+                style={[styles.mapControlButton, mapType === 'hybrid' && styles.activeMapType]}
+              >
+                <MaterialIcons name="layers" size={24} color={mapType === 'hybrid' ? '#FFD700' : '#6d4c41'} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (location) {
+                    mapRef.current?.animateToRegion({
+                      latitude: location.lat,
+                      longitude: location.lon,
+                      latitudeDelta: 0.0922,
+                      longitudeDelta: 0.0421,
+                    });
+                  }
+                }}
+                style={styles.mapControlButton}
+              >
+                <MaterialIcons name="my-location" size={24} color="#6d4c41" />
               </TouchableOpacity>
             </View>
-            
+          </View>
+
+          {isDrawingRoute ? (
+              <View style={styles.drawingContainer}>
+                <TouchableOpacity 
+                  style={styles.toggleFormButton}
+                  onPress={() => setIsFormMinimized(!isFormMinimized)}
+                >
+                  <MaterialIcons 
+                    name={isFormMinimized ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} 
+                    size={24} 
+                    color="#6d4c41" 
+                  />
+                  <Text style={styles.toggleFormText}>
+                    {isFormMinimized ? 'Show Form' : 'Minimize Form'}
+                  </Text>
+                </TouchableOpacity>
+                
+                {!isFormMinimized && (
+                  <>
+                    <View style={styles.formHeader}>
+                      <View style={styles.headerLeft}>
+                        <Text style={styles.minimizedText}>
+                          {t.drawingRouteWithPoints.replace('{count}', tempRoutePoints.length.toString())}
+                        </Text>
+                      </View>
+                      <View style={styles.headerRight}>
+                        <TouchableOpacity
+                          onPress={saveRoute}
+                          disabled={tempRoutePoints.length < 2 || !newRoute.title.trim()}
+                          style={[
+                            styles.saveButton,
+                            (tempRoutePoints.length < 2 || !newRoute.title.trim()) && styles.disabledButton
+                          ]}
+                        >
+                        <Text style={styles.saveButtonText}>{t.saveButton}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setIsFormMinimized(true)}
+                          style={styles.minimizeButton}
+                        >
+                          <MaterialIcons name="keyboard-arrow-up" size={20} color="#6d4c41" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.routeForm}>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="Route title"
+                        placeholderTextColor="#999"
+                        value={newRoute.title}
+                        onChangeText={(text) => setNewRoute({...newRoute, title: text})}
+                      />
+                      
+                      <View style={styles.routeStats}>
+                        <View style={styles.statItem}>
+                            <Text style={styles.statLabel}>{t.distance}</Text>
+                          <Text style={styles.statValue}>
+                            {calculateTotalDistance(tempRoutePoints) > 1000 
+                              ? `${(calculateTotalDistance(tempRoutePoints)/1000).toFixed(2)} km` 
+                              : `${calculateTotalDistance(tempRoutePoints).toFixed(0)} m`}
+                          </Text>
+                        </View>
+                        <View style={styles.statItem}>
+                            <Text style={styles.statLabel}>{t.pointsCount}</Text>
+                          <Text style={styles.statValue}>{tempRoutePoints.length}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </>
+                )}
+            </View>
+          ) : (
             <TouchableOpacity
               onPress={() => {
                 setIsDrawingRoute(!isDrawingRoute);
                 setShowHeaderText(true);
               }}
-              style={[
-                styles.drawButton,
-                isDrawingRoute && styles.drawButtonActive
-              ]}
+              style={styles.drawButton}
             >
               <MaterialIcons
                 name={isDrawingRoute ? 'close' : 'edit'}
-                size={20}
-                color="#FFD700"
+                size={24}
+                color="#6d4c41"
               />
               <Text style={styles.drawButtonText}>
-                {isDrawingRoute ? 'Cancel' : 'Draw Route'}
+                {isDrawingRoute ? t.cancelDrawing : t.drawRoute}
               </Text>
             </TouchableOpacity>
-          </View>
-
-          {showHeaderText && (
-            <View style={[styles.headerText, { backgroundColor: 'rgba(255,255,255,0.85)' }]}>
-              <Text style={styles.headerTitle}>Routes Map</Text>
-              <Text style={styles.headerSubtitle}>Click "Draw Route" to create a new route</Text>
-            </View>
-          )}
-
-          <View style={styles.mapControls}>
-            <TouchableOpacity 
-              onPress={() => setMapType('standard')}
-              style={[styles.mapControlButton, mapType === 'standard' && styles.activeMapType]}
-            >
-              <MaterialIcons name="map" size={24} color={mapType === 'standard' ? '#FFD700' : '#6d4c41'} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => setMapType('satellite')}
-              style={[styles.mapControlButton, mapType === 'satellite' && styles.activeMapType]}
-            >
-              <MaterialIcons name="satellite" size={24} color={mapType === 'satellite' ? '#FFD700' : '#6d4c41'} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => setMapType('hybrid')}
-              style={[styles.mapControlButton, mapType === 'hybrid' && styles.activeMapType]}
-            >
-              <MaterialIcons name="layers" size={24} color={mapType === 'hybrid' ? '#FFD700' : '#6d4c41'} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => {
-                if (location) {
-                  mapRef.current?.animateToRegion({
-                    latitude: location.lat,
-                    longitude: location.lon,
-                    latitudeDelta: 0.0922,
-                    longitudeDelta: 0.0421,
-                  });
-                }
-              }}
-              style={styles.mapControlButton}
-            >
-              <MaterialIcons name="my-location" size={24} color="#6d4c41" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.nearbyRoutesButton}
-              onPress={() => {
-                const nearby = showRoutesWithinRadius();
-                Alert.alert(
-                  'Nearby Routes',
-                  `There are ${nearby.length} routes within 500 meters\n${nearby.filter(r => r.verified).length} verified\n${nearby.filter(r => !r.verified).length} pending`,
-                  [{ text: 'OK' }]
-                );
-              }}
-            >
-              <MaterialIcons name="near-me" size={24} color="#6d4c41" />
-              <Text style={styles.nearbyRoutesText}> </Text>
-            </TouchableOpacity>
-          </View>
-
-          {isDrawingRoute && (
-            <View style={styles.drawingContainer}>
-              <View style={styles.drawingHeader}>
-                <Text style={styles.drawingTitle}>Drawing New Route</Text>
-                <TouchableOpacity onPress={() => {
-                  setIsDrawingRoute(false);
-                  setTempRoutePoints([]);
-                }}>
-                  <MaterialIcons name="close" size={24} color="#6d4c41" />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.drawingControls}>
-                <Text style={styles.pointsCount}>
-                  Points: {tempRoutePoints.length} {tempRoutePoints.length < 2 && '(Need at least 2)'}
-                </Text>
-                <TouchableOpacity
-                  onPress={saveRoute}
-                  disabled={tempRoutePoints.length < 2}
-                  style={[styles.saveButton, tempRoutePoints.length < 2 && styles.disabledButton]}
-                >
-                  <Text style={styles.saveButtonText}>Save Route</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
           )}
 
           {routes.length > 0 && (
@@ -970,18 +1045,18 @@ const RoutePage: React.FC = () => {
                 />
               </TouchableOpacity>
               <Text style={styles.routesTitle}>
-                Pending Routes ({getUnverifiedRoutes().length})
+                {t.pendingRoutesTitle} ({getUnverifiedRoutes().length})
               </Text>
               <ScrollView>
                 {getUnverifiedRoutes().length > 0 ? (
                   getUnverifiedRoutes().map(renderRouteItem)
                 ) : (
-                  <Text style={styles.noRoutesText}>No pending routes to vote on</Text>
+                  <Text style={styles.noRoutesText}>{t.noPendingRoutes}</Text>
+
                 )}
               </ScrollView>
             </View>
           )}
-
           {!isRoutesListVisible && (
             <TouchableOpacity 
               onPress={() => setIsRoutesListVisible(true)}
@@ -994,44 +1069,51 @@ const RoutePage: React.FC = () => {
               />
             </TouchableOpacity>
           )}
-
         <Modal
-          visible={!!selectedRoute}
-          animationType="slide"
-          transparent={false}
-          onRequestClose={() => setSelectedRoute(null)}
-        >
-          {selectedRoute && (
-            <ScrollView style={styles.routeModalContainer}>
-              {/* العنوان والحالة */}
-              <View style={styles.routeModalHeader}>
-                <Text style={styles.routeModalTitle}>{selectedRoute.title}</Text>
-                <TouchableOpacity onPress={() => setSelectedRoute(null)}>
-                  <MaterialIcons name="close" size={24} color="#6d4c41" />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.routeStatusContainer}>
-                <Text style={[
-                  styles.routeStatus,
-                  selectedRoute.verified ? styles.verifiedStatus : styles.pendingStatus
-                ]}>
-                  {selectedRoute.verified ? '✅ Verified Route' : '📞 Pending Verification'}
-                </Text>
-              </View>
+            visible={!!selectedRoute}
+            animationType="slide"
+            transparent={false}
+            onRequestClose={() => setSelectedRoute(null)}
+          >
+            {selectedRoute && (
+              <View style={styles.modalContainer}>
+                {/* Header مع زر الإغلاق */}
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{selectedRoute.title}</Text>
+                  <TouchableOpacity onPress={() => setSelectedRoute(null)}>
+                    <MaterialIcons name="close" size={24} color="#6d4c41" />
+                  </TouchableOpacity>
+                </View>
 
-              {/* الخريطة المصغرة ومعلومات المسار */}
-              <View style={styles.modalRow}>
+                {/* حالة التحقق */}
+                <View style={styles.statusBadge}>
+                  {selectedRoute.verified ? (
+                    <>
+                      <MaterialIcons name="verified" size={20} color="#4CAF50" />
+                        <Text style={styles.verifiedBadgeText}>{t.verified} {t.route}</Text>
+                    </>
+                  ) : (
+                    <>
+                      <MaterialIcons name="schedule" size={20} color="#FF9800" />
+                      <Text style={styles.pendingBadgeText}>
+                        {t.pendingVerification}
+                        {selectedRoute.status === 'disputed' && ` (${t.needsTribalReview})`}
+                      </Text>
+                    </>
+                  )}
+                </View>
+
+                {/* الخريطة المصغرة */}
                 <View style={styles.miniMapContainer}>
                   <MapView
                     style={styles.miniMap}
                     scrollEnabled={false}
                     zoomEnabled={false}
                     initialRegion={{
-                      latitude: selectedRoute.points[0].lat,
-                      longitude: selectedRoute.points[0].lon,
-                      latitudeDelta: 0.002, // تكبير الخريطة أكثر
-                      longitudeDelta: 0.002,
+                      latitude: selectedRoute.points[0]?.lat || 0,
+                      longitude: selectedRoute.points[0]?.lon || 0,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
                     }}
                   >
                     <Polyline
@@ -1044,136 +1126,127 @@ const RoutePage: React.FC = () => {
                     />
                   </MapView>
                 </View>
-                
-                <View style={styles.routeSummary}>
-                  <Text style={styles.sectionTitle}>Route Summary</Text>
-                  <Text><Text style={styles.boldText}>Total Points:</Text> {selectedRoute.points.length}</Text>
-                  <Text>
-                    <Text style={styles.boldText}>Distance:</Text> {
-                      calculateTotalDistance(selectedRoute.points) > 1000 
-                        ? `${(calculateTotalDistance(selectedRoute.points)/1000).toFixed(2)} km` 
-                        : `${calculateTotalDistance(selectedRoute.points).toFixed(0)} meters`
-                    }
-                  </Text>
-                  <Text><Text style={styles.boldText}>Start Point:</Text></Text>
-                  <Text>Lat: {selectedRoute.points[0].lat.toFixed(6)}</Text>
-                  <Text>Lon: {selectedRoute.points[0].lon.toFixed(6)}</Text>
-                  <Text><Text style={styles.boldText}>End Point:</Text></Text>
-                  <Text>Lat: {selectedRoute.points[selectedRoute.points.length-1].lat.toFixed(6)}</Text>
-                  <Text>Lon: {selectedRoute.points[selectedRoute.points.length-1].lon.toFixed(6)}</Text>
+
+                {/* معلومات المسار */}
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>{t.routeInformation}</Text>
+                  <View style={styles.infoGrid}>
+                    <View style={styles.infoItem}>
+                      <Text style={styles.infoLabel}>{t.pointsCount}</Text>
+                      <Text style={styles.infoValue}>{selectedRoute.points.length}</Text>
+                    </View>
+                    <View style={styles.infoItem}>
+                      <Text style={styles.infoLabel}>{t.distance}</Text>
+                      <Text style={styles.statValue}>
+                        {calculateTotalDistance(tempRoutePoints) > 1000 
+                          ? `${(calculateTotalDistance(tempRoutePoints)/1000).toFixed(2)} ${t.km}` 
+                          : `${calculateTotalDistance(tempRoutePoints).toFixed(0)} ${t.m}`}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
 
-              {/* حالة التحقق */}
-              {!selectedRoute.verified && (
-                <View style={styles.verificationSection}>
-                  <Text style={styles.sectionTitle}>Verification Status</Text>
+                {/* حالة التحقق */}
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>{t.verificationStatus}</Text>
                   {renderVerificationStatus(selectedRoute)}
+                </View>
 
-                  {voteSuccess && (
-                    <View style={styles.successMessage}>
-                      <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
-                      <Text style={styles.successText}>{voteSuccess}</Text>
-                    </View>
-                  )}
-
-                  {voteError && (
-                    <View style={styles.errorMessage}>
-                      <MaterialIcons name="error" size={20} color="#f44336" />
-                      <Text style={styles.errorText}>{voteError}</Text>
-                    </View>
-                  )}
-
+                {/* أزرار التصويت (للمسارات غير الموثقة) */}
+                {!selectedRoute.verified && selectedRoute.status !== 'disputed' && (
                   <View style={styles.voteButtons}>
                     <TouchableOpacity
                       onPress={() => handleRouteVote(selectedRoute._id, 'yes')}
                       disabled={isVoting}
                       style={[
                         styles.voteButton,
-                        styles.voteYesButton,
+                        styles.yesButton,
                         isVoting && styles.disabledButton,
-                        selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'yes' && styles.selectedVote
+                        selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'yes' && styles.activeVoteButton
                       ]}
                     >
-                      <Text style={styles.voteButtonText}>
-                        {isVoting
-                          ? 'Processing...'
-                          : selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'yes'
-                            ? '✔ Voted Yes'
-                            : 'Vote Yes'}
-                      </Text>
+                      {isVoting ? (
+                        <ActivityIndicator color="white" />
+                      ) : selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'yes' ? (
+                          <Text style={styles.buttonText}>✔ {t.votedYes}</Text>
+                      ) : (
+                          <Text style={styles.buttonText}>{t.voteYes}</Text>
+                      )}
                     </TouchableOpacity>
+                    
                     <TouchableOpacity
                       onPress={() => handleRouteVote(selectedRoute._id, 'no')}
                       disabled={isVoting}
                       style={[
                         styles.voteButton,
-                        styles.voteNoButton,
+                        styles.noButton,
                         isVoting && styles.disabledButton,
-                        selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'no' && styles.selectedVote
+                        selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'no' && styles.activeVoteButton
                       ]}
                     >
-                      <Text style={styles.voteButtonText}>
-                        {isVoting
-                          ? 'Processing...'
-                          : selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'no'
-                            ? '✔ Voted No'
-                            : 'Vote No'}
-                      </Text>
+                      {isVoting ? (
+                        <ActivityIndicator color="white" />
+                      ) : selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'no' ? (
+                          <Text style={styles.buttonText}>✔ {t.votedNo}</Text>
+                      ) : (
+                          <Text style={styles.buttonText}>{t.voteNo}</Text>
+                      )}
                     </TouchableOpacity>
                   </View>
-                </View>
-              )}
+                )}
 
-              {/* نقاط المسار */}
-              <View style={styles.pointsSection}>
-                <Text style={styles.sectionTitle}>Route Points</Text>
-                <ScrollView style={styles.pointsContainer}>
-                  <View style={styles.pointsGrid}>
-                    {selectedRoute.points.map((point, index) => (
-                      <View key={index} style={styles.pointCard}>
-                        <Text style={styles.pointTitle}>Point {index + 1}</Text>
-                        <Text>Lat: {point.lat.toFixed(6)}</Text>
-                        <Text>Lon: {point.lon.toFixed(6)}</Text>
+                {/* رسائل الحالة */}
+                {(voteSuccess || voteError || deleteSuccess || deleteError) && (
+                  <View style={styles.statusMessages}>
+                    {voteSuccess && (
+                      <View style={styles.successMessage}>
+                        <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
+                        <Text style={styles.successText}>{voteSuccess}</Text>
                       </View>
-                    ))}
+                    )}
+                    {voteError && (
+                      <View style={styles.errorMessage}>
+                        <MaterialIcons name="error" size={20} color="#f44336" />
+                        <Text style={styles.errorText}>{voteError}</Text>
+                      </View>
+                    )}
+                    {deleteSuccess && (
+                      <View style={styles.successMessage}>
+                        <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
+                        <Text style={styles.successText}>{deleteSuccess}</Text>
+                      </View>
+                    )}
+                    {deleteError && (
+                      <View style={styles.errorMessage}>
+                        <MaterialIcons name="error" size={20} color="#f44336" />
+                        <Text style={styles.errorText}>{deleteError}</Text>
+                      </View>
+                    )}
                   </View>
-                </ScrollView>
-              </View>
+                )}
 
-              {/* رسائل الحذف */}
-              {deleteSuccess && (
-                <View style={styles.successMessage}>
-                  <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
-                  <Text style={styles.successText}>{deleteSuccess}</Text>
+                {/* أزرار الإجراءات */}
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    onPress={() => handleDeleteRoute(selectedRoute._id)}
+                    disabled={selectedRoute.verified}
+                    style={[
+                      styles.deleteButton,
+                      selectedRoute.verified && styles.disabledButton
+                    ]}
+                  >
+                  <Text style={styles.deleteButtonText}>{t.deleteRoute}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => setSelectedRoute(null)}
+                    style={styles.closeButton}
+                  >
+                    <Text style={styles.closeButtonText}>{t.close}</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
-
-              {deleteError && (
-                <View style={styles.errorMessage}>
-                  <MaterialIcons name="error" size={20} color="#f44336" />
-                  <Text style={styles.errorText}>{deleteError}</Text>
-                </View>
-              )}
-
-              {/* أزرار الإجراءات */}
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  onPress={() => handleDeleteRoute(selectedRoute._id)}
-                  style={[styles.primaryButton, styles.deleteButton]}
-                >
-                  <Text style={styles.primaryButtonText}>Delete Route</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setSelectedRoute(null)}
-                  style={styles.primaryButton}
-                >
-                  <Text style={styles.primaryButtonText}>Close</Text>
-                </TouchableOpacity>
               </View>
-            </ScrollView>
-          )}
-        </Modal>
+            )}
+          </Modal>
 
           <VerificationBot
             visible={showBot && !isDrawingRoute}
@@ -1200,106 +1273,7 @@ const RoutePage: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  map: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  filterContainer: {
-    position: 'absolute',
-    top: 80,
-    left: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 20,
-    flexDirection: 'row',
-    padding: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 2,
-  },
-  filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 15,
-    marginHorizontal: 2,
-  },
-  activeFilter: {
-    backgroundColor: '#8d6e63',
-  },
-  filterText: {
-    color: '#5d4037',
-    fontWeight: '500',
-  },
-  activeFilterText: {
-    color: 'white',
-    fontWeight: '500',
-  },
-  topBar: {
-    position: 'absolute',
-    top: 40,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    zIndex: 1,
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    height: 50,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    paddingHorizontal: 10,
-  },
-  searchButton: {
-    padding: 8,
-  },
-  drawButton: {
-    backgroundColor: '#6d4c41',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  drawButtonActive: {
-    backgroundColor: '#f44336',
-  },
-  drawButtonText: {
-    color: '#FFD700',
-    fontWeight: 'bold',
-  },
+
   headerText: {
     position: 'absolute',
     top: 100,
@@ -1321,94 +1295,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5d4037',
   },
-  mapControls: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 25,
-    padding: 5,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 1,
-  },
-  mapControlButton: {
-    padding: 8,
-    marginVertical: 5,
-  },
-  activeMapType: {
-    backgroundColor: '#6d4c41',
-    borderRadius: 20,
-  },
-  nearbyRoutesButton: {
-  position: 'absolute',
-  bottom: 80,
-  right: 20,
-  backgroundColor: 'white',
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingVertical: 10,
-  paddingHorizontal: 15,
-  borderRadius: 25,
-  elevation: 3,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  zIndex: 1, // أضف هذه السطر
-  overflow: 'hidden', // أضف هذه السطر
-},
-  nearbyRoutesText: {
-    marginLeft: 8,
-    color: '#6d4c41',
-    fontWeight: 'bold',
-  },
-  drawingContainer: {
-    position: 'absolute',
-    top: 100,
-    left: 20,
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 15,
-    elevation: 5,
-    zIndex: 10,
-  },
-  drawingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  drawingTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#6d4c41',
-  },
-  drawingControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   pointsCount: {
     color: '#5d4037',
-  },
-  saveButton: {
-    backgroundColor: '#6d4c41',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-  },
-  saveButtonText: {
-    color: '#FFD700',
-    fontWeight: 'bold',
-  },
-  disabledButton: {
-    opacity: 0.5,
   },
   routesList: {
     position: 'absolute',
@@ -1502,10 +1390,6 @@ const styles = StyleSheet.create({
   pendingStatus: {
     backgroundColor: '#FFF8E1',
     color: '#FFA000',
-  },
-  miniMap: {
-    width: '100%',
-    height: '100%',
   },
   summaryBox: {
     backgroundColor: '#f5f5f5',
@@ -1602,52 +1486,10 @@ const styles = StyleSheet.create({
     color: '#757575',
     marginTop: 5,
   },
-  successMessage: {
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-    borderRadius: 4,
-    padding: 10,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  successText: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  errorMessage: {
-    backgroundColor: 'rgba(244, 67, 54, 0.1)',
-    borderWidth: 1,
-    borderColor: '#f44336',
-    borderRadius: 4,
-    padding: 10,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  errorText: {
-    color: '#f44336',
-    fontWeight: 'bold',
-  },
 verificationSection: {
   marginTop: 10,
   marginBottom: 10,
 },
-  voteButtons: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 15,
-  },
-  voteButton: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   voteYesButton: {
     backgroundColor: '#4CAF50',
   },
@@ -1674,9 +1516,6 @@ verificationSection: {
     color: '#FFD700',
     fontWeight: 'bold',
     marginLeft: 8,
-  },
-  deleteButton: {
-    backgroundColor: '#f44336',
   },
   botContainer: {
     position: 'absolute',
@@ -1788,22 +1627,10 @@ modalRow: {
   gap: 8, // تقليل المسافة بين العناصر
   marginBottom: 8,
 },
-miniMapContainer: {
-  height: 120, // تقليل ارتفاع الخريطة أكثر
-  borderRadius: 6,
-  overflow: 'hidden',
-  marginBottom: 5,
-},
 routeSummary: {
   backgroundColor: '#f8f8f8',
   padding: 8,
   borderRadius: 6,
-},
-sectionTitle: {
-  fontSize: 14, // تصغير حجم عناوين الأقسام
-  fontWeight: '600',
-  color: '#5d4037',
-  marginBottom: 5,
 },
 verificationContainer: {
   backgroundColor: '#f8f8f8',
@@ -1827,13 +1654,6 @@ pointCard: {
   width: '48%',
   marginBottom: 5,
 },
-actionButtons: {
-  flexDirection: 'row',
-  gap: 8,
-  paddingVertical: 8,
-  position: 'relative', // تغيير من absolute إلى relative
-  marginTop: 5,
-},
 primaryButton: {
   backgroundColor: '#6d4c41',
   padding: 8,
@@ -1842,6 +1662,561 @@ primaryButton: {
   justifyContent: 'center',
   alignItems: 'center',
 },
+container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  map: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+topBar: {
+  position: 'absolute',
+  top: 40,
+  left: 20,
+  right: 20,
+  zIndex: 10,
+},
+searchContainer: {
+  flexDirection: 'row',
+  backgroundColor: 'white',
+  borderRadius: 25,
+  paddingHorizontal: 15,
+  height: 50,
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 3,
+},
+searchInput: {
+  flex: 1,
+  height: 40,
+  paddingHorizontal: 10,
+  fontSize: 16,
+},
+searchButton: {
+  padding: 8,
+},
+filterContainer: {
+  flexDirection: 'row',
+  marginLeft: 10,
+  backgroundColor: 'rgba(255,255,255,0.9)',
+  borderRadius: 20,
+  padding: 5,
+},
+filterButton: {
+  paddingHorizontal: 12,
+  paddingVertical: 8,
+  borderRadius: 15,
+  marginHorizontal: 2,
+},
+activeFilter: {
+  backgroundColor: '#8d6e63',
+},
+filterText: {
+  color: '#5d4037',
+  fontWeight: '500',
+  fontSize: 12,
+},
+activeFilterText: {
+  color: 'white',
+},
+nearbyButton: {
+  marginLeft: 10,
+  padding: 8,
+},
+  mapControlsContainer: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  mapControls: {
+    backgroundColor: 'white',
+    borderRadius: 25,
+    padding: 5,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mapControlButton: {
+    padding: 8,
+    marginVertical: 5,
+  },
+  activeMapType: {
+    backgroundColor: '#6d4c41',
+    borderRadius: 20,
+  },
+  nearbyRoutesButton: {
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 25,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  nearbyRoutesText: {
+    marginLeft: 8,
+    color: '#6d4c41',
+    fontWeight: 'bold',
+  },
+  formLabel: {
+    fontSize: 14,
+    color: '#5d4037',
+    fontWeight: '500',
+    marginBottom: 5,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  formGroup: {
+    flex: 1,
+  },
+  formValue: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  colorPicker: {
+    marginTop: 10,
+  },
+  colorOptions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 5,
+  },
+  colorOption: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedColor: {
+    borderColor: '#6d4c41',
+    transform: [{ scale: 1.1 }],
+  },
+  drawingControls: {
+    marginTop: 10,
+  },
+drawButton: {
+  position: 'absolute',
+  top: 100,
+  right: 20,
+  backgroundColor: 'white',
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  borderRadius: 25,
+  elevation: 3,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  zIndex: 1,
+  borderWidth: 1,
+  borderColor: '#f0e6e2',
+},
+drawButtonText: {
+  color: '#6d4c41',
+  fontWeight: 'bold',
+  marginLeft: 8,
+  fontSize: 16,
+},
+drawingContainer: {
+  position: 'absolute',
+  bottom: hp(2),
+  left: wp(5),
+  right: wp(5),
+  backgroundColor: 'white',
+  borderRadius: wp(3),
+  padding: wp(4),
+  elevation: 5,
+  zIndex: 10,
+  borderWidth: 1,
+  borderColor: '#f0e6e2',
+  maxHeight: hp(40),
+},
+drawingHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: hp(2),
+},
+  drawingTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#6d4c41',
+  },
+  routeForm: {
+    gap: 16,
+  },
+  formInput: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    padding: 14,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  routeStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  statItem: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    padding: 12,
+    flex: 1,
+    marginHorizontal: 4,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#757575',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6d4c41',
+  },
+  instructions: {
+    fontSize: 14,
+    color: '#757575',
+    textAlign: 'center',
+    marginVertical: 8,
+  },
+formContainer: {
+  position: 'absolute',
+  bottom: hp(2),
+  left: wp(5),
+  right: wp(5),
+  backgroundColor: "white",
+  borderRadius: wp(3),
+  padding: wp(4),
+  elevation: 5,
+  zIndex: 10,
+  borderWidth: 1,
+  borderColor: "#f0e6e2",
+  maxHeight: hp(40),
+},
+toggleFormButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: hp(1),
+  backgroundColor: '#f5f5f5',
+  borderRadius: wp(2),
+  marginBottom: hp(1),
+},
+toggleFormText: {
+  color: '#6d4c41',
+  marginLeft: wp(2),
+  fontSize: wp(4),
+},
+standardButton: {
+  backgroundColor: "#6d4c41",
+  padding: hp(1.5),
+  borderRadius: wp(2),
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'row',
+  elevation: 2,
+  minWidth: wp(30),
+},
+standardButtonText: {
+  color: "#FFD700",
+  fontSize: wp(4),
+  fontWeight: 'bold',
+},
+secondaryButton: {
+  backgroundColor: "#f5f5f5",
+  padding: hp(1.5),
+  borderRadius: wp(2),
+  borderWidth: 1,
+  borderColor: "#d7ccc8",
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'row',
+  minWidth: wp(30),
+},
+secondaryButtonText: {
+  color: "#5d4037",
+  fontSize: wp(4),
+},
+dangerButton: {
+  backgroundColor: "#f44336",
+  padding: hp(1.5),
+  borderRadius: wp(2),
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'row',
+  minWidth: wp(30),
+},
+dangerButtonText: {
+  color: "white",
+  fontSize: wp(4),
+  fontWeight: 'bold',
+},
+minimizedSummary: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: wp(2),
+  backgroundColor: '#f5f5f5',
+  borderRadius: wp(2),
+},
+minimizedText: {
+  color: '#6d4c41',
+  fontSize: wp(3.5),
+},
+expandButton: {
+  padding: wp(1),
+},
+formHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 10,
+},
+headerLeft: {
+  flex: 1,
+},
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10,
+},
+saveButton: {
+  backgroundColor: '#6d4c41',
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 20,
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: 80,
+},
+saveButtonText: {
+  color: 'white',
+  fontWeight: 'bold',
+  fontSize: 14,
+},
+minimizeButton: {
+  padding: 6,
+},
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#6d4c41',
+    flex: 1,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  verifiedBadgeText: {
+    color: '#4CAF50',
+    fontWeight: 'bold',
+  },
+  pendingBadgeText: {
+    color: '#FF9800',
+    fontWeight: 'bold',
+  },
+  miniMapContainer: {
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#f0e6e2',
+  },
+  miniMap: {
+    width: '100%',
+    height: '100%',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#5d4037',
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0e6e2',
+    paddingBottom: 5,
+  },
+  infoGrid: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  infoItem: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#757575',
+    marginBottom: 5,
+  },
+  infoValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#6d4c41',
+  },
+  voteButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 15,
+  },
+  voteButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  yesButton: {
+    backgroundColor: '#4CAF50',
+  },
+  noButton: {
+    backgroundColor: '#f44336',
+  },
+  activeVoteButton: {
+    borderWidth: 3,
+    borderColor: 'gold',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  statusMessages: {
+    marginTop: 15,
+  },
+  successMessage: {
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  successText: {
+    color: '#4CAF50',
+    fontWeight: 'bold',
+  },
+  errorMessage: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    borderWidth: 1,
+    borderColor: '#f44336',
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  errorText: {
+    color: '#f44336',
+    fontWeight: 'bold',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  deleteButton: {
+    backgroundColor: '#f44336',
+    padding: 15,
+    borderRadius: 8,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    backgroundColor: '#6d4c41',
+    padding: 15,
+    borderRadius: 8,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+    rtlText: {
+    textAlign: 'right',
+  },
+  ltrText: {
+    textAlign: 'left',
+  },
+  rtlFlex: {
+    flexDirection: 'row-reverse',
+  },
+  ltrFlex: {
+    flexDirection: 'row',
+  },
+  rtlContainer: {
+    right: undefined,
+    left: 20,
+  }
 });
-
 export default RoutePage;

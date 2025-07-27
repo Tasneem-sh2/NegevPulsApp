@@ -3,9 +3,10 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { AuthProvider } from '@/app/AuthContext'; // ✅ تأكد من المسار الصحيح إذا كان مختلفًا
 
 import { useColorScheme } from '@/hooks/useColorScheme';
-import  LanguageProvider  from '@/frontend/context/LanguageProvider'; // ✅ تأكدي من المسار الصحيح
+import { LanguageProvider } from '@/frontend/context/LanguageProvider'; // ✅ تأكدي من المسار الصحيح
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -17,8 +18,9 @@ export default function RootLayout() {
     return null;
   }
 
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+return (
+  <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <AuthProvider>
       <LanguageProvider>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -26,6 +28,8 @@ export default function RootLayout() {
         </Stack>
         <StatusBar style="auto" />
       </LanguageProvider>
-    </ThemeProvider>
-  );
+    </AuthProvider>
+  </ThemeProvider>
+);
+
 }

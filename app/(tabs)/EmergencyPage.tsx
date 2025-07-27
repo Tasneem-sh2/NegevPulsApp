@@ -18,19 +18,15 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-
+import { useLanguage } from '@/frontend/context/LanguageProvider';
+import { useTranslations } from '@/frontend/constants/locales';
+import { I18nManager } from 'react-native';
 
 const MAPBOX_TOKEN = process.env.MAPBOX_DOWNLOADS_TOKEN || 'sk.eyJ1IjoidGFzbmVlbTIwMDIiLCJhIjoiY21jZ3l4bHJ3MGVyejJqc2h3YjkyY3hhcSJ9.OJCc5jNljboKnrfP1yfpYA';
 
 MapboxGL.setAccessToken(MAPBOX_TOKEN);
 
 const { PointAnnotation, Camera } = MapboxGL;
-const speakInstruction = (instruction: string) => {
-  Speech.speak(instruction, {
-    language: 'en',
-    rate: 0.9
-  });
-};
 
 interface Landmark {
   id: number;
@@ -69,6 +65,11 @@ const HomePage: React.FC = () => {
     center: [35.513889, 33.892166] as [number, number],
     zoom: 10
   });
+  
+  const { language, changeLanguage, isRTL } = useLanguage();
+  const t = useTranslations().home;
+  type LocaleKeys = 'en' | 'ar' | 'he';
+  
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [navigationMode, setNavigationMode] = useState(false);
   const [userHeading, setUserHeading] = useState<number | undefined>(undefined);
@@ -91,36 +92,56 @@ const HomePage: React.FC = () => {
     { lat: 31.156483, lon: 34.805685, title: "The Entry of the Electric Company" },
     { lat: 31.155741, lon: 34.806393, title: "The Green Container" },
   ];
+
   const getArrowIcon = (modifier: string): any => {
-  switch (modifier) {
-    case 'left':
-      return 'arrow-left';
-    case 'right':
-      return 'arrow-right';
-    case 'straight':
-      return 'arrow-up';
-    case 'uturn':
-      return 'u-turn-left'; // يمكنك تغييره حسب التوجه
-    case 'sharp left':
-      return 'arrow-top-left-bold';
-    case 'sharp right':
-      return 'arrow-top-right-bold';
-    case 'slight left':
-      return 'arrow-top-left';
-    case 'slight right':
-      return 'arrow-top-right';
-    default:
-      return 'arrow-up-bold';
-  }
-};
-const calculateETA = (durationStr: string): string => {
-  const minutes = parseFloat(durationStr);
-  const arrival = new Date(Date.now() + minutes * 60 * 1000);
-return arrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-};
+    switch (modifier) {
+      case 'left': return 'arrow-left';
+      case 'right': return 'arrow-right';
+      case 'straight': return 'arrow-up';
+      case 'uturn': return 'u-turn-left';
+      case 'sharp left': return 'arrow-top-left-bold';
+      case 'sharp right': return 'arrow-top-right-bold';
+      case 'slight left': return 'arrow-top-left';
+      case 'slight right': return 'arrow-top-right';
+      default: return 'arrow-up-bold';
+    }
+  };
+
+  // دالة نطق التعليمات حسب اللغة المختارة
+  const speakInstruction = (instruction: string) => {
+    Speech.speak(instruction, {
+      language: language === 'ar' ? 'ar' : language === 'he' ? 'he' : 'en',
+      rate: 0.9
+    });
+  };
+
+  // دالة لتغيير اللغة
+  const toggleLanguage = () => {
+    let newLang: LocaleKeys;
+    if (language === 'en') newLang = 'ar';
+    else if (language === 'ar') newLang = 'he';
+    else newLang = 'en';
+    
+    changeLanguage(newLang);
+    I18nManager.forceRTL(newLang === 'ar' || newLang === 'he');
+  };
+
+  const getCurrentLanguageName = () => {
+    switch(language) {
+      case 'en': return 'English';
+      case 'ar': return 'العربية';
+      case 'he': return 'עברית';
+      default: return 'English';
+    }
+  };
+
+  const calculateETA = (durationStr: string): string => {
+    const minutes = parseFloat(durationStr);
+    const arrival = new Date(Date.now() + minutes * 60 * 1000);
+    return arrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
 
   const [landmarks, setLandmarks] = useState(staticLandmarks);
-
   const getCurrentLocation = async (): Promise<{ lat: number; lon: number }> => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -436,39 +457,52 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 };
 
-  return (
+    return (
     <View style={styles.container}>
-        {navigationMode && navigationSteps.length > 0 && (
-    <View style={styles.navigationOverlay}>
-      <View style={styles.arrowContainer}>
-        <MaterialCommunityIcons
-          name={getArrowIcon(navigationSteps[currentStepIndex]?.maneuver.modifier)}
-          size={36}
-          color="#fff"
-        />
-      </View>
-      <View style={styles.directionInfo}>
-        <Text style={styles.distanceText}>
-          {Math.round(navigationSteps[currentStepIndex]?.distance)} m
+      {/* زر تغيير اللغة */}
+      <TouchableOpacity 
+        style={[
+          styles.languageButton,
+          isRTL ? { left: 20 } : { right: 20 }
+        ]}
+        onPress={toggleLanguage}
+      >
+        <Text style={styles.languageText}>
+          {getCurrentLanguageName()}
         </Text>
-        <Text style={styles.instructionText2}>
-          {navigationSteps[currentStepIndex]?.maneuver.instruction}
-        </Text>
-             {routeDetails && (
-          <Text style={styles.etaText}>
-             ETA: {calculateETA(routeDetails.duration)}
-          </Text>
-        )}
-      </View>
-    </View>
-  )}
+      </TouchableOpacity>
+
+      {/* واجهة الملاحة */}
+      {navigationMode && navigationSteps.length > 0 && (
+        <View style={styles.navigationOverlay}>
+          <View style={styles.arrowContainer}>
+            <MaterialCommunityIcons
+              name={getArrowIcon(navigationSteps[currentStepIndex]?.maneuver.modifier)}
+              size={36}
+              color="#fff"
+            />
+          </View>
+          <View style={styles.directionInfo}>
+            <Text style={styles.distanceText}>
+              {Math.round(navigationSteps[currentStepIndex]?.distance)} {t.distance}
+            </Text>
+            <Text style={styles.instructionText}>
+              {navigationSteps[currentStepIndex]?.maneuver.instruction}
+            </Text>
+            {routeDetails && (
+              <Text style={styles.etaText}>
+                {t.eta}: {calculateETA(routeDetails.duration)}
+              </Text>
+            )}
+          </View>
+        </View>
+      )}
       <MapboxGL.MapView
         ref={mapRef}
-        style={styles.map}
-        styleURL="mapbox://styles/mapbox/streets-v11"
-          onPress={() => setShowControls(false)} // إخفاء عند الضغط على الخريطة
-
-      >
+          style={styles.map}
+          styleURL="mapbox://styles/mapbox/streets-v11"
+          onPress={() => setShowControls(false)}
+        >
         <Camera
           ref={cameraRef}
           followUserLocation={navigationMode}
@@ -478,12 +512,12 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
         />
 
         <MapboxGL.UserLocation
-  onUpdate={(location) => {
-    // تحديث الموقع الحالي
-    setLocation({
-      lat: location.coords.latitude,
-      lon: location.coords.longitude,
-    });
+          onUpdate={(location) => {
+            // تحديث الموقع الحالي
+            setLocation({
+              lat: location.coords.latitude,
+              lon: location.coords.longitude,
+          });
     
     // تحديث اتجاه المستخدم
     setUserHeading(location.coords.heading);
@@ -524,12 +558,10 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
       }
     }
   }}
-  renderMode={UserLocationRenderMode.Normal}
-  androidRenderMode={UserLocationRenderMode.Normal}
-/>
-
-        
-        {startPoint && (
+      renderMode={UserLocationRenderMode.Normal}
+      androidRenderMode={UserLocationRenderMode.Normal}
+    />
+            {startPoint && (
           <PointAnnotation
             id="startPoint"
             coordinate={[startPoint.lon, startPoint.lat]}
@@ -700,26 +732,27 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   )}
 </View>
       
+      {/* عناصر التحكم */}
       {showControls && (
         <ScrollView 
           style={styles.controlsContainer}
           contentContainerStyle={styles.scrollContent}
         >
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Starting Point:</Text>
+            <Text style={styles.label}>{t.startPoint}</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && { textAlign: 'right' }]}
               value={startAddress}
               onChangeText={setStartAddress}
-              placeholder="Current Location or specific address"
+              placeholder={t.startPlaceholder || "Current Location or specific address"}
               placeholderTextColor="#a1887f"
             />
-            <View style={styles.buttonRow}>
+            <View style={[styles.buttonRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity 
                 style={styles.button} 
                 onPress={updateStartPoint}
               >
-                <Text style={styles.buttonText}>Set Start</Text>
+                <Text style={styles.buttonText}>{t.setStart}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.secondaryButton} 
@@ -735,20 +768,20 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Destination:</Text>
-            <TextInput
-              style={styles.input}
-              value={destinationAddress}
-              onChangeText={setDestinationAddress}
-              placeholder="Destination address"
-              placeholderTextColor="#a1887f"
-            />
+            <Text style={styles.label}>{t.destination}</Text>
+              <TextInput
+                style={styles.input}
+                value={destinationAddress}
+                onChangeText={setDestinationAddress}
+                placeholder={t.destinationPlaceholder}
+                placeholderTextColor="#a1887f"
+              />
             <View style={styles.buttonRow}>
               <TouchableOpacity 
                 style={styles.button} 
                 onPress={updateDestination}
               >
-                <Text style={styles.buttonText}>Set Destination</Text>
+                <Text style={styles.buttonText}>{t.setDestination}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.secondaryButton} 
@@ -764,13 +797,13 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Route Actions</Text>
+            <Text style={styles.sectionTitle}>{t.routeActions}</Text>
             <View style={styles.buttonRow}>
               <TouchableOpacity 
                 style={styles.routeButton} 
                 onPress={fetchRoutes}
               >
-                <Text style={styles.buttonText}>Show Routes</Text>
+                <Text style={styles.buttonText}>{t.showRoutes}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.routeButton} 
@@ -778,7 +811,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
                 disabled={!startPoint || !destination || loading}
               >
                 <Text style={styles.buttonText}>
-                  {loading ? "Loading..." : "Show Route"}
+                  {loading ? "Loading..." : t.showRoute}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -788,24 +821,24 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
               onPress={startNavigation} 
               disabled={!route}
             >
-              <Text style={styles.buttonText}>Start Navigation</Text>
+              <Text style={styles.buttonText}>{t.startNavigation}</Text>
               <Ionicons name="navigate" size={20} color="white" />
             </TouchableOpacity>
           </View>
 
           {routeDetails && (
             <View style={styles.detailsContainer}>
-              <Text style={styles.detailsTitle}>Route Information</Text>
-              <View style={styles.routeInfo}>
-                <Text><MaterialCommunityIcons name="map-marker-distance" size={18} color="#5d4037" /> Distance: {routeDetails.distance}</Text>
-                <Text><MaterialCommunityIcons name="clock-outline" size={18} color="#5d4037" /> Duration: {routeDetails.duration}</Text>
-              </View>
+              <Text style={styles.detailsTitle}>{t.routeInfo}</Text>
+                <View style={styles.routeInfo}>
+                  <Text><MaterialCommunityIcons name="map-marker-distance" size={18} color="#5d4037" /> {t.distance}: {routeDetails.distance}</Text>
+                  <Text><MaterialCommunityIcons name="clock-outline" size={18} color="#5d4037" /> {t.duration}: {routeDetails.duration}</Text>
+                </View>
             </View>
           )}
 
           {navigationSteps.length > 0 && (
             <View style={styles.instructionsContainer}>
-              <Text style={styles.sectionTitle}>Navigation Steps</Text>
+              <Text style={styles.sectionTitle}>{t.navigationSteps}</Text>
               <View style={styles.instructionsList}>
                 {navigationSteps.slice(currentStepIndex, currentStepIndex + 3).map((step, index) => (
                   <View key={index} style={styles.instructionItem}>
@@ -818,31 +851,31 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
               </View>
               <View style={styles.buttonRow}>
                 <TouchableOpacity 
-                  style={styles.secondaryRouteButton}
-                  onPress={() => {
-                    if (currentStepIndex > 0) {
-                      setCurrentStepIndex(currentStepIndex - 1);
-                    }
-                  }}
-                  disabled={currentStepIndex === 0}
-                >
-                  <Text style={styles.buttonText}>Previous</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.secondaryRouteButton}
-                  onPress={() => {
-                    if (currentStepIndex < navigationSteps.length - 1) {
-                      setCurrentStepIndex(currentStepIndex + 1);
-                      const { location } = navigationSteps[currentStepIndex + 1].maneuver;
-                      cameraRef.current?.flyTo(location, 1000);
-                    } else {
-                      alert("You have reached your destination!");
-                    }
-                  }}
-                  disabled={currentStepIndex >= navigationSteps.length - 1}
-                >
-                  <Text style={styles.buttonText}>Next</Text>
-                </TouchableOpacity>
+                    style={styles.secondaryRouteButton}
+                    onPress={() => {
+                      if (currentStepIndex > 0) {
+                        setCurrentStepIndex(currentStepIndex - 1);
+                      }
+                    }}
+                    disabled={currentStepIndex === 0}
+                  >
+                    <Text style={styles.buttonText}>{t.previous}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.secondaryRouteButton}
+                    onPress={() => {
+                      if (currentStepIndex < navigationSteps.length - 1) {
+                        setCurrentStepIndex(currentStepIndex + 1);
+                        const { location } = navigationSteps[currentStepIndex + 1].maneuver;
+                        cameraRef.current?.flyTo(location, 1000);
+                      } else {
+                        alert("You have reached your destination!");
+                      }
+                    }}
+                    disabled={currentStepIndex >= navigationSteps.length - 1}
+                  >
+                    <Text style={styles.buttonText}>{t.next}</Text>
+                  </TouchableOpacity>
               </View>
             </View>
           )}
@@ -858,10 +891,10 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
             <MaterialIcons name="keyboard-arrow-up" size={28} color="#5d4037" />
           </TouchableOpacity>
           <Text style={styles.minimizedText}>
-            {startPoint?.title ? `From: ${startPoint.title}` : 'Set starting point'}
+            {startPoint?.title ? `${t.startPoint}: ${startPoint.title}` : t.startPlaceholder}
           </Text>
           <Text style={styles.minimizedText}>
-            {destination?.title ? `To: ${destination.title}` : 'Set destination'}
+            {destination?.title ? `${t.destination}: ${destination.title}` : t.destinationPlaceholder}
           </Text>
         </View>
       )}
@@ -1177,7 +1210,21 @@ etaText: {
 stopButton: {
   backgroundColor: '#ff4444',
 },
-
+  languageButton: {
+    position: 'absolute',
+    top: 50,
+    zIndex: 1001,
+    backgroundColor: 'rgba(109, 76, 65, 0.9)',
+    padding: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FFD54F',
+  },
+  languageText: {
+    color: '#FFD54F',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
 
 });
 

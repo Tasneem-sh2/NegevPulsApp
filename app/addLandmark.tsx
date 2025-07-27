@@ -17,15 +17,19 @@ import MapView, { Marker } from 'react-native-maps';
 import axios, { AxiosError } from 'axios';
 import { useRouter } from 'expo-router/build/hooks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MaterialIcons ,Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from 'react-native-responsive-screen';
+import { useLanguage } from '@/frontend/context/LanguageProvider';
+import { useTranslations } from '@/frontend/constants/locales';
+import { I18nManager } from 'react-native';
+
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
-// Add this state
-const [verificationRadius, setVerificationRadius] = useState(500);
-
-
 const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
 
 // Types
@@ -95,6 +99,10 @@ interface ErrorResponse {
     status?: number;
   };
 }
+interface Location {
+  lat: number;
+  lon: number;
+}
 interface VerificationBotProps {
   visible: boolean;
   landmark: Landmark | null;
@@ -102,6 +110,41 @@ interface VerificationBotProps {
   onClose: () => void;
   onLandmarkPress: () => void; // هذه الخاصية مطلوبة
 }
+interface CollapsibleDrawerProps {
+  title: string;
+  children: React.ReactNode;
+}
+export const CollapsibleDrawer: React.FC<CollapsibleDrawerProps> = ({ title, children }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  return (
+    <>
+      {isExpanded ? (
+        <View style={styles.expandedContainer}>
+          <TouchableOpacity 
+            style={styles.header}
+            onPress={() => setIsExpanded(false)}
+          >
+            <Text style={styles.title}>{title}</Text>
+            <MaterialIcons name="keyboard-arrow-down" size={24} color="#6d4c41" />
+          </TouchableOpacity>
+          
+          <View style={styles.content}>
+            {children}
+          </View>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={styles.collapsedButton}
+          onPress={() => setIsExpanded(true)}
+        >
+          <MaterialIcons name="keyboard-arrow-up" size={24} color="#6d4c41" />
+        </TouchableOpacity>
+      )}
+    </>
+  );
+};
+
 const VerificationBot: React.FC<{
   visible: boolean;
   landmark: Landmark | null;
@@ -109,17 +152,18 @@ const VerificationBot: React.FC<{
   onClose: () => void;
   onLandmarkPress: () => void;
 }> = ({ visible, landmark, onVote, onClose, onLandmarkPress }) => {
+  const t = useTranslations();
+  
   if (!visible || !landmark) return null;
 
   return (
     <View style={styles.botContainer}>
-      {/* Header مع أيقونة قريبة */}
       <View style={styles.botHeader}>
         <TouchableOpacity onPress={onClose} style={styles.botCloseIcon}>
           <Ionicons name="close" size={24} color="#6d4c41" />
         </TouchableOpacity>
         <MaterialIcons name="support-agent" size={28} color="#6d4c41" style={styles.botIcon} />
-        <Text style={styles.botTitle}>Help Verify</Text>
+          <Text style={styles.botTitle}>{t.addLandmark.helpVerify}</Text>
       </View>
       
       {/* محتوى البطاقة */}
@@ -172,6 +216,7 @@ const LandmarkListItem: React.FC<{
   onClick: () => void;
   isSelected: boolean;
 }> = ({ landmark, onClick, isSelected }) => {
+  const t = useTranslations();
   return (
     <TouchableOpacity 
       onPress={onClick}
@@ -202,19 +247,20 @@ const LandmarkListItem: React.FC<{
             {landmark.verified ? (
               <>
                 <MaterialIcons name="verified" size={14} color="#4CAF50" />
-                <Text style={styles.verifiedText}>Verified</Text>
+                <Text style={styles.pendingText}>{t.addLandmark.verified}</Text>
+
               </>
             ) : (
               <>
                 <MaterialIcons name="schedule" size={14} color="#FF9800" />
-                <Text style={styles.pendingText}>Pending Verification</Text>
+                  <Text style={styles.pendingText}>{t.addLandmark.pendingVerification}</Text>
               </>
             )}
           </View>
+          {isSelected && (
+            <MaterialIcons name="chevron-right" size={20} color="#6d4c41" />
+          )}
         </View>
-        {isSelected && (
-          <MaterialIcons name="chevron-right" size={20} color="#6d4c41" />
-        )}
       </View>
     </TouchableOpacity>
   );
@@ -274,8 +320,7 @@ const LandmarkModal: React.FC<{
 
   const currentUserVote = landmark.votes.find(v => v.userId === currentUser?._id);
   const userWeight = currentUserVote?.weight || 0;
-
-
+  
   return (
     <Modal
       animationType="slide"
@@ -540,20 +585,19 @@ const LandmarkModal: React.FC<{
             <View style={styles.actionButtons}>
               {currentUser && (
                 <TouchableOpacity 
-                  onPress={() => onDelete(landmark._id)}
-                    disabled={
-                      (landmark.createdBy?.toString() ?? '') !== currentUser._id || 
-                      landmark.verified || // إضافة هذا الشرط
-                      currentUser.role !== 'admin'
-                    }
-                    style={[
-                      styles.deleteButton,
-                      ((landmark.createdBy.toString() !== currentUser._id && 
-                      currentUser.role !== 'admin') || landmark.verified) && styles.disabledButton
-                    ]}
-                  >
-                    <Text style={styles.deleteButtonText}>Delete Landmark</Text>
-                  </TouchableOpacity>
+                onPress={() => onDelete(landmark._id)}
+                disabled={
+                  (landmark.createdBy?.toString() ?? '') !== currentUser._id && 
+                  currentUser.role !== 'admin'
+                }
+                style={[
+                  styles.deleteButton,
+                  ((landmark.createdBy?.toString() ?? '') !== currentUser._id && 
+                  currentUser.role !== 'admin') && styles.disabledButton
+                ]}
+              >
+                <Text style={styles.deleteButtonText}>Delete Landmark</Text>
+              </TouchableOpacity>
               )}
               <TouchableOpacity 
                 onPress={onClose}
@@ -571,6 +615,7 @@ const LandmarkModal: React.FC<{
 
 // Main Component
 const LandmarkPage: React.FC = () => {
+const [verificationRadius, setVerificationRadius] = useState(500);
   const mapRef = useRef<MapView>(null);
   const [location, setLocation] = useState<LocationCoords | null>(null);
   const [landmarks, setLandmarks] = useState<Landmark[]>([]);
@@ -611,6 +656,69 @@ const LandmarkPage: React.FC = () => {
   const [showNearbyOnly, setShowNearbyOnly] = useState(false);
   const [filter, setFilter] = useState<'all' | 'verified' | 'unverified'>('all');
   const [botDisabled, setBotDisabled] = useState(false);
+  const [isFormVisible, setIsFormVisible] = useState(true);
+  const [isDrawingWindowExpanded, setIsDrawingWindowExpanded] = useState(true);
+  const [isFormMinimized, setIsFormMinimized] = useState(false);
+  const { language, isRTL } = useLanguage();
+  const t = useTranslations().addLandmark;
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [image, setImage] = useState<string | null>(null);
+
+  const takePhoto = async () => {
+    let result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
+  const getCurrentLocation = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(t.error, t.validation.locationRequired);
+      return;
+    }
+
+    let location = await Location.getCurrentPositionAsync({});
+    setLocation({
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (!name) {
+      Alert.alert(t.error, t.validation.nameRequired);
+      return;
+    }
+
+    if (!location) {
+      Alert.alert(t.error, t.validation.locationRequired);
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // هنا كود إرسال البيانات للخادم
+      Alert.alert(t.success, t.success);
+      // إعادة تعيين الحقول بعد الإرسال
+      setName('');
+      setDescription('');
+      setLocation(null);
+      setImage(null);
+    } catch (error) {
+      Alert.alert(t.error, t.error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 // Load landmarks
   useEffect(() => {
     const loadLandmarks = async () => {
@@ -681,7 +789,6 @@ useEffect(() => {
       setVerificationRadius(response.data.radius);
     } catch (error) {
       console.error('Error fetching verification radius:', error);
-      // Use default if API fails
       setVerificationRadius(500);
     }
   };
@@ -1240,158 +1347,113 @@ const editDistance = (s1: string, s2: string) => {
       {isMapLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#6d4c41" />
-          <Text>Loading map...</Text>
         </View>
       ) : (
         <>
-// في الجزء الخاص بعرض أنواع الخرائط في searchContainer
-<View style={styles.searchContainer}>
-  <TextInput
-    placeholder="Search landmarks or areas..."
-    placeholderTextColor="#888"
-    value={searchQuery}
-    onChangeText={setSearchQuery}
-    onSubmitEditing={handleSearch}
-    style={styles.searchInput}
-    returnKeyType="search"
-  />
-  <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-    <MaterialIcons name="search" size={24} color="#6d4c41" />
-  </TouchableOpacity>
+          {/* Top Bar with Search and Filters */}
+          <View style={styles.topBar}>
+            <View style={styles.searchContainer}>
+              <TextInput
+                placeholder={t.searchPlaceholder}
+                placeholderTextColor="#888"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleSearch}
+                style={[styles.searchInput, isRTL && { textAlign: 'right' }]}
+              />
+              <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+                <MaterialIcons name="search" size={24} color="#6d4c41" />
+              </TouchableOpacity>
 
-  {/* أنواع الخريطة */}
-  <View style={styles.mapTypeContainer}>
-    {/* Standard */}
-    <TouchableOpacity 
-      onPress={() => setMapType('standard')} 
-      style={[
-        styles.mapTypeButton,
-        mapType === 'standard' && styles.activeMapType
-      ]}
-    >
-      <Ionicons 
-        name="map" 
-        size={20} 
-        color={mapType === 'standard' ? 'white' : '#6d4c41'} 
-      />
-    </TouchableOpacity>
+              <View style={styles.filterContainer}>
+                <TouchableOpacity 
+                  onPress={() => setFilter('all')} 
+                  style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
+                >
+                  <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>
+                    {t.filterAll}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  onPress={() => setFilter('verified')} 
+                  style={[styles.filterButton, filter === 'verified' && styles.activeFilter]}
+                >
+                  <Text style={[styles.filterText, filter === 'verified' && styles.activeFilterText]}>
+                    {t.filterVerified}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  onPress={() => setFilter('unverified')} 
+                  style={[styles.filterButton, filter === 'unverified' && styles.activeFilter]}
+                >
+                  <Text style={[styles.filterText, filter === 'unverified' && styles.activeFilterText]}>
+                    {t.filterPending}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-    {/* Satellite */}
-    <TouchableOpacity 
-      onPress={() => setMapType('satellite')} 
-      style={[
-        styles.mapTypeButton,
-        mapType === 'satellite' && styles.activeMapType
-      ]}
-    >
-      <Ionicons 
-        name="earth" 
-        size={20} 
-        color={mapType === 'satellite' ? 'white' : '#6d4c41'} 
-      />
-    </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.nearbyButton}
+                onPress={() => setShowNearbyOnly(!showNearbyOnly)}
+              >
+                <MaterialIcons name="near-me" size={24} color="#6d4c41" />
+              </TouchableOpacity>
+            </View>
+          </View>
 
-    {/* Hybrid */}
-    <TouchableOpacity 
-      onPress={() => setMapType('hybrid')} 
-      style={[
-        styles.mapTypeButton,
-        mapType === 'hybrid' && styles.activeMapType
-      ]}
-    >
-      <Ionicons 
-        name="layers" 
-        size={20} 
-        color={mapType === 'hybrid' ? 'white' : '#6d4c41'} 
-      />
-    </TouchableOpacity>
+          {/* Landmarks List */}
+          <View style={[
+            styles.landmarksListContainer,
+            !isLandmarksListVisible && styles.collapsedLandmarksList
+          ]}>
+            <TouchableOpacity 
+              style={styles.toggleListButton}
+              onPress={() => setIsLandmarksListVisible(!isLandmarksListVisible)}
+            >
+              <MaterialIcons 
+                name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
+                size={24} 
+                color="#6d4c41" 
+              />
+            </TouchableOpacity>
+          
+            {isLandmarksListVisible && (
+              <>
+                <Text style={styles.landmarksTitle}>
+                  {t.pendingLandmarksTitle} ({getUnverifiedLandmarks().length})
+                </Text>
+                <ScrollView 
+                  style={styles.landmarksList}
+                  contentContainerStyle={styles.landmarksListContent}
+                >
+                  {getUnverifiedLandmarks().length > 0 ? (
+                    getUnverifiedLandmarks().map(landmark => (
+                      <LandmarkListItem 
+                        key={landmark._id}
+                        landmark={landmark}
+                        onClick={() => {
+                          setSelectedLandmark(landmark);
+                          mapRef.current?.animateToRegion({
+                            latitude: landmark.lat,
+                            longitude: landmark.lon,
+                            latitudeDelta: 0.01,
+                            longitudeDelta: 0.01,
+                          });
+                        }}
+                        isSelected={selectedLandmark?._id === landmark._id}
+                      />
+                    ))
+                  ) : (
+                    <Text style={styles.noLandmarksText}>{t.noPendingLandmarks}</Text>
+                  )}
+                </ScrollView>
+              </>
+            )}
+          </View>
 
-    {/* Terrain */}
-    <TouchableOpacity 
-      onPress={() => setMapType('terrain')} 
-      style={[
-        styles.mapTypeButton,
-        mapType === 'terrain' && styles.activeMapType
-      ]}
-    >
-      <Ionicons 
-        name="triangle" 
-        size={20} 
-        color={mapType === 'terrain' ? 'white' : '#6d4c41'} 
-      />
-    </TouchableOpacity>
-  </View>
-
-  <TouchableOpacity 
-    style={styles.nearbyButton}
-    onPress={() => setShowNearbyOnly(!showNearbyOnly)}
-  >
-    <MaterialIcons 
-      name={showNearbyOnly ? "location-on" : "location-off"} 
-      size={24} 
-      color={showNearbyOnly ? "#4CAF50" : "#6d4c41"} 
-    />
-  </TouchableOpacity>
-</View>
-
-  {/* زر الموقع الحالي */}
-  <TouchableOpacity 
-    style={styles.currentLocationButton}
-    onPress={focusOnUserLocation}
-  >
-    <MaterialIcons name="my-location" size={24} color="#6d4c41" />
-  </TouchableOpacity>
-
-  {/* قائمة Landmarks المنزلقة */}
-// في الجزء الخاص بالقائمة المنزلقة
-<View style={[
-  styles.landmarksListContainer,
-  !isLandmarksListVisible && styles.collapsedLandmarksList
-]}>
-  <TouchableOpacity 
-    style={styles.toggleListButton}
-    onPress={() => setIsLandmarksListVisible(!isLandmarksListVisible)}
-  >
-    <MaterialIcons 
-      name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
-      size={24} 
-      color="#6d4c41" 
-    />
-  </TouchableOpacity>
-  
-  {isLandmarksListVisible && (
-    <>
-      <ScrollView 
-        style={styles.landmarksList}
-        contentContainerStyle={styles.landmarksListContent}
-      >
-        <Text style={styles.landmarksTitle}>
-          Pending Landmarks ({getUnverifiedLandmarks().length})
-        </Text>
-        {getUnverifiedLandmarks().length > 0 ? (
-          getUnverifiedLandmarks().map(landmark => (
-            <LandmarkListItem 
-              key={landmark._id}
-              landmark={landmark}
-              onClick={() => {
-                setSelectedLandmark(landmark);
-                mapRef.current?.animateToRegion({
-                  latitude: landmark.lat,
-                  longitude: landmark.lon,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                });
-              }}
-              isSelected={selectedLandmark?._id === landmark._id}
-            />
-          ))
-        ) : (
-          <Text style={styles.noLandmarksText}>No pending landmarks in this area</Text>
-        )}
-      </ScrollView>
-    </>
-  )}
-</View>
+          {/* Main Map View */}
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -1403,13 +1465,12 @@ const editDistance = (s1: string, s2: string) => {
             {location && (
               <Marker
                 coordinate={location}
-                title="Your Location"
-                pinColor="#6d4c41" // تغيير من الأصفر (#FFD700) إلى البني
-
+                title={t.yourLocation}
+                pinColor="#6d4c41"
               />
             )}
             
-            {getDisplayedLandmarks().map(landmark => (
+            {getFilteredLandmarks().map(landmark => (
               <Marker
                 key={landmark._id}
                 coordinate={{
@@ -1417,92 +1478,131 @@ const editDistance = (s1: string, s2: string) => {
                   longitude: landmark.lon
                 }}
                 title={landmark.title}
-                description={landmark.verified ? 'Verified' : 'Pending Verification'}
+                description={landmark.verified ? t.verified : t.pendingVerification}
                 pinColor={landmark.verified ? '#4CAF50' : '#FFD700'}
                 onPress={() => handleMarkerPress(landmark)}
-                stopPropagation={true}
               />
             ))}
           </MapView>
 
-          {clickedLocation && (
-            <View style={styles.locationInfo}>
-              <Text style={styles.locationTitle}>Selected Location:</Text>
-              <Text>Latitude: {clickedLocation.latitude.toFixed(6)}</Text>
-              <Text>Longitude: {clickedLocation.longitude.toFixed(6)}</Text>
+          {/* Combined map controls and nearby routes button */}
+          {/* Map Controls */}
+          <View style={styles.mapControlsContainer}>
+            <View style={styles.mapControls}>
+              <TouchableOpacity 
+                onPress={() => setMapType('standard')}
+                style={[styles.mapControlButton, mapType === 'standard' && styles.activeMapType]}
+              >
+                <MaterialIcons name="map" size={24} color={mapType === 'standard' ? '#FFD700' : '#6d4c41'} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setMapType('satellite')}
+                style={[styles.mapControlButton, mapType === 'satellite' && styles.activeMapType]}
+              >
+                <MaterialIcons name="satellite" size={24} color={mapType === 'satellite' ? '#FFD700' : '#6d4c41'} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setMapType('hybrid')}
+                style={[styles.mapControlButton, mapType === 'hybrid' && styles.activeMapType]}
+              >
+                <MaterialIcons name="layers" size={24} color={mapType === 'hybrid' ? '#FFD700' : '#6d4c41'} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (location) {
+                    mapRef.current?.animateToRegion({
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      latitudeDelta: 0.0922,
+                      longitudeDelta: 0.0421,
+                    });
+                  }
+                }}
+                style={styles.mapControlButton}
+              >
+                <MaterialIcons name="my-location" size={24} color="#6d4c41" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Add Landmark Form */}
+          {showForm && (
+            <View style={styles.formContainer}>
+              <TouchableOpacity 
+                style={styles.toggleFormButton}
+                onPress={() => setIsFormMinimized(!isFormMinimized)}
+              >
+                <MaterialIcons 
+                  name={isFormMinimized ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} 
+                  size={24} 
+                  color="#6d4c41" 
+                />
+                <Text style={styles.toggleFormText}>
+                  {isFormMinimized ? t.showForm : t.minimizeForm}
+                </Text>
+              </TouchableOpacity>
+              
+              {!isFormMinimized && (
+                <>
+                  <Text style={styles.formTitle}>{t.addLandmarkTitle}</Text>
+                  <TextInput
+                    placeholder={t.landmarkTitlePlaceholder}
+                    value={newLandmark.title}
+                    onChangeText={(text) => setNewLandmark({...newLandmark, title: text})}
+                    style={[styles.input, isRTL && { textAlign: 'right' }]}
+                  />
+                  <TextInput
+                    placeholder={t.descriptionPlaceholder}
+                    value={newLandmark.description}
+                    onChangeText={(text) => setNewLandmark({...newLandmark, description: text})}
+                    style={[styles.input, styles.descriptionInput, isRTL && { textAlign: 'right' }]}
+                    multiline
+                  />
+                  <TouchableOpacity 
+                    style={styles.imagePickerButton}
+                    onPress={pickImage}
+                  >
+                    <Text style={styles.imagePickerText}>
+                      {newLandmark.imageUrl ? t.changeImage : t.selectImage}
+                    </Text>
+                  </TouchableOpacity>
+                  {newLandmark.imageUrl && (
+                    <Image 
+                      source={{ uri: newLandmark.imageUrl }}
+                      style={styles.previewImage}
+                    />
+                  )}
+                  
+                  <View style={[styles.formButtons, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <TouchableOpacity 
+                      onPress={addLandmark}
+                      disabled={!newLandmark.title.trim()}
+                      style={[
+                        styles.submitButton,
+                        !newLandmark.title.trim() && styles.disabledButton
+                      ]}
+                    >
+                      <Text style={styles.submitButtonText}>{t.addLandmarkButton}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      onPress={() => setShowForm(false)}
+                      style={styles.cancelButton}
+                    >
+                      <Text style={styles.cancelButtonText}>{t.cancelButton}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
             </View>
           )}
+          <View>
+        </View>
 
-          {showForm && (
-  <View style={styles.formContainer}>
-    <ScrollView 
-      contentContainerStyle={styles.scrollContainer}
-      keyboardShouldPersistTaps="handled"
-      scrollEnabled={true}
-    showsVerticalScrollIndicator={true}
-    >
-      <View style={styles.formContent}>
-        <Text style={styles.formTitle}>Add New Landmark</Text>
-        <TextInput
-          placeholder="Landmark title"
-          value={newLandmark.title}
-          onChangeText={(text) => setNewLandmark({...newLandmark, title: text})}
-          style={styles.input}
-        />
-        <TextInput
-          placeholder="Description (optional)"
-          value={newLandmark.description}
-          onChangeText={(text) => setNewLandmark({...newLandmark, description: text})}
-          style={[styles.input, styles.descriptionInput]}
-          multiline
-          scrollEnabled={false} // سيتم التعامل مع التمرير بواسطة ScrollView الخارجي
-        />
-        <TouchableOpacity 
-          style={styles.imagePickerButton}
-          onPress={pickImage}
-        >
-          <Text style={styles.imagePickerText}>
-            {newLandmark.imageUrl ? 'Change Image' : 'Select Image (optional)'}
-          </Text>
-        </TouchableOpacity>
-        {newLandmark.imageUrl && (
-          <Image 
-            source={{ uri: newLandmark.imageUrl }}
-            style={styles.previewImage}
-          />
-        )}
-      </View>
-    </ScrollView>
-    
-    {/* الأزرار خارج ScrollView لتكون دائمًا مرئية */}
-    <View style={styles.formButtons}>
-      <TouchableOpacity 
-        onPress={addLandmark}
-        disabled={!newLandmark.title.trim()}
-        style={[
-          styles.submitButton,
-          !newLandmark.title.trim() && styles.disabledButton
-        ]}
-      >
-        <Text style={styles.submitButtonText}>Add Landmark</Text>
-      </TouchableOpacity>
-      <TouchableOpacity 
-        onPress={() => setShowForm(false)}
-        style={styles.cancelButton}
-      >
-        <Text style={styles.cancelButtonText}>Cancel</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-)}
-  <View>
-      </View>
-
-      {showMapInfo && !showForm && !selectedLandmark && (
-        <View style={styles.mapInfoPopup}>
-          <Text style={styles.mapInfoText}>Tap on the map to add a landmark</Text>
-        </View> 
-      )}
+        {showMapInfo && !showForm && !selectedLandmark && (
+            <View style={styles.mapInfoPopup}>
+              <Text style={styles.mapInfoText}>{t.tapToAdd}</Text>
+            </View> 
+          )}
         </>
       )}
 
@@ -1523,32 +1623,6 @@ const editDistance = (s1: string, s2: string) => {
         deleteError={deleteError}
       />
     )}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity 
-          style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
-          onPress={() => setFilter('all')}
-        >
-          <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>All</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.filterButton, filter === 'verified' && styles.activeFilter]}
-          onPress={() => setFilter('verified')}
-        >
-          <Text style={[styles.filterText, filter === 'verified' && styles.activeFilterText]}>Verified</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.filterButton, filter === 'unverified' && styles.activeFilter]}
-          onPress={() => setFilter('unverified')}
-        >
-          <Text style={[styles.filterText, filter === 'unverified' && styles.activeFilterText]}>Pending</Text>
-        </TouchableOpacity>
-
-        <View style={styles.separator} />
-
-
-      </View>
        {/* تأكد من وجود هذا السطر في المكان الصحيح */}
     <VerificationBot
       visible={showBot && !botDisabled}
@@ -1571,7 +1645,9 @@ const editDistance = (s1: string, s2: string) => {
           });
         }
       }}
+      
 />
+
    
     </View>
   );
@@ -1598,59 +1674,12 @@ nearbyToggleText: {
   marginLeft: 5,
   color: '#6d4c41',
 },
-filterContainer: {
-  position: 'absolute',
-  top: 80,
-  left: 20,
-  backgroundColor: 'rgba(255,255,255,0.9)', // جعل الخلفية شبه شفافة
-  borderRadius: 20,
-  flexDirection: 'row',
-  padding: 5,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 3,
-  zIndex: 2,
-},
-filterButton: {
-  paddingHorizontal: 12,
-  paddingVertical: 8,
-  borderRadius: 15,
-  marginHorizontal: 2,
-},
-activeFilter: {
-  backgroundColor: '#8d6e63', // تغيير اللون إلى بني فاتح
-},
-filterText: {
-  color: '#5d4037', // لون بني غامق
-  fontWeight: '500', // زيادة سماكة الخط
-},
-activeFilterText: {
-  color: 'white',
-  fontWeight: '500',
-},
 separator: {
   width: 1,
   height: 20,
   backgroundColor: '#d7ccc8',
   marginHorizontal: 8,
 },
-  container: {
-    flex: 1,
-    backgroundColor: "#fff"
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: "#f5f5f5",
-  },
-  map: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
   locationInfo: {
     position: 'absolute',
     top: 20,
@@ -1666,29 +1695,6 @@ separator: {
     fontWeight: 'bold',
     marginBottom: 5,
   },
-formContainer: {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: [{ translateX: -175 }, { translateY: -200 }],
-  backgroundColor: "white",
-  padding: 25,
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: "#f0e6e2",
-  shadowColor: "#000",
-  shadowOffset: {
-    width: 0,
-    height: 10,
-  },
-  shadowOpacity: 0.15,
-  shadowRadius: 20,
-  elevation: 10,
-  width: 350,
-  maxWidth: "90%",
-  zIndex: 2,
-  maxHeight: '70%',
-},
   formTitle: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -1712,73 +1718,12 @@ formContainer: {
     maxHeight: 200, // حد أقصى للارتفاع
 
   },
-  imagePickerButton: {
-    backgroundColor: '#f5f5f5',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#d7ccc8',
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  imagePickerText: {
-    color: '#5d4037',
-    fontSize: 16,
-  },
-  previewImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#d7ccc8',
-  },
     scrollContainer: {
     flexGrow: 1,
     width: '100%',
   },
     formContent: {
     paddingBottom: 20, // تأكد من وجود مساحة للأزرار
-  },
-  formButtons: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 15,
-    paddingTop: 10, // مساحة إضافية
-    borderTopWidth: 1, // خط فاصل اختياري
-    borderTopColor: '#f0e6e2'
-  },
-  submitButton: {
-    backgroundColor: "#6d4c41",
-    padding: 12,
-    borderRadius: 8,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonText: {
-    color: "#FFD700",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  cancelButton: {
-    backgroundColor: "#f5f5f5",
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#d7ccc8",
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelButtonText: {
-    color: "#5d4037",
-    fontSize: 16,
-  },
-  landmarksTitle: {
-    fontWeight: 'bold',
-    marginBottom: 10,
-    fontSize: 16,
   },
   listItem: {
     paddingVertical: 12,
@@ -2154,9 +2099,6 @@ formContainer: {
     fontSize: 16,
     fontWeight: 'bold',
   },
-  disabledButton: {
-    opacity: 0.5,
-  },
   pickerContainer: {
   backgroundColor: '#fff',
   paddingHorizontal: 16,
@@ -2184,59 +2126,46 @@ picker: {
     borderRadius: 15,
     marginHorizontal: 2,
   },
-  
-  activeMapType: {
-    backgroundColor: '#6d4c41',
-  },
-  
-  landmarksListContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: "white",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#f0e6e2",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 2,
-    maxHeight: '50%',
-  },
-  
-  collapsedLandmarksList: {
-    height: 40,
-    paddingBottom: 0,
-  },
-  
-  toggleListButton: {
-    position: 'absolute',
-    top: -15,
-    right: 10,
-    backgroundColor: 'white',
-    borderRadius: 15,
-    width: 30,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 3,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    borderWidth: 1,
-    borderColor: '#f0e6e2',
-  },
-  
-  landmarksList: {
-    maxHeight: 300,
-    marginTop: 15,
-    paddingBottom: 0,
-  },
+
+landmarksListContainer: {
+  position: 'absolute',
+  bottom: 20,
+  left: 20,
+  backgroundColor: "white",
+  borderRadius: 12,
+  padding: 15,
+  borderWidth: 1,
+  borderColor: "#f0e6e2",
+  maxHeight: 300,
+  width: 250,
+  zIndex: 2,
+},
+collapsedLandmarksList: {
+  height: 40,
+  paddingBottom: 0,
+},
+toggleListButton: {
+  position: 'absolute',
+  top: 5,
+  right: 5,
+  padding: 5,
+  zIndex: 2,
+},
+landmarksList: {
+  maxHeight: 250,
+  marginTop: 15,
+},
+landmarksTitle: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  marginBottom: 10,
+},
+noLandmarksText: {
+  textAlign: 'center',
+  marginTop: 20,
+  color: '#757575',
+  fontStyle: 'italic',
+},
   
   landmarksListContent: {
     paddingBottom: 15,
@@ -2258,39 +2187,6 @@ picker: {
     elevation: 3,
     zIndex: 2,
   },
-  searchContainer: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    height: 50,
-    alignItems: 'center',
-    flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 2,
-  },
-  
-  searchInput: {
-    flex: 1,
-    height: 40,
-    paddingHorizontal: 10,
-  },
-  searchButton: {
-    padding: 8,
-  },
-  noLandmarksText: {
-  textAlign: 'center',
-  marginTop: 20,
-  color: '#757575',
-  fontStyle: 'italic',
-},
 mapInfoPopup: {
   position: 'absolute',
   top: '50%',
@@ -2420,10 +2316,7 @@ landmarkLocationContainer: {
 botContent: {
   marginBottom: 16,
 },
-nearbyButton: {
-  marginLeft: 10,
-  padding: 8,
-},
+
 pendingIndicatorContainer: {
   position: 'absolute',
   bottom: 20,
@@ -2473,5 +2366,336 @@ pendingLandmarksPopup: {
   shadowRadius: 4,
   elevation: 3,
 },
+nearbyButton: {
+  marginLeft: 10,
+  padding: 8,
+},
+standardButton: {
+  backgroundColor: "#6d4c41",
+  padding: hp(1.5),
+  borderRadius: wp(2),
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'row',
+  elevation: 2,
+  minWidth: wp(30),
+},
+standardButtonText: {
+  color: "#FFD700",
+  fontSize: wp(4),
+  fontWeight: 'bold',
+},
+secondaryButton: {
+  backgroundColor: "#f5f5f5",
+  padding: hp(1.5),
+  borderRadius: wp(2),
+  borderWidth: 1,
+  borderColor: "#d7ccc8",
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'row',
+  minWidth: wp(30),
+},
+secondaryButtonText: {
+  color: "#5d4037",
+  fontSize: wp(4),
+},
+dangerButton: {
+  backgroundColor: "#f44336",
+  padding: hp(1.5),
+  borderRadius: wp(2),
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'row',
+  minWidth: wp(30),
+},
+dangerButtonText: {
+  color: "white",
+  fontSize: wp(4),
+  fontWeight: 'bold',
+},
+  expandedContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 15,
+    zIndex: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+    header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#6d4c41',
+  },
+  content: {
+    maxHeight: 300,
+  },
+  drawingContainer: {
+    position: 'absolute',
+    bottom: hp(2),
+    left: wp(5),
+    right: wp(5),
+    zIndex: 10,
+  },
+  drawingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderTopLeftRadius: wp(3),
+    borderTopRightRadius: wp(3),
+    padding: wp(4),
+    borderWidth: 1,
+    borderColor: '#f0e6e2',
+  },
+ drawingTitle: {
+    fontSize: wp(4.5),
+    fontWeight: 'bold',
+    color: '#6d4c41',
+  },
+  drawingContent: {
+    backgroundColor: 'white',
+    borderBottomLeftRadius: wp(3),
+    borderBottomRightRadius: wp(3),
+    padding: wp(4),
+    borderWidth: 1,
+    borderColor: '#f0e6e2',
+    borderTopWidth: 0,
+    maxHeight: hp(40),
+  },
+   collapsedButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#6d4c41',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  collapsedText: {
+    marginLeft: 8,
+    color: '#6d4c41',
+    fontWeight: '500',
+  },
+ container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topBar: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    height: 50,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    paddingHorizontal: 10,
+    fontSize: 16,
+    color: '#5d4037',
+  },
+  searchButton: {
+    padding: 8,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    marginLeft: 10,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 20,
+    padding: 5,
+  },
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 15,
+    marginHorizontal: 2,
+  },
+  activeFilter: {
+    backgroundColor: '#8d6e63',
+  },
+  filterText: {
+    color: '#5d4037',
+    fontWeight: '500',
+    fontSize: 12,
+  },
+  activeFilterText: {
+    color: 'white',
+  },
+  map: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  mapControlsContainer: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    alignItems: 'flex-end',
+  },
+  mapControls: {
+    backgroundColor: 'white',
+    borderRadius: 25,
+    padding: 5,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mapControlButton: {
+    padding: 8,
+    marginVertical: 5,
+  },
+  activeMapType: {
+    backgroundColor: '#6d4c41',
+    borderRadius: 20,
+  },
+  formContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 10,
+  },
+  toggleFormButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 5,
+    marginBottom: 10,
+  },
+  toggleFormText: {
+    color: '#6d4c41',
+    marginLeft: 5,
+  },
+  imagePickerButton: {
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d7ccc8',
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  imagePickerText: {
+    color: '#5d4037',
+    fontSize: 16,
+  },
+  previewImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#d7ccc8',
+  },
+  formButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  submitButton: {
+    backgroundColor: '#6d4c41',
+    padding: 12,
+    borderRadius: 8,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitButtonText: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d7ccc8',
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    color: '#5d4037',
+    fontSize: 16,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  addButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    zIndex: 1,
+    borderWidth: 1,
+    borderColor: '#f0e6e2',
+  },
+  addButtonText: {
+    color: '#6d4c41',
+    fontWeight: 'bold',
+    marginLeft: 8,
+    fontSize: 16,
+  },
 });
 export default LandmarkPage;

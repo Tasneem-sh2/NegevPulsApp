@@ -1,6 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, Linking, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Linking, TouchableOpacity, I18nManager } from 'react-native';
 import { MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { useTranslations } from '@/frontend/constants/locales';
+import { useLanguage } from '@/frontend/context/LanguageProvider';
+type LocaleKeys = 'en' | 'ar' | 'he'; // أضف هذا في ملف الأعراف أو حيث يتم تعريف الأنواع
 
 interface ContactPerson {
   name: string;
@@ -22,7 +24,29 @@ interface ContactTranslations {
 }
 
 export default function ContactUs() {
+  const { language, changeLanguage, isRTL } = useLanguage();
   const t = (useTranslations() as unknown as ContactTranslations).contactUs;
+
+  // Function to toggle language between English, Arabic, and Hebrew
+  const toggleLanguage = () => {
+    let newLang: LocaleKeys;
+    if (language === 'en') newLang = 'ar';
+    else if (language === 'ar') newLang = 'he';
+    else newLang = 'en';
+    
+    changeLanguage(newLang);
+    I18nManager.forceRTL(newLang === 'ar' || newLang === 'he');
+  };
+
+  // Function to get current language name
+  const getCurrentLanguageName = () => {
+    switch(language) {
+      case 'en': return 'English';
+      case 'ar': return 'العربية';
+      case 'he': return 'עברית';
+      default: return 'English';
+    }
+  };
 
   const contacts = [
     {
@@ -52,7 +76,12 @@ export default function ContactUs() {
   ];
 
   const handleEmailPress = (email: string) => {
-    Linking.openURL(`mailto:${email}?subject=استفسار عن التطبيق`);
+    let subject;
+    if (language === 'ar') subject = 'استفسار عن التطبيق';
+    else if (language === 'he') subject = 'חקירה על היישום';
+    else subject = 'App Inquiry';
+    
+    Linking.openURL(`mailto:${email}?subject=${subject}`);
   };
 
   const handlePhonePress = (phone: string) => {
@@ -64,62 +93,92 @@ export default function ContactUs() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, isRTL && { transform: [{ scaleX: -1 }] }]}>
+      {/* Language Toggle Button */}
+      <TouchableOpacity 
+        style={[
+          styles.languageButton, 
+          isRTL ? { left: 20 } : { right: 20 },
+          { backgroundColor: '#5D4037' }
+        ]}
+        onPress={toggleLanguage}
+      >
+        <Text style={styles.languageText}>
+          {getCurrentLanguageName()}
+        </Text>
+      </TouchableOpacity>
+
       {/* Header with decorative elements */}
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, isRTL && { transform: [{ scaleX: -1 }] }]}>
         <View style={styles.header}>
           <Ionicons name="people" size={32} color="#FFF8E1" style={styles.headerIcon} />
-          <Text style={styles.headerText}>{t.title}</Text>
-          <Text style={styles.subHeaderText}>{t.subtitle}</Text>
+          <Text style={[styles.headerText, isRTL && { textAlign: 'right' }]}>{t.title}</Text>
+          <Text style={[styles.subHeaderText, isRTL && { textAlign: 'right' }]}>{t.subtitle}</Text>
         </View>
         <View style={styles.headerDecoration} />
       </View>
 
       {/* Contact Cards */}
-      <View style={styles.contactsContainer}>
+      <View style={[styles.contactsContainer, isRTL && { transform: [{ scaleX: -1 }] }]}>
         {contacts.map((contact, index) => (
-          <View key={index} style={[styles.contactCard, { borderLeftColor: contact.color }]}>
-            <View style={styles.contactHeader}>
+          <View key={index} style={[
+            styles.contactCard, 
+            isRTL ? { borderRightWidth: 5, borderRightColor: contact.color } 
+                  : { borderLeftWidth: 5, borderLeftColor: contact.color }
+          ]}>
+            <View style={[styles.contactHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <View style={[styles.iconContainer, { backgroundColor: contact.color }]}>
                 <FontAwesome5 name={contact.icon} size={20} color="white" />
               </View>
-              <View style={styles.contactTitle}>
-                <Text style={styles.contactName}>{contact.name}</Text>
-                <Text style={styles.contactRole}>{contact.role}</Text>
+              <View style={[styles.contactTitle, isRTL && { alignItems: 'flex-end' }]}>
+                <Text style={[styles.contactName, isRTL && { textAlign: 'right' }]}>{contact.name}</Text>
+                <Text style={[styles.contactRole, isRTL && { textAlign: 'right' }]}>{contact.role}</Text>
               </View>
             </View>
 
             <View style={styles.separator} />
 
             <TouchableOpacity 
-              style={styles.contactInfo}
+              style={[styles.contactInfo, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => handleEmailPress(contact.email)}
               activeOpacity={0.7}
             >
               <MaterialIcons name="email" size={24} color="#6D4C41" />
-              <Text style={styles.contactText}>{contact.email}</Text>
-              <MaterialIcons name="chevron-right" size={24} color="#BCAAA4" />
+              <Text style={[styles.contactText, isRTL && { textAlign: 'right' }]}>{contact.email}</Text>
+              <MaterialIcons 
+                name={isRTL ? "chevron-left" : "chevron-right"} 
+                size={24} 
+                color="#BCAAA4" 
+              />
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={styles.contactInfo}
+              style={[styles.contactInfo, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => handlePhonePress(contact.phone)}
               activeOpacity={0.7}
             >
               <MaterialIcons name="phone" size={24} color="#6D4C41" />
-              <Text style={styles.contactText}>{contact.phone}</Text>
-              <MaterialIcons name="chevron-right" size={24} color="#BCAAA4" />
+              <Text style={[styles.contactText, isRTL && { textAlign: 'right' }]}>{contact.phone}</Text>
+              <MaterialIcons 
+                name={isRTL ? "chevron-left" : "chevron-right"} 
+                size={24} 
+                color="#BCAAA4" 
+              />
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={styles.whatsappButton}
+              style={[styles.whatsappButton, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => handleWhatsAppPress(contact.phone)}
               activeOpacity={0.7}
             >
               <FontAwesome5 name="whatsapp" size={20} color="white" />
-              <Text style={styles.whatsappText}>{t.whatsapp}</Text>
+              <Text style={[styles.whatsappText, isRTL && { textAlign: 'right' }]}>{t.whatsapp}</Text>
               <View style={styles.whatsappIcon}>
-                <MaterialIcons name="chevron-right" size={24} color="white" />
+                <MaterialIcons 
+                  name={isRTL ? "chevron-left" : "chevron-right"} 
+                  size={24} 
+                  color="white" 
+                />
               </View>
             </TouchableOpacity>
           </View>
@@ -127,10 +186,12 @@ export default function ContactUs() {
       </View>
 
       {/* Social Media Section */}
-      <View style={styles.socialSection}>
-        <View style={styles.socialHeader}>
+      <View style={[styles.socialSection, isRTL && { transform: [{ scaleX: -1 }] }]}>
+        <View style={[styles.socialHeader, isRTL && { flexDirection: 'row-reverse' }]}>
           <Ionicons name="share-social" size={24} color="#6D4C41" />
-          <Text style={styles.socialTitle}>{t.socialMedia}</Text>
+          <Text style={[styles.socialTitle, { marginHorizontal: 10 }, isRTL && { textAlign: 'right' }]}>
+            {t.socialMedia}
+          </Text>
         </View>
         <View style={styles.socialIcons}>
           <TouchableOpacity style={[styles.socialIcon, { backgroundColor: '#1DA1F2' }]}>
@@ -150,11 +211,27 @@ export default function ContactUs() {
     </ScrollView>
   );
 }
+// بقية الكود (styles) تبقى كما هي بدون تغيير
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#FFF8E1',
+    backgroundColor: '#ffffffff',
+  },
+  languageButton: {
+    position: 'absolute',
+    top: 40,
+    zIndex: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'white',
+  },
+  languageText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   headerContainer: {
     marginBottom: 25,
@@ -186,12 +263,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 5,
     fontFamily: 'sans-serif-medium',
+    textAlign: 'center',
   },
   subHeaderText: {
     fontSize: 16,
     color: '#FFD54F',
-    textAlign: 'center',
     fontFamily: 'sans-serif',
+    textAlign: 'center',
   },
   contactsContainer: {
     paddingHorizontal: 20,
@@ -202,12 +280,12 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 12,
     marginBottom: 20,
-    borderLeftWidth: 5,
     shadowColor: '#5D4037',
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
     elevation: 5,
+    width: '100%',
   },
   contactHeader: {
     flexDirection: 'row',
@@ -230,12 +308,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#5D4037',
     fontFamily: 'sans-serif-medium',
+    textAlign: 'left',
   },
   contactRole: {
     fontSize: 14,
     color: '#8D6E63',
     marginTop: 2,
     fontFamily: 'sans-serif',
+    textAlign: 'left',
   },
   separator: {
     height: 1,
@@ -254,9 +334,10 @@ const styles = StyleSheet.create({
   contactText: {
     fontSize: 16,
     color: '#5D4037',
-    marginLeft: 15,
+    marginHorizontal: 15,
     flex: 1,
     fontFamily: 'sans-serif',
+    textAlign: 'left',
   },
   whatsappButton: {
     flexDirection: 'row',
@@ -276,9 +357,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'white',
     fontWeight: '600',
-    marginLeft: 10,
+    marginHorizontal: 10,
     flex: 1,
     fontFamily: 'sans-serif-medium',
+    textAlign: 'left',
   },
   whatsappIcon: {
     opacity: 0.8,
@@ -304,8 +386,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#5D4037',
     fontWeight: '600',
-    marginLeft: 10,
     fontFamily: 'sans-serif-medium',
+    textAlign: 'left',
   },
   socialIcons: {
     flexDirection: 'row',

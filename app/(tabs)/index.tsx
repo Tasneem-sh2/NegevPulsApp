@@ -23,7 +23,7 @@ export default function MainIndex() {
   const [villages, setVillages] = useState<Village[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const t = useTranslations();
+  const { t } = useTranslations();
   const baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://negevpulsapp.onrender.com";
  
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function MainIndex() {
         const response = await axios.get(`${baseUrl}/api/villages`);
         setVillages(response.data);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+        const errorMessage = err instanceof Error ? err.message : t('errors.unknownError');
         setError(errorMessage);
         console.error("Error fetching villages:", err);
       } finally {
@@ -43,8 +43,9 @@ export default function MainIndex() {
 
     fetchVillages();
   }, [baseUrl]);
+
   const safePush = (path: string) => {
-  const allowedRoutes = ['/authOptions', '/login', '/signup']; // Add all valid routes
+    const allowedRoutes = ['/authOptions', '/login', '/signup'];
     if (allowedRoutes.includes(path)) {
       router.push(path as any);
     } else {
@@ -68,22 +69,12 @@ export default function MainIndex() {
   };
 
   const translatedVillages = useMemo(() => {
-    return villages.map(village => {
-      if (village.names && village.descriptions) {
-        return {
-          ...village,
-          id: village._id,
-          name: village.names[language as LocaleKeys] || village.name,
-          description: village.descriptions[language as LocaleKeys] || village.description
-        };
-      }
-      return {
-        ...village,
-        id: village._id,
-        name: village.name,
-        description: village.description
-      };
-    });
+    return villages.map(village => ({
+      ...village,
+      id: village._id,
+      name: village.names?.[language] || village.name,
+      description: village.descriptions?.[language] || village.description
+    }));
   }, [villages, language]);
 
   useEffect(() => {
@@ -111,7 +102,7 @@ export default function MainIndex() {
           style={styles.retryButton}
           onPress={() => location.reload()}
         >
-          <Text style={styles.retryButtonText}>Retry</Text>
+          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -131,7 +122,7 @@ export default function MainIndex() {
                 style={[styles.languageButton, language === lang && styles.activeLanguage]}
               >
                 <Text style={[styles.languageText, language === lang && styles.activeLanguageText]}>
-                  {lang === 'en' ? 'EN' : lang === 'ar' ? 'عربي' : 'עברית'}
+                  {t(`languages.${lang}`)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -142,7 +133,7 @@ export default function MainIndex() {
         <Animated.View style={[styles.headerContent, { opacity: fadeAnim }]}>
           <MaterialIcons name="location-city" size={32} color="#FFD700" />
           <Text style={styles.welcomeText}>
-            {t.common.welcome} <Text style={styles.brandName}>{t.common.appName}</Text>
+            {t('common.welcome')} <Text style={styles.brandName}>{t('common.appName')}</Text>
           </Text>
         </Animated.View>
 
@@ -152,7 +143,7 @@ export default function MainIndex() {
             style={styles.startButton}
             onPress={() => safePush('/authOptions')}
           >
-            <Text style={styles.startButtonText}>{t.common.letsStart}</Text>
+            <Text style={styles.startButtonText}>{t('common.letsStart')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -163,7 +154,7 @@ export default function MainIndex() {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>{t.villages.title}</Text>
+          <Text style={styles.title}>{t('villages.title')}</Text>
         </View>
 
         {/* Description Paragraph */}
@@ -171,30 +162,26 @@ export default function MainIndex() {
           <Text style={[
             styles.paragraphText,
             { 
-              writingDirection: language === 'ar' || language === 'he' ? 'rtl' : 'ltr',
-              textAlign: language === 'ar' || language === 'he' ? 'right' : 'left'
+              writingDirection: isRTL ? 'rtl' : 'ltr',
+              textAlign: isRTL ? 'right' : 'left'
             }
           ]}>
-            {language === 'en' && "Unrecognized villages in the Negev are home to about 70,000 Bedouins living in 35 villages that cover around 180,000 dunams (1.4% of Israel's land). Due to the lack of official recognition, these communities face severe shortages in basic infrastructure and services such as electricity, water, and sewage, relying instead on generators and water tanks. Government policies reflect systemic neglect, as Bedouins are not recognized as an indigenous population, which denies them rights under international law and deepens inequalities with the Jewish majority."} 
-            {language === 'ar' && "القرى غير المعترف بها في النقب هي موطن لحوالي 70,000 بدوي يعيشون في 35 قرية تغطي حوالي 180,000 دونم (1.4٪ من أراضي إسرائيل). بسبب عدم الاعتراف الرسمي، تواجه هذه المجتمعات نقصًا حادًا في البنية التحتية والخدمات الأساسية مثل الكهرباء والمياه والصرف الصحي، وتعتمد بدلاً من ذلك على المولدات وخزانات المياه. تعكس السياسات الحكومية الإهمال المنهجي، حيث لا يتم الاعتراف بالبدو كسكان أصليين، مما يحرمهم من الحقوق بموجب القانون الدولي ويعمق عدم المساواة مع الأغلبية اليهودية."} 
-            {language === 'he' && "הכפרים הבלתי מוכרים בנגב הם ביתם של כ-70,000 בדואים החיים ב-35 כפרים המשתרעים על פני כ-180,000 דונם (1.4% משטח ישראל). בשל חוסר ההכרה הרשמי, קהילות אלו סובלות ממחסור חמור בתשתיות ושירותים בסיסיים כמו חשמל, מים וביוב, ונאלצות להסתמך על גנרטורים ומיכלי מים. מדיניות הממשלה משקפת הזנחה מערכתית, כאשר הבדואים אינם מוכרים כאוכלוסייה ילידית, מה שמונע מהם זכויות לפי החוק הבינלאומי ומעמיק את אי השוויון עם הרוב היהודי."}
+            {t('villages.fullDescription')}
           </Text>
         </View>
+
         {/* Application Description Section */}
         <View style={styles.paragraphContainer}>
           <Text style={[
             styles.paragraphText,
             { 
-              writingDirection: language === 'ar' || language === 'he' ? 'rtl' : 'ltr',
-              textAlign: language === 'ar' || language === 'he' ? 'right' : 'left'
+              writingDirection: isRTL ? 'rtl' : 'ltr',
+              textAlign: isRTL ? 'right' : 'left'
             }
           ]}>
-            {language === 'en' && "This app is more than just a platform for displaying villages and their photos. It is a tool for preserving memory and asserting presence through community-powered mapping. Instead of waiting for external authorities to recognize these villages, this platform empowers local residents to document, update, and map their communities on their own terms — a grassroots form of resistance against marginalization."}
-            {language === 'ar' && "هذا التطبيق ليس فقط لعرض القرى وصورها، بل هو أداة لحفظ الذاكرة وإثبات الوجود من خلال التوثيق الجماعي. بدلاً من انتظار جهات خارجية لتقرر ما إذا كانت هذه القرى تستحق الظهور على الخريطة، يسمح التطبيق للسكان أنفسهم بإضافة وتحديث قراهم كما يرونها هم، مما يشكل شكلاً من أشكال المقاومة في وجه التهميش."}
-            {language === 'he' && "האפליקציה הזו אינה רק פלטפורמה להצגת כפרים ותמונותיהם, אלא כלי לשימור זיכרון ולהצהרת נוכחות דרך מיפוי קהילתי. במקום להמתין לגופים חיצוניים שיחליטו האם הכפרים ראויים להופיע על המפה, הפלטפורמה מאפשרת לתושבים עצמם להוסיף ולעדכן את כפריהם – כלי התנגדות מול ההדרה."}
+            {t('villages.appDescription')}
           </Text>
         </View>
-
 
         {/* Villages Grid */}
         <View style={styles.villagesGrid}>
@@ -224,8 +211,8 @@ export default function MainIndex() {
                   style={[
                     styles.villageTitle,
                     { 
-                      textAlign: language === 'ar' || language === 'he' ? 'right' : 'left',
-                      writingDirection: language === 'ar' || language === 'he' ? 'rtl' : 'ltr'
+                      textAlign: isRTL ? 'right' : 'left',
+                      writingDirection: isRTL ? 'rtl' : 'ltr'
                     }
                   ]}
                   numberOfLines={1}
@@ -237,8 +224,8 @@ export default function MainIndex() {
                   style={[
                     styles.villageDescription,
                     { 
-                      textAlign: language === 'ar' || language === 'he' ? 'right' : 'left',
-                      writingDirection: language === 'ar' || language === 'he' ? 'rtl' : 'ltr'
+                      textAlign: isRTL ? 'right' : 'left',
+                      writingDirection: isRTL ? 'rtl' : 'ltr'
                     }
                   ]}
                   numberOfLines={2}
@@ -250,13 +237,11 @@ export default function MainIndex() {
                 <View style={[
                   styles.readMoreContainer,
                   { 
-                    alignItems: language === 'ar' || language === 'he' ? 'flex-start' : 'flex-end' 
+                    alignItems: isRTL ? 'flex-start' : 'flex-end' 
                   }
                 ]}>
                   <Text style={styles.readMoreText}>
-                    {language === 'en' ? 'Read more →' : 
-                      language === 'ar' ? 'اقرأ المزيد →' : 
-                      'קרא עוד →'}
+                    {t('common.readMore')} →
                   </Text>
                 </View>
               </View>
@@ -321,8 +306,6 @@ const styles = StyleSheet.create({
   activeLanguage: {
     backgroundColor: '#8d6e63',
     borderColor: '#FFD700',
-    borderBottomWidth: 2,
-    borderBottomColor: '#fff',
   },
   languageText: {
     color: '#fff',
@@ -477,5 +460,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
- 
 });

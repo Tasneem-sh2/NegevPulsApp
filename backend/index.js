@@ -66,26 +66,13 @@ app.get('/api/users', async (req, res) => {
       });
     }
   });
-// Add this email check endpoint before your signup endpoint
-app.post("/api/check-email", async (req, res) => {
+  app.post("/api/signup", async (req, res) => {
   try {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
-    res.json({ exists: !!user });
-  } catch (error) {
-    console.error("Email check error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-// Signup route
-// Replace or modify your existing signup route with this:
-app.post("/api/signup", async (req, res) => {
-  try {
-    const { firstName, lastName, email, password, role } = req.body;
+    const { name, email, password, confirmPassword, role } = req.body;
     
     // Validation
-    if (!firstName || !lastName) {
-      return res.status(400).json({ message: "First name and last name are required" });
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords don't match" });
     }
 
     const existingUser = await User.findOne({ email });
@@ -93,31 +80,22 @@ app.post("/api/signup", async (req, res) => {
       return res.status(400).json({ message: "Email already exists" });
     }
 
+    // Create user with plain password - the pre-save hook will hash it
     const user = new User({
-      firstName,
-      lastName,
-      email: email.toLowerCase().trim(),
-      password, // Will be hashed by pre-save hook
-      role: role || "local"
+      name,
+      email,
+      password, // This will be hashed by the pre-save hook
+      role
     });
 
     await user.save();
     
-    res.status(201).json({ 
-      message: "User created successfully",
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email
-      }
-    });
+    res.status(201).json({ message: "User created successfully" });
   } catch (error) {
     console.error("Signup error:", error);
-    res.status(500).json({ 
-      message: "Server error",
-      error: error.message 
-    });
+    res.status(500).json({ message: "Server error" });
   }
+  
 });
 
 // Login route
@@ -399,7 +377,150 @@ app.post('/api/routes', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+// Add these endpoints to your backend/index.js
 
+// Get verification radius
+app.get('/api/settings/verification-radius', auth, async (req, res) => {
+  try {
+    // Get or create settings
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings({ verificationRadius: 500 });
+      await settings.save();
+    }
+    
+    res.json({
+      success: true,
+      radius: settings.verificationRadius
+    });
+  } catch (error) {
+    console.error('Error fetching radius:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching verification radius' 
+    });
+  }
+});
+
+// Update verification radius (admin only)
+app.post('/api/admin/settings/verification-radius', auth, async (req, res) => {
+  try {
+    // Verify admin role
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Unauthorized' 
+      });
+    }
+
+    const { radius } = req.body;
+    
+    // Validate input
+    if (!radius || isNaN(radius) || radius < 100 || radius > 5000) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Radius must be between 100 and 5000 meters' 
+      });
+    }
+
+    // Update or create settings
+    const settings = await Settings.findOneAndUpdate(
+      {}, 
+      { verificationRadius: radius },
+      { upsert: true, new: true }
+    );
+
+    res.json({ 
+      success: true,
+      message: 'Verification radius updated',
+      radius: settings.verificationRadius
+    });
+  } catch (error) {
+    console.error('Error updating radius:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error updating verification radius' 
+    });
+  }
+});
+
+// Super Local Requests endpoints
+app.get('/api/superlocal/requests', auth, async (req, res) => {
+  try {
+    // Verify admin role
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Unauthorized' 
+      });
+    }
+
+    const requests = await SuperLocalRequest.find({ status: 'pending' })
+      .populate('userId', 'name email')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      requests: requests.map(req => ({
+        _id: req._id,
+        userId: req.userId._id,
+        name: req.userId.name,
+        email: req.userId.email,
+        status: req.status,
+        createdAt: req.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching requests:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching requests' 
+    });
+  }
+});
+
+app.patch('/api/superlocal/requests/:id', auth, async (req, res) => {
+  try {
+    // Verify admin role
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Unauthorized' 
+      });
+    }
+
+    const { status } = req.body;
+    const request = await SuperLocalRequest.findById(req.params.id);
+    
+    if (!request) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Request not found' 
+      });
+    }
+
+    request.status = status;
+    await request.save();
+
+    // If approved, update user's isSuperlocal status
+    if (status === 'approved') {
+      await User.findByIdAndUpdate(request.userId, { isSuperlocal: true });
+    }
+
+    res.json({
+      success: true,
+      message: 'Request updated successfully',
+      updatedUser: status === 'approved' ? await User.findById(request.userId) : null
+    });
+  } catch (error) {
+    console.error('Error updating request:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error updating request' 
+    });
+  }
+});
+// Connect to MongoDB and start the server
 mongoose.connect(process.env.DB)
   .then(() => {
     console.log('MongoDB connected successfully');

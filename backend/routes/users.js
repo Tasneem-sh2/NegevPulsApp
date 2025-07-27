@@ -33,24 +33,45 @@ router.post("/signup", async (req, res) => {
     res.status(500).send({ message: "Internal Server Error" });
   }
 });
+
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(401).send({ message: "Invalid credentials" });
+    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword)
-      return res.status(401).send({ message: "Invalid credentials" });
+    const validPassword = await user.comparePassword(password);
+    if (!validPassword) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
-    // (Optional: create JWT token here if you use one)
-    res.status(200).send({ message: "Login successful", user });
+    // Create JWT token (optional)
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.status(200).json({ 
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role
+      }
+    });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).send({ message: "Internal Server Error" });
+    res.status(500).json({ 
+      message: "Server error during login",
+      error: error.message 
+    });
   }
 });
-
 
 module.exports = router;

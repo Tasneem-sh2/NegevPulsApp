@@ -1,26 +1,41 @@
 
 export default {
   // locales/en.ts
-
+    languages: {
+      en: "English",
+      ar: "Arabic",
+      he: "Hebrew",
+    },
+    errors: {
+      unknownError: "An unknown error occurred" // الترجمة المناسبة لكل لغة
+    },
     common: {
       welcome: "🌟 Welcome to",
       appName: "Negev Pulse App",
       language: "Language",
       currentLanguage: "English",
-      letsStart:  "Let's Start"
+      letsStart:  "Let's Start",
+      retry: "Retry",
+      readMore: "Read More"
     },
     villages: {
-      title: "Unrecognized Villages in the Negev"
+      title: "Unrecognized Villages in the Negev",
+      fullDescription: "Unrecognized villages in the Negev are settlements that are not officially recognized by the state, yet they have a rich history and strong communities. These villages face many challenges, including limited access to basic services such as education and healthcare.",
+      appDescription: "The Negev Pulse App is designed to improve access to emergency services for unrecognized villages in the Negev. The app provides accurate geographic information, including village locations, access roads, and local services, to ensure that emergency teams can reach quickly and efficiently."
     },
-    
     auth: {
       signIn: "Sign In",
       signUp: "Sign Up",
       logout: {
-        title: 'Logged Out',
-        message: 'You have been successfully logged out.',
-        button: 'Login Again',
-      },      login: {
+        title: "Logout",
+        message: "Are you sure you want to logout?",
+        button: "Logout",
+        confirmTitle: "Confirm Logout",
+        confirmMessage: "Are you sure you want to sign out?",
+        confirmButton: "Yes, Logout",
+        cancelButton: "Cancel",
+      },
+      login: {
         title: "Sign In",
         email: "Email",
         password: "Password",
@@ -58,6 +73,36 @@ export default {
       update: "Update",
       map: "Map",
       location: "Location"
+    },
+    about: {
+      title: "About Us",
+      subtitle: "Improving emergency access with accurate geographic data",
+      missionTitle: "Our Mission",
+      missionText: "NegevPulse is a graduation project developed by three fourth-year Software Engineering students at Sami Shamoon College of Engineering. Our mission is to empower marginalized communities in the Negev region through technology.",
+      problemTitle: "The Challenges",
+      problemList: {
+        item1: "Over 35 unrecognized villages exist physically but don't appear on official maps",
+        item2: "No reliable digital mapping exists for emergency services, deliveries, or visitors",
+        item3: "These villages are visible on satellite imagery but absent from digital maps"
+      },
+      goalTitle: "Our Solution",
+      goalText: "NegevPulse introduces a three-tier crowdsourcing system where residents can map their communities",
+      solutionLevels: [
+        { level: "Regular Resident", detail: "Can submit landmarks/roads (Vote weight: 1)", icon: "user" },
+        { level: "Active Resident", detail: "Verified contributors (Vote weight: 2)", icon: "user-check" },
+        { level: "Community Leader", detail: "Local representatives (Vote weight: 4)", icon: "user-tie" }
+      ],
+      howItWorksTitle: "Verification Process",
+      verificationText: "For a landmark/road to be approved, it must meet two criteria:",
+      verificationCriteria: [
+        "Achieve 5.6 weighted votes (equivalent to 2 Community Leaders + 1 Active Resident)",
+        "Maintain 80% approval rate from all voters"
+      ],
+      techTitle: "Technical Details",
+      techText: "Currently available on Android, with future plans for iOS expansion. Inspired by Waze's community features and Google Maps' reliability.",
+      visionTitle: "Join Our Movement",
+      contactText: "Help us map the unmapped. Contact us at:",
+      contactEmail: "negevpulse.support@gmail.com"
     },
     localPage: {
       title: "Local Resident Board",
@@ -114,50 +159,199 @@ export default {
         "electricCompanyEntry": "The Entry of the Electric Company",
         "greenContainer": "The Green Container"
       },
-      about: {
-        "title": "About Us",
-        "subtitle": "Improving emergency access with accurate geographic data",
-        "missionTitle": "Our Mission",
-        "missionText": "Emergency services in Israel face difficulties reaching unrecognized areas...",
-        "problemTitle": "The Problem",
-        "problemList": {
-          "lackData": "Lack of accurate geographic data",
-          "delays": "Delayed response times",
-          "limitedInfo": "Limited information"
-        },
-        "goalTitle": "Our Goal",
-        "goalText": "Our platform collects and uploads accurate geographic data...",
-        "howItWorksTitle": "How It Works",
-        "step1": "Collect Data: Local communities add accurate geographic information.",
-        "step2": "Build Database: Information is uploaded and stored in a central database.",
-        "step3": "Access for Emergency Services: Emergency services access the database for quick references.",
-        "visionTitle": "Our Vision for the Future",
-        "visionText": "We envision a future where every unrecognized area in Israel...",
-        "contactTitle": "Contact Us",
-        "contactText": "Have questions? Reach out to us at"
-      },
       contactUs: {
-        "title": "Contact Us",
-        "asraa": {
-          "name": "Asraa Al Gergawi",
-          "email": "asraaalgergawi@gmail.com",
-          "phone": "0523694162"
+        title: 'Contact Us',
+        subtitle: 'We are here to help you with any inquiries you may have',
+        whatsapp: 'Contact Us via WhatsApp',
+        socialMedia: 'Social Media',
+        asraa: {
+        name: 'Asraa Algergawi',
+        email: 'asraaalgergawi@gmail.com',
+        phone: '+972523694162',
+        role: 'Development Manager'
         },
-        "tasneem": {
-          "name": "Tasneem Shnaiwer",
-          "email": "tasnesh@ac.sce.ac.il",
-          "phone": "0523694162"
+        tasneem: {
+        name: 'Tasneem Sheneour',
+        email: 'tasadel2002@gmail.com',
+        phone: '+972545993204',
+        role: 'Development Manager'
         },
-        "somaya": {
-          "name": "Somaya Abu Samor",
-          "email": "ssomaya252@gmail.com",
-          "phone": "0523694162"
+        somaya: {
+        name: 'Sumaya Abu Samour',
+        email: 'ssomaya252@gmail.com',
+        phone: '+972544822959',
+        role: 'Manager Development'
         }
       },
-        
-      
-    
-    
+      userStatus: {
+        superLocal: "SuperLocal Resident",
+        superLocalDesc: "You have SuperLocal privileges!",
+        activeResident: "Active Resident",
+        activeResidentDesc: "You're an active contributor with {count} verified items!",
+        regularResident: "Regular Resident",
+        regularResidentDesc: "Get started by adding and verifying landmarks/routes"
+      },
+
+    stats: {
+      landmarks: "Landmarks",
+      routes: "Routes",
+      correctVotes: "Correct Votes"
+    },
+
+    progress: {
+      title: "Progress to Next Level",
+      verificationsNeeded: "Need {count} more verifications to become Active",
+      votesNeeded: "Need {count} more correct votes to become SuperLocal"
+    },
+
+    buttons: {
+      applySuperLocal: "Apply for SuperLocal",
+      addLandmark: "Add Landmark",
+      addRoute: "Add Route"
+    },
+
+    status: {
+      requestPending: "Super Local request pending admin approval"
+    },
+
+    alerts: {
+      error: "Error",
+      success: "Success",
+      notAuthenticated: "Not authenticated",
+      requestFailed: "Failed to submit request. Please try again.",
+      loadUserData: "Failed to load user data. Please check your connection."
+    },
+    home: {
+      startPoint: "Starting Point",
+      destination: "Destination",
+      setStart: "Set Start",
+      setDestination: "Set Destination",
+      showRoutes: "Show Routes",
+      showRoute: "Show Route",
+      startNavigation: "Start Navigation",
+      distance: "Distance",
+      duration: "Duration",
+      navigationSteps: "Navigation Steps",
+      previous: "Previous",
+      next: "Next",
+      currentLocation: "Current Location",
+      stopNavigation: "Stop Navigation",
+      searchLandmark: "Search landmark...",
+      routeInfo: "Route Information",
+      routeActions: "Route Actions",
+      eta: "ETA",
+      startPlaceholder: "Current Location or specific address",
+      destinationPlaceholder: "Destination address"
+
+    },
+    addLandmark: {
+      searchPlaceholder: "Search landmarks...",
+      filterAll: "All",
+      filterVerified: "Verified",
+      filterPending: "Pending",
+      pendingLandmarksTitle: "Pending Landmarks",
+      noPendingLandmarks: "No pending landmarks in this area",
+      yourLocation: "Your Location",
+      verified: "Verified",
+      pendingVerification: "Pending Verification",
+      showForm: "Show Form",
+      minimizeForm: "Minimize Form",
+      addLandmarkTitle: "Add New Landmark",
+      landmarkTitlePlaceholder: "Landmark title",
+      descriptionPlaceholder: "Description (optional)",
+      changeImage: "Change Image",
+      selectImage: "Select Image (optional)",
+      addLandmarkButton: "Add Landmark",
+      cancelButton: "Cancel",
+      tapToAdd: "Tap on the map to add a landmark",
+      helpVerify: "Help Verify",
+      isAccurate: "Is this landmark accurate?",
+      confirm: "Confirm",
+      reject: "Reject",
+      validation: {
+      nameRequired: "Landmark name is required",
+      locationRequired: "Location is required"
+      },
+      success: "Landmark added successfully!",
+      error: "Error adding landmark"
+    },
+    addRoute: {
+      route: "Route",
+      searchPlaceholder: "Search places...",
+      filterAll: "All",
+      filterVerified: "Verified",
+      filterPending: "Pending",
+      pendingRoutesTitle: "Pending Routes",
+      noPendingRoutes: "No pending routes",
+      yourLocation: "Your location",
+      verified: "Verified",
+      pendingVerification: "Pending verification",
+      showForm: "Show form",
+      minimizeForm: "Minimize form",
+      addRouteTitle: "Add new route",
+      routeTitlePlaceholder: "Route title",
+      descriptionPlaceholder: "Description (optional)",
+      saveButton: "Save",
+      drawRoute: "Draw route",
+      cancelDrawing: "Cancel drawing",
+      pointsCount: "Points",
+      drawingRouteWithPoints: "Drawing route with {count} points",
+      distance: "Distance",
+      helpVerify: "Help verify",
+      isAccurate: "Is this route accurate?",
+      confirm: "Confirm",
+      reject: "Reject",
+      validation: {
+        titleRequired: "Route title is required",
+        minPoints: "Route must have at least 2 points"
+      },
+      votedYes: "voted Yes",
+      votedNo: "voted No",
+      voteNo: " Vote No",
+      voteYes: " Vote Yes",
+      success: "Route saved successfully!",
+      error: "Error saving route",
+      tapToAdd: "Tap on the map to add a point",
+      km: "km",
+      m: "m",
+      deleteRoute: " Delete Route",
+      close: "Close",
+      routeInformation: "Route Information",
+      needsTribalReview: "Needs Tribal Review",
+      verificationStatus: "Verification Status"
+
+    },
+    admin: {
+    title: 'Admin Dashboard',
+    logout: 'Logout',
+    totalUsers: 'Total Users',
+    systemHealth: 'System Health',
+    verificationSettings: 'Verification Settings',
+    verificationRadius: 'Verification Radius',
+    updateRadius: 'Update Radius',
+    userManagement: 'User Management',
+    viewUsers: 'View Users',
+    hideUsers: 'Hide Users',
+    createUser: 'Create User',
+    name: 'Name',
+    email: 'Email',
+    role: 'Role',
+    superLocal: 'Super Local',
+    noUsers: 'No Users',
+    refresh: 'Refresh',
+    tryAgain: 'Try Again',
+    error: 'Error',
+    adminRole: 'Admin',
+    emergencyRole: 'Emergency',
+    localRole: 'Local',
+    success: 'Success',
+    failed: 'Failed',
+    meters: 'm',
+    percent: '%',
+    yes: 'Yes',
+    no: 'No'
+  }
+  
     
     
   };

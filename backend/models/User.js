@@ -4,8 +4,9 @@ const Joi = require('joi');
 
 const userSchema = new mongoose.Schema(
   {
-    firstName: { type: String, required: true },
-    lastName: { type: String, required: true },
+    firstName: { type: String, required: false }, // Make optional
+    lastName: { type: String, required: false }, // Make optional
+    name: { type: String, required: true }, // Add this
     email: { 
       type: String, 
       required: true, 
@@ -127,8 +128,9 @@ userSchema.pre('save', async function(next) {
 // Change the validation schema to match your frontend
 const validateUser = (data) => {
   const schema = Joi.object({
-    firstName: Joi.string().min(2).max(50).required().label("First Name"),
-    lastName: Joi.string().min(2).max(50).required().label("Last Name"),
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    name: { type: String, required: true },
     email: Joi.string().email().required().label("Email"),
     password: Joi.string()
       .min(8)
