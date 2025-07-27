@@ -1,64 +1,27 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  ReactNode,
-  useEffect,
-} from 'react';
-import { I18nManager } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useState } from 'react';
+import { LocaleKeys } from '@/frontend/constants/locales/types';
 
-export type LocaleKeys = 'en' | 'ar' | 'he';
-
-interface LanguageContextType {
+type LanguageContextType = {
   language: LocaleKeys;
   changeLanguage: (lang: LocaleKeys) => void;
   isRTL: boolean;
-}
+};
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType>({
+  language: 'en',
+  changeLanguage: () => {},
+  isRTL: false
+});
 
-const LanguageProvider = ({ children }: { children: ReactNode }) => {
+export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
   const [language, setLanguage] = useState<LocaleKeys>('en');
-  const [isRTL, setIsRTL] = useState(false);
-
-  // ✅ تحميل اللغة المخزنة عند بدء التشغيل
-  useEffect(() => {
-    const loadLanguage = async () => {
-      try {
-        const storedLang = await AsyncStorage.getItem('appLanguage');
-        if (storedLang && ['en', 'ar', 'he'].includes(storedLang)) {
-          const lang = storedLang as LocaleKeys;
-          const newIsRTL = lang === 'ar' || lang === 'he';
-
-          setLanguage(lang);
-          setIsRTL(newIsRTL);
-          I18nManager.forceRTL(newIsRTL);
-        }
-      } catch (error) {
-        console.error('فشل تحميل اللغة من AsyncStorage:', error);
-      }
-    };
-
-    loadLanguage();
-  }, []);
-
-  const changeLanguage = async (lang: LocaleKeys) => {
-    const newIsRTL = lang === 'ar' || lang === 'he';
-
-    if (newIsRTL !== isRTL) {
-      I18nManager.forceRTL(newIsRTL);
-      setIsRTL(newIsRTL);
-    }
-
+  
+  const changeLanguage = (lang: LocaleKeys) => {
     setLanguage(lang);
-
-    try {
-      await AsyncStorage.setItem('appLanguage', lang);
-    } catch (error) {
-      console.error('فشل حفظ اللغة في AsyncStorage:', error);
-    }
+    // يمكنك هنا حفظ اللغة في AsyncStorage إذا لزم الأمر
   };
+
+  const isRTL = language === 'ar' || language === 'he';
 
   return (
     <LanguageContext.Provider value={{ language, changeLanguage, isRTL }}>
@@ -67,12 +30,4 @@ const LanguageProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useLanguage = (): LanguageContextType => {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
-  }
-  return context;
-};
-
-export default LanguageProvider
+export const useLanguage = () => useContext(LanguageContext);

@@ -1,77 +1,143 @@
 import { View, Text, StyleSheet, ScrollView, Linking, TouchableOpacity } from 'react-native';
 import { MaterialIcons, FontAwesome5, Ionicons, Feather } from '@expo/vector-icons';
+import { useTranslations } from '@/frontend/constants/locales';
+import { useLanguage } from '@/frontend/context/LanguageProvider';
 
 export default function AboutUs() {
+  const { t } = useTranslations();
+  const { language, changeLanguage, isRTL } = useLanguage();
+
+
+  // الحصول على بيانات الترجمة ككائنات
+    // تحديد الأنواع بشكل صريح
+  const problemList = t('about.problemList', { returnObjects: true }) as Record<string, string>;
+  const solutionLevels = t('about.solutionLevels', { returnObjects: true }) as Array<{
+    level: string;
+    detail: string;
+    icon: string;
+  }>;
+  const verificationCriteria = t('about.verificationCriteria', { returnObjects: true }) as string[];
+
+
+  // دالة لتبديل اللغة
+  const toggleLanguage = () => {
+    const newLang = language === 'en' ? 'ar' : language === 'ar' ? 'he' : 'en';
+    changeLanguage(newLang);
+  };
+
+  // نص زر اللغة
+  const getLanguageButtonText = () => {
+    switch(language) {
+      case 'en': return 'العربية';
+      case 'ar': return 'עברית';
+      case 'he': return 'English';
+      default: return 'EN';
+    }
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+     <ScrollView 
+      contentContainerStyle={[styles.container, isRTL && { direction: 'rtl' }]}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* زر تغيير اللغة */}
+      <TouchableOpacity 
+        style={[
+          styles.languageButton,
+          isRTL ? { left: 20 } : { right: 20 }
+        ]}
+        onPress={toggleLanguage}
+      >
+        <Text style={styles.languageButtonText}>
+          {getLanguageButtonText()}
+        </Text>
+      </TouchableOpacity>
+
       {/* Hero Section */}
       <View style={styles.hero}>
         <View style={styles.heroContent}>
-          <Text style={styles.heroTitle}>About NegevPulse</Text>
-          <Text style={styles.heroSubtitle}>Bridging the gap for unrecognized villages</Text>
+          <Text style={styles.heroTitle}>{t('about.title')}</Text>
+          <Text style={styles.heroSubtitle}>{t('about.subtitle')}</Text>
         </View>
         <View style={styles.heroDecoration} />
       </View>
 
       {/* Content Sections */}
       <View style={styles.content}>
+
         {/* Story Section */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="book" size={24} color="#6D4C41" />
-            <Text style={styles.sectionTitle}>Our Story</Text>
+            <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
+              {t('about.missionTitle')}
+            </Text>
           </View>
-          <Text style={styles.sectionText}>
-            NegevPulse is a graduation project developed by three fourth-year Software Engineering students 
-            at Sami Shamoon College of Engineering. Our mission is to empower marginalized communities 
-            in the Negev region through technology.
+          <Text style={[styles.sectionText, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.missionText')}
           </Text>
-          <View style={styles.sectionIcon}>
+          <View style={[styles.sectionIcon, isRTL ? { left: 20 } : { right: 20 }]}>
             <FontAwesome5 name="university" size={20} color="#8D6E63" />
           </View>
         </View>
 
         {/* Problem Section */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="alert-circle" size={24} color="#6D4C41" />
-            <Text style={styles.sectionTitle}>The Challenge</Text>
+            <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
+              {t('about.problemTitle')}
+            </Text>
           </View>
-          {[
-            "Over 35 unrecognized villages exist physically but don't appear on official maps",
-            "No reliable digital mapping exists for emergency services, deliveries, or visitors",
-            "These villages are visible on satellite imagery but absent from digital maps"
-          ].map((item, i) => (
-            <View key={i} style={styles.listItem}>
+          {Object.entries(problemList).map(([key, item], i) => (
+            <View key={key} style={[styles.listItem, isRTL && { flexDirection: 'row-reverse' }]}>
               <MaterialIcons name="fiber-manual-record" size={12} color="#D4A59A" />
-              <Text style={styles.listText}>{item}</Text>
+              <Text style={[styles.listText, { 
+                textAlign: isRTL ? 'right' : 'left',
+                writingDirection: isRTL ? 'rtl' : 'ltr'
+              }]}>
+                {item}
+              </Text>
             </View>
           ))}
         </View>
 
         {/* Solution Section */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="bulb" size={24} color="#6D4C41" />
-            <Text style={styles.sectionTitle}>Our Solution</Text>
+            <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
+              {t('about.goalTitle')}
+            </Text>
           </View>
-          <Text style={styles.sectionText}>
-            NegevPulse introduces a <Text style={styles.highlight}>three-tier crowdsourcing</Text> system where 
-            residents can map their communities.
+          <Text style={[styles.sectionText, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.goalText')}
           </Text>
           
-          {[
-            { level: "Regular Residents", detail: "Can submit landmarks/roads (Vote weight: 1)", icon: "user" },
-            { level: "Active Residents", detail: "Verified contributors (Vote weight: 2)", icon: "user-check" },
-            { level: "Super Locals", detail: "Community leaders (Vote weight: 4)", icon: "user-tie" }
-          ].map((item, i) => (
-            <View key={i} style={styles.solutionItem}>
-              <View style={styles.solutionIcon}>
+          {solutionLevels.map((item, i) => (
+            <View key={`solution-${i}`} style={[styles.solutionItem, isRTL && { flexDirection: 'row-reverse' }]}>
+              <View style={[styles.solutionIcon, isRTL ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12 }]}>
                 <FontAwesome5 name={item.icon} size={16} color="#6D4C41" />
               </View>
               <View style={styles.solutionText}>
-                <Text style={styles.solutionLevel}>{item.level}</Text>
-                <Text style={styles.solutionDetail}>{item.detail}</Text>
+                <Text style={[styles.solutionLevel, { 
+                  textAlign: isRTL ? 'right' : 'left',
+                  writingDirection: isRTL ? 'rtl' : 'ltr'
+                }]}>
+                  {item.level}
+                </Text>
+                <Text style={[styles.solutionDetail, { 
+                  textAlign: isRTL ? 'right' : 'left',
+                  writingDirection: isRTL ? 'rtl' : 'ltr'
+                }]}>
+                  {item.detail}
+                </Text>
               </View>
             </View>
           ))}
@@ -79,33 +145,44 @@ export default function AboutUs() {
 
         {/* Verification Section */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="shield-checkmark" size={24} color="#6D4C41" />
-            <Text style={styles.sectionTitle}>Verification Process</Text>
+            <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
+              {t('about.howItWorksTitle')}
+            </Text>
           </View>
-          <Text style={styles.sectionText}>
-            For a landmark/road to be approved, it must meet two criteria:
+          <Text style={[styles.sectionText, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.verificationText')}
           </Text>
-          {[
-            "Achieve 5.6 weighted votes (equivalent to 2 Super Locals + 1 Active)",
-            "Maintain 80% approval rate from all voters"
-          ].map((item, i) => (
-            <View key={i} style={styles.listItem}>
+          {verificationCriteria.map((item, i) => (
+            <View key={`criteria-${i}`} style={[styles.listItem, isRTL && { flexDirection: 'row-reverse' }]}>
               <Feather name="check-circle" size={16} color="#8D6E63" />
-              <Text style={styles.listText}>{item}</Text>
+              <Text style={[styles.listText, { 
+                textAlign: isRTL ? 'right' : 'left',
+                writingDirection: isRTL ? 'rtl' : 'ltr'
+              }]}>
+                {item}
+              </Text>
             </View>
           ))}
         </View>
 
         {/* Tech Section */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="code" size={24} color="#6D4C41" />
-            <Text style={styles.sectionTitle}>Technical Details</Text>
+            <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
+              {t('about.techTitle')}
+            </Text>
           </View>
-          <Text style={styles.sectionText}>
-            Currently available on Android, with future plans for iOS expansion. Inspired by the best of 
-            Waze's community features and Google Maps' reliability.
+          <Text style={[styles.sectionText, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.techText')}
           </Text>
           <View style={styles.techIcons}>
             <FontAwesome5 name="android" size={24} color="#8D6E63" />
@@ -117,17 +194,35 @@ export default function AboutUs() {
 
         {/* CTA Section */}
         <View style={[styles.section, styles.ctaSection]}>
-          <Ionicons name="hand-left" size={32} color="#6D4C41" style={styles.ctaIcon} />
-          <Text style={styles.ctaTitle}>Join Our Movement</Text>
-          <Text style={styles.ctaText}>
-            Help us map the unmapped. Contact us at:
+          <Ionicons 
+            name={isRTL ? "hand-right" : "hand-left"} 
+            size={32} 
+            color="#6D4C41" 
+            style={styles.ctaIcon} 
+          />
+          <Text style={[styles.ctaTitle, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.visionTitle')}
+          </Text>
+          <Text style={[styles.ctaText, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.contactText')}
           </Text>
           <TouchableOpacity 
             style={styles.contactButton}
-            onPress={() => Linking.openURL('mailto:negevpulse.support@gmail.com')}
+            onPress={() => Linking.openURL(`mailto:${t('about.contactEmail')}`)}
           >
             <MaterialIcons name="email" size={20} color="white" />
-            <Text style={styles.contactButtonText}>negevpulse.support@gmail.com</Text>
+            <Text style={[styles.contactButtonText, { 
+              textAlign: isRTL ? 'right' : 'left',
+              writingDirection: isRTL ? 'rtl' : 'ltr'
+            }]}>
+              {t('about.contactEmail')}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -138,6 +233,23 @@ export default function AboutUs() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffffff',
+    position: 'relative',
+  },
+  languageButton: {
+    position: 'absolute',
+    top: 50,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#FFD54F',
+  },
+  languageButtonText: {
+    color: '#FFD54F',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   hero: {
     position: 'relative',
@@ -205,7 +317,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: '#5D4037',
     fontWeight: '600',
-    marginLeft: 10,
     fontFamily: 'sans-serif-medium',
   },
   sectionText: {
@@ -218,13 +329,12 @@ const styles = StyleSheet.create({
   sectionIcon: {
     position: 'absolute',
     top: 20,
-    right: 20,
-    backgroundColor: '#EFEBE9',
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#EFEBE9',
   },
   highlight: {
     color: '#8D6E63',
@@ -258,7 +368,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   solutionText: {
     flex: 1,
@@ -291,13 +400,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     marginBottom: 5,
-    textAlign: 'center',
     fontFamily: 'sans-serif-medium',
   },
   ctaText: {
     fontSize: 16,
     color: '#FFD54F',
-    textAlign: 'center',
     marginBottom: 15,
     fontFamily: 'sans-serif',
   },

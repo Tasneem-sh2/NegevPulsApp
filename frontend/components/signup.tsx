@@ -10,8 +10,10 @@ import {
     View
 } from 'react-native';
 
+// Update your SignupData type
 type SignupData = {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -20,8 +22,10 @@ type SignupData = {
 
 const Signup = () => {
   const router = useRouter();
+// Update your initial state
   const [data, setData] = useState<SignupData>({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -38,48 +42,73 @@ const Signup = () => {
     setData((prevData) => ({ ...prevData, [name]: value }));
   };
 
-  const handleSubmit = async () => {
+// Update your handleSubmit function
+const handleSubmit = async () => {
+  // Basic validation
+  if (!data.firstName || !data.lastName) {
+    setError("First name and last name are required");
+    return;
+  }
+
+  if (data.password !== data.confirmPassword) {
+    setError("Passwords do not match");
+    return;
+  }
+
+  // Password complexity validation
+  // Password complexity validation
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+  if (!passwordRegex.test(data.password)) {
+    setError("Password must contain: 8+ chars, uppercase, lowercase, number, and special character");
+    return;
+  }
+
+  setIsSubmitting(true);
+  setError("");
+
+  try {
+   const url = `https://negevpulsapp.onrender.com/api/signup`;
+
+    const payload = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      password: data.password,
+      confirmPassword: data.confirmPassword,
+      role: data.role
+    };
+
+    const response = await axios.post(url, payload);
     
-    if (data.password !== data.confirmPassword) {
-      setError("Passwords do not match");
-      return;
+    setSuccessMessage("Account created successfully!");
+    // Clear form
+    setData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      role: "local",
+    });
+
+    setTimeout(() => {
+      router.push('./login');
+    }, 2000);
+
+  }  catch (error: any) {
+    console.error('API call failed:', error);
+    console.log('Error response:', error.response?.data); // Add this line
+    if (error.response) {
+      setError(error.response.data.message || 'Signup failed');
+    } else if (error.request) {
+      setError('No response received from server');
+    } else {
+      setError('Network error or server unavailable');
     }
-
-    setIsSubmitting(true);
-    setError("");
-    setSuccessMessage("");
-
-    try {
-      const url = `https://negevpulsapp.onrender.com/api/signup`;
-      const { data: res } = await axios.post(url, data);
-
-      setSuccessMessage("Account created successfully!");
-
-      // Clear form
-      setData({
-        name: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-        role: "local",
-      });
-
-      // Optionally navigate to login after 2 seconds
-      setTimeout(() => {
-        router.push('./login');
-      }, 2000);
-
-    } catch (error: any) {
-      console.error('API call failed:', error);
-      if (error.response) {
-        setError(error.response.data.message);
-      } else {
-        setError('An unexpected error occurred');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <KeyboardAvoidingView
@@ -96,9 +125,17 @@ const Signup = () => {
           <View style={styles.formContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Name"
-              value={data.name}
-              onChangeText={(text) => handleChange('name', text)}
+              placeholder="First Name"
+              value={data.firstName}
+              onChangeText={(text) => handleChange('firstName', text)}
+              placeholderTextColor="#8d6e63"
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Last Name"
+              value={data.lastName}
+              onChangeText={(text) => handleChange('lastName', text)}
               placeholderTextColor="#8d6e63"
             />
 

@@ -12,9 +12,11 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  I18nManager
 } from 'react-native';
 import Slider from '@react-native-community/slider';
+import { useTranslations } from '@/frontend/constants/locales';
 
 interface User {
   _id: string;
@@ -24,6 +26,7 @@ interface User {
   createdAt: string;
   isSuperlocal?: boolean;
 }
+
 interface SuperLocalRequest {
   _id: string;
   userId: string;
@@ -31,6 +34,37 @@ interface SuperLocalRequest {
   email: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
+}
+
+interface AdminTranslations {
+  title: string;
+  logout: string;
+  totalUsers: string;
+  systemHealth: string;
+  verificationSettings: string;
+  verificationRadius: string;
+  updateRadius: string;
+  userManagement: string;
+  viewUsers: string;
+  hideUsers: string;
+  createUser: string;
+  name: string;
+  email: string;
+  role: string;
+  superLocal: string;
+  noUsers: string;
+  refresh: string;
+  tryAgain: string;
+  error: string;
+  adminRole: string;
+  emergencyRole: string;
+  localRole: string;
+  success: string;
+  failed: string;
+  meters: string;
+  percent: string;
+  yes: string;
+  no: string;
 }
 
 export default function AdminDashboard() {
@@ -50,7 +84,20 @@ export default function AdminDashboard() {
   const [verificationRadius, setVerificationRadius] = useState(500);
   const [isUpdatingRadius, setIsUpdatingRadius] = useState(false);
   const BASE_URL = process.env.API_BASE_URL || "https://negevpulsapp.onrender.com";
+  const translations = useTranslations();
+  const t = translations.admin; // هنا نصل مباشرة إلى قسم admin في كائن الترجمات
+  // Function to toggle language
+  const toggleLanguage = () => {
+    const newLocale = I18nManager.isRTL ? 'en' : 'ar';
+    router.push({ pathname: '/admin', params: { locale: newLocale } });
+  };
   
+
+  // Set layout direction based on language
+  useEffect(() => {
+    I18nManager.forceRTL(I18nManager.isRTL);
+  }, []);
+
   const fetchUsers = async () => {
     try {
       setLoading(prev => ({ ...prev, users: true }));
@@ -75,7 +122,7 @@ export default function AdminDashboard() {
 
       setUsers(response.data.data || []);
     } catch (error) {
-      let errorMessage = 'Failed to fetch users';
+      let errorMessage = t.failed;
       
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNABORTED') {
@@ -96,14 +143,13 @@ export default function AdminDashboard() {
       console.error('Fetch error:', error);
       
       if (!errorMessage.includes('token')) {
-        Alert.alert('Error', errorMessage);
+        Alert.alert(t.error, errorMessage);
       }
     } finally {
       setLoading(prev => ({ ...prev, users: false }));
       setRefreshing(false);
     }
   };
-
 // Fetch super local requests - updated version
 const fetchSuperLocalRequests = async () => {
   try {
@@ -232,7 +278,6 @@ const handleRequestDecision = async (requestId: string, decision: 'approve' | 'r
   const handleRefresh = () => {
     setRefreshing(true);
     fetchUsers();
-    fetchSuperLocalRequests();
   };
 
   const handleLogout = async () => {
@@ -252,9 +297,6 @@ const handleRequestDecision = async (requestId: string, decision: 'approve' | 'r
     }
   }, [showUsers]);
 
-  useEffect(() => {
-    fetchSuperLocalRequests();
-  }, []);
 
 // For fetching verification radius
 // Fetch verification radius - updated version
@@ -322,17 +364,27 @@ useEffect(() => {
 
   return (
     <View style={styles.container}>
+      {/* Language Toggle Button */}
+      <TouchableOpacity 
+        style={[styles.languageButton, I18nManager.isRTL ? { left: 20 } : { right: 20 }]}
+        onPress={toggleLanguage}
+      >
+        <Text style={styles.languageText}>
+          {I18nManager.isRTL ? 'EN' : 'العربية'}
+        </Text>
+      </TouchableOpacity>
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Admin Dashboard</Text>
+          <Text style={styles.headerTitle}>{t.title}</Text>
           <View style={styles.headerActions}>
             <TouchableOpacity 
               style={styles.logoutButton}
               onPress={handleLogout}
             >
               <MaterialIcons name="logout" size={20} color="#FFD700" />
-              <Text style={styles.logoutText}>Logout</Text>
+              <Text style={styles.logoutText}>{t.logout}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -354,35 +406,26 @@ useEffect(() => {
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <FontAwesome name="users" size={24} color="#5d4037" />
-            <Text style={styles.statLabel}>Total Users</Text>
+            <Text style={styles.statLabel}>{t.totalUsers}</Text>
             <Text style={styles.statValue}>{users.length}</Text>
           </View>
           <View style={styles.statCard}>
-            <MaterialIcons name="report" size={24} color="#5d4037" />
-            <Text style={styles.statLabel}>Active Reports</Text>
-            <Text style={styles.statValue}>0</Text>
-          </View>
-          <View style={styles.statCard}>
-            <MaterialIcons name="pending-actions" size={24} color="#5d4037" />
-            <Text style={styles.statLabel}>Pending Requests</Text>
-            <Text style={styles.statValue}>
-              {superLocalRequests.filter(req => req.status === 'pending').length}
-            </Text>
-          </View>
-          <View style={styles.statCard}>
             <MaterialIcons name="health-and-safety" size={24} color="#5d4037" />
-            <Text style={styles.statLabel}>System Health</Text>
-            <Text style={styles.statValue}>100%</Text>
+            <Text style={styles.statLabel}>{t.systemHealth}</Text>
+            <Text style={styles.statValue}>100{t.percent}</Text>
           </View>
         </View>
+
         <View style={styles.toolCard}>
           <View style={styles.toolHeader}>
             <MaterialIcons name="settings" size={24} color="#5d4037" />
-            <Text style={styles.toolTitle}>Verification Settings</Text>
+            <Text style={styles.toolTitle}>{t.verificationSettings}</Text>
           </View>
 
           <View style={styles.radiusControl}>
-            <Text style={styles.radiusLabel}>Verification Radius: {verificationRadius}m</Text>
+            <Text style={styles.radiusLabel}>
+              {t.verificationRadius}: {verificationRadius}{t.meters}
+            </Text>
             <Slider
               style={styles.radiusSlider}
               minimumValue={100}
@@ -402,7 +445,7 @@ useEffect(() => {
               {isUpdatingRadius ? (
                 <ActivityIndicator color="white" size="small" />
               ) : (
-                <Text style={styles.updateRadiusButtonText}>Update Radius</Text>
+                <Text style={styles.updateRadiusButtonText}>{t.updateRadius}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -414,7 +457,7 @@ useEffect(() => {
           <View style={styles.toolCard}>
             <View style={styles.toolHeader}>
               <MaterialIcons name="people" size={24} color="#5d4037" />
-              <Text style={styles.toolTitle}>User Management</Text>
+              <Text style={styles.toolTitle}>{t.userManagement}</Text>
             </View>
             <View style={styles.buttonGroup}>
               <TouchableOpacity 
@@ -426,7 +469,7 @@ useEffect(() => {
                   <ActivityIndicator color="#FFD700" size="small" />
                 ) : (
                   <Text style={styles.buttonText}>
-                    {showUsers ? 'Hide Users' : 'View All Users'}
+                    {showUsers ? t.hideUsers : t.viewUsers}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -434,7 +477,7 @@ useEffect(() => {
                 style={[styles.button, { backgroundColor: '#8d6e63' }]}
                 onPress={() => router.push('/signup')}
               >
-                <Text style={styles.buttonText}>Create New User</Text>
+                <Text style={styles.buttonText}>{t.createUser}</Text>
               </TouchableOpacity>
             </View>
 
@@ -451,19 +494,19 @@ useEffect(() => {
                       onPress={fetchUsers}
                     >
                       <MaterialIcons name="refresh" size={20} color="#FFD700" />
-                      <Text style={styles.refreshText}>Try Again</Text>
+                      <Text style={styles.refreshText}>{t.tryAgain}</Text>
                     </TouchableOpacity>
                   </View>
                 ) : users.length === 0 ? (
                   <View style={styles.emptyState}>
                     <MaterialIcons name="people-outline" size={50} color="#8d6e63" />
-                    <Text style={styles.emptyText}>No users found</Text>
+                    <Text style={styles.emptyText}>{t.noUsers}</Text>
                     <TouchableOpacity 
                       style={styles.refreshButton}
                       onPress={fetchUsers}
                     >
                       <MaterialIcons name="refresh" size={20} color="#FFD700" />
-                      <Text style={styles.refreshText}>Refresh</Text>
+                      <Text style={styles.refreshText}>{t.refresh}</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -481,122 +524,23 @@ useEffect(() => {
                           item.role === 'emergency' ? styles.emergencyRole :
                           styles.localRole
                         ]}>
-                          {item.role}
+                          {item.role === 'admin' ? t.adminRole :
+                           item.role === 'emergency' ? t.emergencyRole :
+                           t.localRole}
                         </Text>
                         <Text style={styles.userCell}>
-                          {item.isSuperlocal ? 'Yes' : 'No'}
+                          {item.isSuperlocal ? t.yes : t.no}
                         </Text>
                       </View>
                     )}
                     ListHeaderComponent={() => (
                       <View style={[styles.userRow, styles.headerRow]}>
-                        <Text style={styles.headerCell}>Name</Text>
-                        <Text style={styles.headerCell}>Email</Text>
-                        <Text style={styles.headerCell}>Role</Text>
-                        <Text style={styles.headerCell}>Super Local</Text>
+                        <Text style={styles.headerCell}>{t.name}</Text>
+                        <Text style={styles.headerCell}>{t.email}</Text>
+                        <Text style={styles.headerCell}>{t.role}</Text>
+                        <Text style={styles.headerCell}>{t.superLocal}</Text>
                       </View>
                     )}
-                  />
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* Super Local Requests */}
-          <View style={styles.toolCard}>
-            <View style={styles.toolHeader}>
-              <MaterialIcons name="supervisor-account" size={24} color="#5d4037" />
-              <Text style={styles.toolTitle}>Super Local Requests</Text>
-            </View>
-            <View style={styles.buttonGroup}>
-              <TouchableOpacity 
-                style={[styles.button, { backgroundColor: '#6d4c41' }]}
-                onPress={() => {
-                  setShowRequests(!showRequests);
-                  fetchSuperLocalRequests();
-                }}
-                disabled={loading.requests}
-              >
-                {loading.requests ? (
-                  <ActivityIndicator color="#FFD700" size="small" />
-                ) : (
-                  <Text style={styles.buttonText}>
-                    {showRequests ? 'Hide Requests' : 'View Requests'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {showRequests && (
-              <View style={styles.usersTable}>
-                {loading.requests ? (
-                  <ActivityIndicator size="large" color="#8b5e3c" style={styles.loader} />
-                ) : (
-                  <FlatList
-                    data={superLocalRequests}
-                    keyExtractor={(item) => item._id}
-                    scrollEnabled={false}
-                    renderItem={({ item }) => (
-                      <View style={styles.requestRow}>
-                        <View style={styles.requestInfo}>
-                          <View style={styles.requestDetails}>
-                            <Text style={styles.requestName}>{item.name || 'N/A'}</Text>
-                            <Text style={styles.requestEmail}>{item.email}</Text>
-                            <View style={styles.statusContainer}>
-                              <Text style={styles.requestLabel}>Status: </Text>
-                              <Text style={[styles.statusText, styles[item.status]]}>
-                                {item.status}
-                              </Text>
-                            </View>
-                            <View style={styles.statusContainer}>
-                              <Text style={styles.requestLabel}>Date: </Text>
-                              <Text style={styles.requestDate}>
-                                {new Date(item.createdAt).toLocaleDateString()}
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                        {item.status === 'pending' && (
-                          <View style={styles.requestActions}>
-                            <TouchableOpacity
-                              style={[styles.requestButton, styles.approveButton]}
-                              onPress={() => handleRequestDecision(item._id, 'approve')}
-                              disabled={processingRequests[item._id]}
-                            >
-                              {processingRequests[item._id] ? (
-                                <ActivityIndicator color="white" size="small" />
-                              ) : (
-                                <Text style={styles.requestButtonText}>Approve</Text>
-                              )}
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.requestButton, styles.rejectButton]}
-                              onPress={() => handleRequestDecision(item._id, 'reject')}
-                              disabled={processingRequests[item._id]}
-                            >
-                              {processingRequests[item._id] ? (
-                                <ActivityIndicator color="white" size="small" />
-                              ) : (
-                                <Text style={styles.requestButtonText}>Reject</Text>
-                              )}
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                      </View>
-                    )}
-                    ListEmptyComponent={
-                      <View style={styles.emptyState}>
-                        <MaterialIcons name="list-alt" size={50} color="#8d6e63" />
-                        <Text style={styles.emptyText}>No requests found</Text>
-                        <TouchableOpacity 
-                          style={styles.refreshButton}
-                          onPress={fetchSuperLocalRequests}
-                        >
-                          <MaterialIcons name="refresh" size={20} color="#FFD700" />
-                          <Text style={styles.refreshText}>Refresh</Text>
-                        </TouchableOpacity>
-                      </View>
-                    }
                   />
                 )}
               </View>
@@ -612,6 +556,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+    languageButton: {
+    position: 'absolute',
+    top: 50,
+    zIndex: 1001,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'white',
+  },
+  languageText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
   header: {
     backgroundColor: '#5d4037',

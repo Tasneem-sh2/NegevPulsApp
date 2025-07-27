@@ -23,6 +23,9 @@ import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
+import { useLanguage } from '@/frontend/context/LanguageProvider';
+import { useTranslations } from '@/frontend/constants/locales';
+import { I18nManager } from 'react-native';
 
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
 type ObjectId = string;
@@ -83,34 +86,39 @@ const VerificationBot: React.FC<{
   onClose: () => void;
   onRoutePress: () => void;
 }> = ({ visible, route, onVote, onClose, onRoutePress }) => {
+  const { isRTL } = useLanguage();
+  const t = useTranslations().addRoute;
+  
   if (!visible || !route) return null;
 
   return (
-    <View style={styles.botContainer}>
-      <View style={styles.botHeader}>
+    <View style={[styles.botContainer, isRTL && styles.rtlContainer]}>
+      <View style={[styles.botHeader, isRTL && styles.rtlFlex]}>
         <TouchableOpacity onPress={onClose} style={styles.botCloseIcon}>
           <Ionicons name="close" size={24} color="#6d4c41" />
         </TouchableOpacity>
         <MaterialIcons name="support-agent" size={28} color="#6d4c41" style={styles.botIcon} />
-        <Text style={styles.botTitle}>Help Verify</Text>
+        <Text style={styles.botTitle}>{t.helpVerify}</Text>
       </View>
       
       <TouchableOpacity onPress={onRoutePress} style={styles.botContent}>
-        <Text style={styles.botQuestion}>Is this route accurate?</Text>
+        <Text style={[styles.botQuestion, isRTL && styles.rtlText]}>{t.isAccurate}</Text>
         
         <View style={styles.routePreview}>
-          <Text style={styles.botRouteName}>{route.title}</Text>
-          <Text style={styles.botRoutePoints}>{route.points.length} points</Text>
+          <Text style={[styles.botRouteName, isRTL && styles.rtlText]}>{route.title}</Text>
+          <Text style={[styles.botRoutePoints, isRTL && styles.rtlText]}>
+            {route.points.length} {t.pointsCount}
+          </Text>
         </View>
       </TouchableOpacity>
       
-      <View style={styles.botButtons}>
+      <View style={[styles.botButtons, isRTL && styles.rtlFlex]}>
         <TouchableOpacity 
           style={[styles.botButton, styles.botYesButton]}
           onPress={() => onVote('yes')}
         >
           <MaterialIcons name="thumb-up" size={20} color="white" />
-          <Text style={styles.botButtonText}>Confirm</Text>
+          <Text style={styles.botButtonText}>{t.confirm}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -118,7 +126,7 @@ const VerificationBot: React.FC<{
           onPress={() => onVote('no')}
         >
           <MaterialIcons name="thumb-down" size={20} color="white" />
-          <Text style={styles.botButtonText}>Reject</Text>
+          <Text style={styles.botButtonText}>{t.reject}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -166,14 +174,31 @@ const RoutePage: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'verified' | 'unverified'>('all');
   const [isDrawingWindowExpanded, setIsDrawingWindowExpanded] = useState(true);
   const [isFormMinimized, setIsFormMinimized] = useState(false);
+  const t = useTranslations().addRoute;
+  const { language, isRTL } = useLanguage();
 
-
+  useEffect(() => {
+    I18nManager.forceRTL(isRTL);
+  }, [isRTL]);
+  // تطبيق اتجاه النص في الأنماط:
+  const dynamicStyles = StyleSheet.create({
+    textInput: {
+      textAlign: isRTL ? 'right' : 'left',
+    },
+    flexDirection: {
+      flexDirection: isRTL ? 'row-reverse' : 'row',
+    }
+  });
   const getUserWeight = (user: any): number => {
     if (!user) return 1;
     if (user.isSuperlocal) return 4;
     if (user.reputationScore && user.reputationScore >= 70) return 2;
     return 1;
   };
+    useEffect(() => {
+    I18nManager.forceRTL(isRTL);
+  }, [isRTL]);
+  
 
   const calculateDistance = (point1: RoutePoint, point2: RoutePoint) => {
     const R = 6371e3;
@@ -618,7 +643,7 @@ useEffect(() => {
             {route.title}
           </Text>
           <Text style={styles.verificationBadge}>
-            {route.verified ? 'Verified' : 'Pending - Vote Now'} ({route.points.length} points)
+            {route.verified ? t.verified : t.pendingVerification} ({route.points.length} {t.pointsCount})
           </Text>
         </View>
       </View>
@@ -773,7 +798,7 @@ useEffect(() => {
         <View style={styles.topBar}>
           <View style={styles.searchContainer}>
             <TextInput
-              placeholder="Search places..."
+              placeholder={t.searchPlaceholder}
               value={searchQuery}
               onChangeText={setSearchQuery}
               style={styles.searchInput}
@@ -791,21 +816,24 @@ useEffect(() => {
                 style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
                 onPress={() => setFilter('all')}
               >
-                <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>All</Text>
+                <Text style={styles.filterText}>{t.filterAll}</Text>
+
               </TouchableOpacity>
               
               <TouchableOpacity 
                 style={[styles.filterButton, filter === 'verified' && styles.activeFilter]}
                 onPress={() => setFilter('verified')}
               >
-                <Text style={[styles.filterText, filter === 'verified' && styles.activeFilterText]}>Verified</Text>
+                <Text style={styles.filterText}>{t.filterVerified}</Text>
+
               </TouchableOpacity>
               
               <TouchableOpacity 
                 style={[styles.filterButton, filter === 'unverified' && styles.activeFilter]}
                 onPress={() => setFilter('unverified')}
               >
-                <Text style={[styles.filterText, filter === 'unverified' && styles.activeFilterText]}>Pending</Text>
+                <Text style={styles.filterText}>{t.filterPending}</Text>
+
               </TouchableOpacity>
             </View>
 
@@ -932,7 +960,7 @@ useEffect(() => {
                     <View style={styles.formHeader}>
                       <View style={styles.headerLeft}>
                         <Text style={styles.minimizedText}>
-                          Drawing route with {tempRoutePoints.length} points
+                          {t.drawingRouteWithPoints.replace('{count}', tempRoutePoints.length.toString())}
                         </Text>
                       </View>
                       <View style={styles.headerRight}>
@@ -944,7 +972,7 @@ useEffect(() => {
                             (tempRoutePoints.length < 2 || !newRoute.title.trim()) && styles.disabledButton
                           ]}
                         >
-                          <Text style={styles.saveButtonText}>Save</Text>
+                        <Text style={styles.saveButtonText}>{t.saveButton}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => setIsFormMinimized(true)}
@@ -966,7 +994,7 @@ useEffect(() => {
                       
                       <View style={styles.routeStats}>
                         <View style={styles.statItem}>
-                          <Text style={styles.statLabel}>Distance</Text>
+                            <Text style={styles.statLabel}>{t.distance}</Text>
                           <Text style={styles.statValue}>
                             {calculateTotalDistance(tempRoutePoints) > 1000 
                               ? `${(calculateTotalDistance(tempRoutePoints)/1000).toFixed(2)} km` 
@@ -974,7 +1002,7 @@ useEffect(() => {
                           </Text>
                         </View>
                         <View style={styles.statItem}>
-                          <Text style={styles.statLabel}>Points</Text>
+                            <Text style={styles.statLabel}>{t.pointsCount}</Text>
                           <Text style={styles.statValue}>{tempRoutePoints.length}</Text>
                         </View>
                       </View>
@@ -996,7 +1024,7 @@ useEffect(() => {
                 color="#6d4c41"
               />
               <Text style={styles.drawButtonText}>
-                {isDrawingRoute ? 'Cancel Drawing' : 'Draw Route'}
+                {isDrawingRoute ? t.cancelDrawing : t.drawRoute}
               </Text>
             </TouchableOpacity>
           )}
@@ -1017,13 +1045,14 @@ useEffect(() => {
                 />
               </TouchableOpacity>
               <Text style={styles.routesTitle}>
-                Pending Routes ({getUnverifiedRoutes().length})
+                {t.pendingRoutesTitle} ({getUnverifiedRoutes().length})
               </Text>
               <ScrollView>
                 {getUnverifiedRoutes().length > 0 ? (
                   getUnverifiedRoutes().map(renderRouteItem)
                 ) : (
-                  <Text style={styles.noRoutesText}>No pending routes to vote on</Text>
+                  <Text style={styles.noRoutesText}>{t.noPendingRoutes}</Text>
+
                 )}
               </ScrollView>
             </View>
@@ -1061,14 +1090,14 @@ useEffect(() => {
                   {selectedRoute.verified ? (
                     <>
                       <MaterialIcons name="verified" size={20} color="#4CAF50" />
-                      <Text style={styles.verifiedBadgeText}>Verified Route</Text>
+                        <Text style={styles.verifiedBadgeText}>{t.verified} {t.route}</Text>
                     </>
                   ) : (
                     <>
                       <MaterialIcons name="schedule" size={20} color="#FF9800" />
                       <Text style={styles.pendingBadgeText}>
-                        Pending Verification
-                        {selectedRoute.status === 'disputed' && ' (Needs Tribal Review)'}
+                        {t.pendingVerification}
+                        {selectedRoute.status === 'disputed' && ` (${t.needsTribalReview})`}
                       </Text>
                     </>
                   )}
@@ -1100,18 +1129,18 @@ useEffect(() => {
 
                 {/* معلومات المسار */}
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Route Information</Text>
+                  <Text style={styles.sectionTitle}>{t.routeInformation}</Text>
                   <View style={styles.infoGrid}>
                     <View style={styles.infoItem}>
-                      <Text style={styles.infoLabel}>Points</Text>
+                      <Text style={styles.infoLabel}>{t.pointsCount}</Text>
                       <Text style={styles.infoValue}>{selectedRoute.points.length}</Text>
                     </View>
                     <View style={styles.infoItem}>
-                      <Text style={styles.infoLabel}>Distance</Text>
-                      <Text style={styles.infoValue}>
-                        {calculateTotalDistance(selectedRoute.points) > 1000 
-                          ? `${(calculateTotalDistance(selectedRoute.points)/1000).toFixed(2)} km` 
-                          : `${calculateTotalDistance(selectedRoute.points).toFixed(0)} m`}
+                      <Text style={styles.infoLabel}>{t.distance}</Text>
+                      <Text style={styles.statValue}>
+                        {calculateTotalDistance(tempRoutePoints) > 1000 
+                          ? `${(calculateTotalDistance(tempRoutePoints)/1000).toFixed(2)} ${t.km}` 
+                          : `${calculateTotalDistance(tempRoutePoints).toFixed(0)} ${t.m}`}
                       </Text>
                     </View>
                   </View>
@@ -1119,7 +1148,7 @@ useEffect(() => {
 
                 {/* حالة التحقق */}
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Verification Status</Text>
+                  <Text style={styles.sectionTitle}>{t.verificationStatus}</Text>
                   {renderVerificationStatus(selectedRoute)}
                 </View>
 
@@ -1139,9 +1168,9 @@ useEffect(() => {
                       {isVoting ? (
                         <ActivityIndicator color="white" />
                       ) : selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'yes' ? (
-                        <Text style={styles.buttonText}>✔ Voted Yes</Text>
+                          <Text style={styles.buttonText}>✔ {t.votedYes}</Text>
                       ) : (
-                        <Text style={styles.buttonText}>Vote Yes</Text>
+                          <Text style={styles.buttonText}>{t.voteYes}</Text>
                       )}
                     </TouchableOpacity>
                     
@@ -1158,9 +1187,9 @@ useEffect(() => {
                       {isVoting ? (
                         <ActivityIndicator color="white" />
                       ) : selectedRoute.votes.find(v => v.userId === currentUserId)?.vote === 'no' ? (
-                        <Text style={styles.buttonText}>✔ Voted No</Text>
+                          <Text style={styles.buttonText}>✔ {t.votedNo}</Text>
                       ) : (
-                        <Text style={styles.buttonText}>Vote No</Text>
+                          <Text style={styles.buttonText}>{t.voteNo}</Text>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -1206,13 +1235,13 @@ useEffect(() => {
                       selectedRoute.verified && styles.disabledButton
                     ]}
                   >
-                    <Text style={styles.deleteButtonText}>Delete Route</Text>
+                  <Text style={styles.deleteButtonText}>{t.deleteRoute}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     onPress={() => setSelectedRoute(null)}
                     style={styles.closeButton}
                   >
-                    <Text style={styles.closeButtonText}>Close</Text>
+                    <Text style={styles.closeButtonText}>{t.close}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -2173,5 +2202,21 @@ minimizeButton: {
   disabledButton: {
     opacity: 0.5,
   },
+    rtlText: {
+    textAlign: 'right',
+  },
+  ltrText: {
+    textAlign: 'left',
+  },
+  rtlFlex: {
+    flexDirection: 'row-reverse',
+  },
+  ltrFlex: {
+    flexDirection: 'row',
+  },
+  rtlContainer: {
+    right: undefined,
+    left: 20,
+  }
 });
 export default RoutePage;

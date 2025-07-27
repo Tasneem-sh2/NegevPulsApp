@@ -2,7 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
 import { useRouter } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-
+const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
+const BASE_URL = API_BASE_URL; // استخدم BASE_URL في كل مكان في التطبيق
 interface User {
   _id: string;
   email: string;
@@ -30,20 +31,22 @@ export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const initializeAuth = async () => {
-    try {
-      const [userData, tokenData] = await AsyncStorage.multiGet(['user', 'token']);
-      
-      if (userData[1] && tokenData[1]) {
-        setUser(JSON.parse(userData[1]));
-        setToken(tokenData[1]);
-      }
-    } catch (error) {
-      console.error('Failed to initialize auth', error);
-    } finally {
-      setLoading(false);
+const initializeAuth = async () => {
+  try {
+    const [userData, tokenData] = await AsyncStorage.multiGet(['user', 'token']);
+    
+    if (userData[1] && tokenData[1]) {
+      const parsedUser = JSON.parse(userData[1]);
+      // تحديث الحالة فقط إذا كانت مختلفة
+      setUser(prev => prev?._id === parsedUser._id ? prev : parsedUser);
+      setToken(prev => prev === tokenData[1] ? prev : tokenData[1]);
     }
-  };
+  } catch (error) {
+    console.error('Failed to initialize auth', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     initializeAuth();
@@ -58,28 +61,22 @@ const login = async (email: string, password: string) => {
     const response = await axios.post<{
       user: User;
       token: string;
-    }>('https://negevpulsapp.onrender.com/api/auth/login', {
+    }>(`${BASE_URL}/api/auth/login`, {
       email,
       password
     });
 
-    // Clear any existing auth data first
-    await AsyncStorage.multiRemove(['user', 'token']);
-    
-    // Store new auth data
+    // تأكد من حفظ جميع بيانات المستخدم
     await AsyncStorage.multiSet([
-      ['user', JSON.stringify(response.data.user)],
+      ['user', JSON.stringify({
+        ...response.data.user,
+        isSuperlocal: response.data.user.isSuperlocal // تأكد من حفظ هذه القيمة
+      })],
       ['token', response.data.token]
     ]);
 
-    // Force state update by setting null first
-    setUser(null);
-    setToken(null);
-    
-    // Then set new values
     setUser(response.data.user);
     setToken(response.data.token);
-    
     return true;
   } catch (error) {
     // Clear auth state on failed login

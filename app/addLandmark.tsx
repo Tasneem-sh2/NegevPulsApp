@@ -25,6 +25,9 @@ import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
+import { useLanguage } from '@/frontend/context/LanguageProvider';
+import { useTranslations } from '@/frontend/constants/locales';
+import { I18nManager } from 'react-native';
 
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
 const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
@@ -149,17 +152,18 @@ const VerificationBot: React.FC<{
   onClose: () => void;
   onLandmarkPress: () => void;
 }> = ({ visible, landmark, onVote, onClose, onLandmarkPress }) => {
+  const t = useTranslations();
+  
   if (!visible || !landmark) return null;
 
   return (
     <View style={styles.botContainer}>
-      {/* Header مع أيقونة قريبة */}
       <View style={styles.botHeader}>
         <TouchableOpacity onPress={onClose} style={styles.botCloseIcon}>
           <Ionicons name="close" size={24} color="#6d4c41" />
         </TouchableOpacity>
         <MaterialIcons name="support-agent" size={28} color="#6d4c41" style={styles.botIcon} />
-        <Text style={styles.botTitle}>Help Verify</Text>
+          <Text style={styles.botTitle}>{t.addLandmark.helpVerify}</Text>
       </View>
       
       {/* محتوى البطاقة */}
@@ -212,6 +216,7 @@ const LandmarkListItem: React.FC<{
   onClick: () => void;
   isSelected: boolean;
 }> = ({ landmark, onClick, isSelected }) => {
+  const t = useTranslations();
   return (
     <TouchableOpacity 
       onPress={onClick}
@@ -242,19 +247,20 @@ const LandmarkListItem: React.FC<{
             {landmark.verified ? (
               <>
                 <MaterialIcons name="verified" size={14} color="#4CAF50" />
-                <Text style={styles.verifiedText}>Verified</Text>
+                <Text style={styles.pendingText}>{t.addLandmark.verified}</Text>
+
               </>
             ) : (
               <>
                 <MaterialIcons name="schedule" size={14} color="#FF9800" />
-                <Text style={styles.pendingText}>Pending Verification</Text>
+                  <Text style={styles.pendingText}>{t.addLandmark.pendingVerification}</Text>
               </>
             )}
           </View>
+          {isSelected && (
+            <MaterialIcons name="chevron-right" size={20} color="#6d4c41" />
+          )}
         </View>
-        {isSelected && (
-          <MaterialIcons name="chevron-right" size={20} color="#6d4c41" />
-        )}
       </View>
     </TouchableOpacity>
   );
@@ -315,8 +321,6 @@ const LandmarkModal: React.FC<{
   const currentUserVote = landmark.votes.find(v => v.userId === currentUser?._id);
   const userWeight = currentUserVote?.weight || 0;
   
-
-
   return (
     <Modal
       animationType="slide"
@@ -655,6 +659,65 @@ const [verificationRadius, setVerificationRadius] = useState(500);
   const [isFormVisible, setIsFormVisible] = useState(true);
   const [isDrawingWindowExpanded, setIsDrawingWindowExpanded] = useState(true);
   const [isFormMinimized, setIsFormMinimized] = useState(false);
+  const { language, isRTL } = useLanguage();
+  const t = useTranslations().addLandmark;
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [image, setImage] = useState<string | null>(null);
+
+  const takePhoto = async () => {
+    let result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
+  const getCurrentLocation = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(t.error, t.validation.locationRequired);
+      return;
+    }
+
+    let location = await Location.getCurrentPositionAsync({});
+    setLocation({
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (!name) {
+      Alert.alert(t.error, t.validation.nameRequired);
+      return;
+    }
+
+    if (!location) {
+      Alert.alert(t.error, t.validation.locationRequired);
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // هنا كود إرسال البيانات للخادم
+      Alert.alert(t.success, t.success);
+      // إعادة تعيين الحقول بعد الإرسال
+      setName('');
+      setDescription('');
+      setLocation(null);
+      setImage(null);
+    } catch (error) {
+      Alert.alert(t.error, t.error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 // Load landmarks
   useEffect(() => {
@@ -1291,12 +1354,12 @@ const editDistance = (s1: string, s2: string) => {
           <View style={styles.topBar}>
             <View style={styles.searchContainer}>
               <TextInput
-                placeholder="Search landmarks..."
+                placeholder={t.searchPlaceholder}
                 placeholderTextColor="#888"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 onSubmitEditing={handleSearch}
-                style={styles.searchInput}
+                style={[styles.searchInput, isRTL && { textAlign: 'right' }]}
               />
               <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
                 <MaterialIcons name="search" size={24} color="#6d4c41" />
@@ -1307,21 +1370,27 @@ const editDistance = (s1: string, s2: string) => {
                   onPress={() => setFilter('all')} 
                   style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
                 >
-                  <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>All</Text>
+                  <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>
+                    {t.filterAll}
+                  </Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
                   onPress={() => setFilter('verified')} 
                   style={[styles.filterButton, filter === 'verified' && styles.activeFilter]}
                 >
-                  <Text style={[styles.filterText, filter === 'verified' && styles.activeFilterText]}>Verified</Text>
+                  <Text style={[styles.filterText, filter === 'verified' && styles.activeFilterText]}>
+                    {t.filterVerified}
+                  </Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
                   onPress={() => setFilter('unverified')} 
                   style={[styles.filterButton, filter === 'unverified' && styles.activeFilter]}
                 >
-                  <Text style={[styles.filterText, filter === 'unverified' && styles.activeFilterText]}>Pending</Text>
+                  <Text style={[styles.filterText, filter === 'unverified' && styles.activeFilterText]}>
+                    {t.filterPending}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -1329,62 +1398,61 @@ const editDistance = (s1: string, s2: string) => {
                 style={styles.nearbyButton}
                 onPress={() => setShowNearbyOnly(!showNearbyOnly)}
               >
-              <MaterialIcons name="near-me" size={24} color="#6d4c41" />
-
+                <MaterialIcons name="near-me" size={24} color="#6d4c41" />
               </TouchableOpacity>
-            
             </View>
           </View>
 
-    {/* قائمة Landmarks المنزلقة */}
-    <View style={[
-      styles.landmarksListContainer,
-      !isLandmarksListVisible && styles.collapsedLandmarksList
-    ]}>
-    <TouchableOpacity 
-      style={styles.toggleListButton}
-      onPress={() => setIsLandmarksListVisible(!isLandmarksListVisible)}
-    >
-      <MaterialIcons 
-        name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
-        size={24} 
-        color="#6d4c41" 
-      />
-    </TouchableOpacity>
-  
-    {isLandmarksListVisible && (
-        <>
-          <Text style={styles.landmarksTitle}>
-            Pending Landmarks ({getUnverifiedLandmarks().length})
-          </Text>
-          <ScrollView 
-            style={styles.landmarksList}
-            contentContainerStyle={styles.landmarksListContent}
-          >
-            {getUnverifiedLandmarks().length > 0 ? (
-              getUnverifiedLandmarks().map(landmark => (
-                <LandmarkListItem 
-                  key={landmark._id}
-                  landmark={landmark}
-                  onClick={() => {
-                    setSelectedLandmark(landmark);
-                    mapRef.current?.animateToRegion({
-                      latitude: landmark.lat,
-                      longitude: landmark.lon,
-                      latitudeDelta: 0.01,
-                      longitudeDelta: 0.01,
-                    });
-                  }}
-                  isSelected={selectedLandmark?._id === landmark._id}
-                />
-              ))
-            ) : (
-              <Text style={styles.noLandmarksText}>No pending landmarks in this area</Text>
+          {/* Landmarks List */}
+          <View style={[
+            styles.landmarksListContainer,
+            !isLandmarksListVisible && styles.collapsedLandmarksList
+          ]}>
+            <TouchableOpacity 
+              style={styles.toggleListButton}
+              onPress={() => setIsLandmarksListVisible(!isLandmarksListVisible)}
+            >
+              <MaterialIcons 
+                name={isLandmarksListVisible ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
+                size={24} 
+                color="#6d4c41" 
+              />
+            </TouchableOpacity>
+          
+            {isLandmarksListVisible && (
+              <>
+                <Text style={styles.landmarksTitle}>
+                  {t.pendingLandmarksTitle} ({getUnverifiedLandmarks().length})
+                </Text>
+                <ScrollView 
+                  style={styles.landmarksList}
+                  contentContainerStyle={styles.landmarksListContent}
+                >
+                  {getUnverifiedLandmarks().length > 0 ? (
+                    getUnverifiedLandmarks().map(landmark => (
+                      <LandmarkListItem 
+                        key={landmark._id}
+                        landmark={landmark}
+                        onClick={() => {
+                          setSelectedLandmark(landmark);
+                          mapRef.current?.animateToRegion({
+                            latitude: landmark.lat,
+                            longitude: landmark.lon,
+                            latitudeDelta: 0.01,
+                            longitudeDelta: 0.01,
+                          });
+                        }}
+                        isSelected={selectedLandmark?._id === landmark._id}
+                      />
+                    ))
+                  ) : (
+                    <Text style={styles.noLandmarksText}>{t.noPendingLandmarks}</Text>
+                  )}
+                </ScrollView>
+              </>
             )}
-          </ScrollView>
-        </>
-      )}
-    </View>
+          </View>
+
           {/* Main Map View */}
           <MapView
             ref={mapRef}
@@ -1397,7 +1465,7 @@ const editDistance = (s1: string, s2: string) => {
             {location && (
               <Marker
                 coordinate={location}
-                title="Your Location"
+                title={t.yourLocation}
                 pinColor="#6d4c41"
               />
             )}
@@ -1410,7 +1478,7 @@ const editDistance = (s1: string, s2: string) => {
                   longitude: landmark.lon
                 }}
                 title={landmark.title}
-                description={landmark.verified ? 'Verified' : 'Pending Verification'}
+                description={landmark.verified ? t.verified : t.pendingVerification}
                 pinColor={landmark.verified ? '#4CAF50' : '#FFD700'}
                 onPress={() => handleMarkerPress(landmark)}
               />
@@ -1470,24 +1538,24 @@ const editDistance = (s1: string, s2: string) => {
                   color="#6d4c41" 
                 />
                 <Text style={styles.toggleFormText}>
-                  {isFormMinimized ? 'Show Form' : 'Minimize Form'}
+                  {isFormMinimized ? t.showForm : t.minimizeForm}
                 </Text>
               </TouchableOpacity>
               
               {!isFormMinimized && (
                 <>
-                  <Text style={styles.formTitle}>Add New Landmark</Text>
+                  <Text style={styles.formTitle}>{t.addLandmarkTitle}</Text>
                   <TextInput
-                    placeholder="Landmark title"
+                    placeholder={t.landmarkTitlePlaceholder}
                     value={newLandmark.title}
                     onChangeText={(text) => setNewLandmark({...newLandmark, title: text})}
-                    style={styles.input}
+                    style={[styles.input, isRTL && { textAlign: 'right' }]}
                   />
                   <TextInput
-                    placeholder="Description (optional)"
+                    placeholder={t.descriptionPlaceholder}
                     value={newLandmark.description}
                     onChangeText={(text) => setNewLandmark({...newLandmark, description: text})}
-                    style={[styles.input, styles.descriptionInput]}
+                    style={[styles.input, styles.descriptionInput, isRTL && { textAlign: 'right' }]}
                     multiline
                   />
                   <TouchableOpacity 
@@ -1495,7 +1563,7 @@ const editDistance = (s1: string, s2: string) => {
                     onPress={pickImage}
                   >
                     <Text style={styles.imagePickerText}>
-                      {newLandmark.imageUrl ? 'Change Image' : 'Select Image (optional)'}
+                      {newLandmark.imageUrl ? t.changeImage : t.selectImage}
                     </Text>
                   </TouchableOpacity>
                   {newLandmark.imageUrl && (
@@ -1505,7 +1573,7 @@ const editDistance = (s1: string, s2: string) => {
                     />
                   )}
                   
-                  <View style={styles.formButtons}>
+                  <View style={[styles.formButtons, isRTL && { flexDirection: 'row-reverse' }]}>
                     <TouchableOpacity 
                       onPress={addLandmark}
                       disabled={!newLandmark.title.trim()}
@@ -1514,27 +1582,27 @@ const editDistance = (s1: string, s2: string) => {
                         !newLandmark.title.trim() && styles.disabledButton
                       ]}
                     >
-                      <Text style={styles.submitButtonText}>Add Landmark</Text>
+                      <Text style={styles.submitButtonText}>{t.addLandmarkButton}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       onPress={() => setShowForm(false)}
                       style={styles.cancelButton}
                     >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                      <Text style={styles.cancelButtonText}>{t.cancelButton}</Text>
                     </TouchableOpacity>
                   </View>
                 </>
               )}
             </View>
           )}
-  <View>
-      </View>
+          <View>
+        </View>
 
-      {showMapInfo && !showForm && !selectedLandmark && (
-        <View style={styles.mapInfoPopup}>
-          <Text style={styles.mapInfoText}>Tap on the map to add a landmark</Text>
-        </View> 
-      )}
+        {showMapInfo && !showForm && !selectedLandmark && (
+            <View style={styles.mapInfoPopup}>
+              <Text style={styles.mapInfoText}>{t.tapToAdd}</Text>
+            </View> 
+          )}
         </>
       )}
 
