@@ -118,14 +118,16 @@ router.get('/superlocal/requests', auth, async (req, res) => {
 
     res.json({
       success: true,
-      requests: requests.map(req => ({
-        _id: req._id,
-        userId: req.userId._id,
-        name: req.userId.name || 'Unknown',
-        email: req.userId.email || 'No email',
-        status: req.status,
-        createdAt: req.createdAt
-      }))
+    requests: requests
+  .filter(req => req.userId) // تجاهل nulls
+  .map(req => ({
+    _id: req._id,
+    userId: req.userId._id,
+    name: req.userId.name || 'Unknown',
+    email: req.userId.email || 'No email',
+    status: req.status,
+    createdAt: req.createdAt
+  }))
     });
   } catch (error) {
     console.error('Error fetching superlocal requests:', error);

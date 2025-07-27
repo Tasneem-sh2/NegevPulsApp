@@ -335,6 +335,7 @@ app.get('/api/settings/verification-radius', async (req, res) => {
   }
 });
 
+// backend - index.js
 app.post('/api/admin/settings/verification-radius', auth, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -346,21 +347,26 @@ app.post('/api/admin/settings/verification-radius', auth, async (req, res) => {
       return res.status(400).json({ message: 'Radius must be between 100 and 5000 meters' });
     }
 
-    const settings = await Settings.findOneAndUpdate(
-      {}, 
-      { verificationRadius: radius },
-      { upsert: true, new: true }
-    );
+    const settings = await Settings.findOne();
+    let updatedSettings;
+
+    if (settings) {
+      settings.verificationRadius = radius;
+      updatedSettings = await settings.save();
+    } else {
+      updatedSettings = await Settings.create({ verificationRadius: radius });
+    }
 
     res.json({ 
       success: true,
       message: 'Verification radius updated',
-      radius: settings.verificationRadius
+      radius: updatedSettings.verificationRadius
     });
   } catch (error) {
     res.status(500).json({ message: 'Error updating verification radius' });
   }
 });
+
 
 // Create new route
 // Add better error handling and validation
