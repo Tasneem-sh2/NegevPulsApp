@@ -341,6 +341,25 @@ export default {
     percent: '٪',
     yes: 'نعم',
     no: 'لا'
+  },
+  signup: {
+    title: "إنشاء حساب",
+    firstName: "الاسم الأول",
+    lastName: "الاسم الأخير",
+    email: "البريد الإلكتروني",
+    password: "كلمة المرور",
+    confirmPassword: "تأكيد كلمة المرور",
+    passwordHint: "يجب أن تحتوي كلمة المرور على: 8+ أحرف، حرف كبير، حرف صغير، رقم، ورموز خاصة",
+    signupButton: "تسجيل",
+    creatingAccount: "جاري إنشاء الحساب...",
+    accountCreated: "تم إنشاء الحساب بنجاح!",
+    loginText: "لديك حساب بالفعل؟",
+    loginLink: "تسجيل الدخول",
+    errors: {
+      nameRequired: "الاسم الأول والاسم الأخير مطلوبان",
+      passwordMismatch: "كلمات المرور غير متطابقة",
+      passwordComplexity: "يجب أن تحتوي كلمة المرور على: 8+ أحرف، حرف كبير، حرف صغير، رقم، ورموز خاصة"
+    }
   }
       
     

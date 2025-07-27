@@ -6,27 +6,31 @@ const jwt = require("jsonwebtoken");
 
 router.post("/signup", async (req, res) => {
   try {
-    const { error } = validateUser(req.body);
+    const { firstName, lastName, email, password, confirmPassword, role } = req.body;
+
+    // أنشئ حقل name من firstName و lastName
+    const name = `${firstName} ${lastName}`;
+    
+    const { error } = validateUser({ ...req.body, name });
     if (error) {
       return res.status(400).send({ message: error.details[0].message });
     }
 
-    const existingUser = await User.findOne({ email: req.body.email });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).send({ message: "User already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
-
     const user = new User({
-      name: req.body.name,
-      email: req.body.email,
-      password: hashedPassword,
-      role: req.body.role,
+      firstName,
+      lastName,
+      name,
+      email,
+      password, // سيتم تشفيرها تلقائيًا بواسطة middleware
+      role
     });
 
     await user.save();
-
     res.status(201).send({ message: "User created successfully" });
   } catch (error) {
     console.error("Signup error:", error);

@@ -350,6 +350,25 @@ export default {
     percent: '%',
     yes: 'Yes',
     no: 'No'
+  },
+  signup: {
+    title: "Create Account",
+    firstName: "First Name",
+    lastName: "Last Name",
+    email: "Email",
+    password: "Password",
+    confirmPassword: "Confirm Password",
+    passwordHint: "Password must contain: 8+ chars, uppercase, lowercase, number, and special character",
+    signupButton: "Sign Up",
+    creatingAccount: "Creating Account...",
+    accountCreated: "Account created successfully!",
+    loginText: "Already have an account?",
+    loginLink: "Log In",
+    errors: {
+      nameRequired: "First name and last name are required",
+      passwordMismatch: "Passwords do not match",
+      passwordComplexity: "Password must contain: 8+ chars, uppercase, lowercase, number, and special character"
+    }
   }
   
     

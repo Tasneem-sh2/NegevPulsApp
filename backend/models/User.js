@@ -128,9 +128,8 @@ userSchema.pre('save', async function(next) {
 // Change the validation schema to match your frontend
 const validateUser = (data) => {
   const schema = Joi.object({
-    firstName: { type: String, required: true },
-    lastName: { type: String, required: true },
-    name: { type: String, required: true },
+    firstName: Joi.string().required().label("First Name"), // تغيير من object إلى string
+    lastName: Joi.string().required().label("Last Name"),
     email: Joi.string().email().required().label("Email"),
     password: Joi.string()
       .min(8)

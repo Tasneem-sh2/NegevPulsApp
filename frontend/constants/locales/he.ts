@@ -340,6 +340,25 @@ export default {
     percent: '%',
     yes: 'כן',
     no: 'לא'
+  },
+  signup: {
+    title: "צור חשבון",
+    firstName: "שם פרטי",
+    lastName: "שם משפחה",
+    email: "אימייל",
+    password: "סיסמה",
+    confirmPassword: "אשר סיסמה",
+    passwordHint: "הסיסמה חייבת להכיל: 8+ תווים, אות גדולה, אות קטנה, מספר ותו מיוחד",
+    signupButton: "הרשם",
+    creatingAccount: "יוצר חשבון...",
+    accountCreated: "החשבון נוצר בהצלחה!",
+    loginText: "כבר יש לך חשבון?",
+    loginLink: "התחבר",
+    errors: {
+      nameRequired: "נדרשים שם פרטי ושם משפחה",
+      passwordMismatch: "הסיסמאות אינן תואמות",
+      passwordComplexity: "הסיסמה חייבת להכיל: 8+ תווים, אות גדולה, אות קטנה, מספר ותו מיוחד"
+    }
   }
     
     
