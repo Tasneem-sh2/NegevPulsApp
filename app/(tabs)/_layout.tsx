@@ -12,6 +12,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const pathname = usePathname();
   const { isAuthenticated, loading } = useAuth();
+  
 
   useEffect(() => {
     console.log('Authentication status:', isAuthenticated);
@@ -87,33 +88,6 @@ export default function TabLayout() {
             <IconSymbol size={28} name="map.fill" color={color} />
           ),
           tabBarItemStyle: { display: 'none' },
-        }}
-      />
-      
-      {/* Logout tab - only visible when authenticated */}
-      <Tabs.Screen
-        name="logout"
-        options={{
-          title: 'LogOut',
-          tabBarIcon: ({ color }) => (
-            <Feather name="log-out" size={24} color={color} />
-          ),
-          tabBarButton: (props) => {
-            if (!isAuthenticated) return null;
-            
-            // Create filtered props without potentially problematic properties
-            const { onPress, style, testID, accessibilityLabel, children } = props;
-            return (
-              <TouchableOpacity
-                onPress={onPress}
-                style={style}
-                testID={testID}
-                accessibilityLabel={accessibilityLabel}
-              >
-                {children}
-              </TouchableOpacity>
-            );
-          }
         }}
       />
     </Tabs>

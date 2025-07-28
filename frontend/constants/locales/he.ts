@@ -287,9 +287,6 @@ export default {
         nearbyOnly:"אתה יכול לתקשר רק עם ציוני דרך באזור הנוכחי שלך"
       }
     }
-      
-
-
     },
     addRoute: {
       route: "מסלול",
@@ -298,7 +295,9 @@ export default {
       filterVerified: "מאומת",
       filterPending: "ממתין",
       pendingRoutesTitle: "מסלולים ממתינים",
-      noPendingRoutes: "אין מסלולים ממתינים",
+      noPendingRoutes: "אין מסלולים ממתינים באזור זה",
+      noVerifiedRoutes: "אין מסלולים מאומתים באזור זה",
+      noRoutes: "אין מסלולים באזור זה",
       yourLocation: "המיקום שלך",
       verified: "מאומת",
       pendingVerification: "ממתין לאימות",
@@ -334,7 +333,14 @@ export default {
       close: "סגור",
       routeInformation: "מידע על מסלול",
       needsTribalReview: "נדרש סקירה שבטית",
-      verificationStatus: "סטטוס אימות"
+      verificationStatus: "סטטוס אימות",
+      routeInfo: "מידע על מסלול",
+      verifiedRoute: "מסלול מאומת",
+      cancelButton: "ביטול",
+      showRoutes: "הצג מסלולים",
+      hideRoutes: "הסתר מסלולים",
+      points: "נקודות",
+      noPendingRoutesNearby: "אין מסלולים ממתינים בקרבת מקום",
     },
       admin: {
     title: 'לוח בקרה למנהל',

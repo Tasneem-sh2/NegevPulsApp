@@ -6,8 +6,6 @@ import { useLanguage } from '@/frontend/context/LanguageProvider';
 export default function AboutUs() {
   const { t } = useTranslations();
   const { language, changeLanguage, isRTL } = useLanguage();
-
-
   // الحصول على بيانات الترجمة ككائنات
     // تحديد الأنواع بشكل صريح
   const problemList = t('about.problemList', { returnObjects: true }) as Record<string, string>;

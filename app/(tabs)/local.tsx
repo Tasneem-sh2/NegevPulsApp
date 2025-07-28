@@ -6,8 +6,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { jwtDecode } from 'jwt-decode';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, I18nManager, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState, useEffect } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { I18nManager } from 'react-native';
+import { useAuth } from '../AuthContext';
 
 interface UserData {
   _id: string;
@@ -51,6 +53,8 @@ export default function LocalPage() {
   });
   const [requestSent, setRequestSent] = useState(false);
   const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://negevpulsapp.onrender.com";
+  const { logout } = useAuth();
+
 
   // دالة تبديل اللغة
   const toggleLanguage = () => {
@@ -127,7 +131,32 @@ export default function LocalPage() {
       };
     }, [])
   );
-
+const handleLogout = async () => {
+  try {
+    await logout();
+    router.replace('/');
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+};
+const confirmLogout = () => {
+  Alert.alert(
+    t('auth.logout.confirmTitle') || 'Confirm Logout',
+    t('auth.logout.confirmMessage') || 'Are you sure you want to log out?',
+    [
+      {
+        text: t('auth.logout.cancelButton') || 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: t('auth.logout.confirmButton') || 'Log Out',
+        onPress: handleLogout,
+        style: 'destructive',
+      },
+    ],
+    { cancelable: true }
+  );
+};
   const getUserStatus = () => {
     if (userData.isSuperlocal === true) {
       return {
@@ -199,7 +228,7 @@ export default function LocalPage() {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* زر تبديل اللغة */}
+      {/* زر تبديل اللغة في اليمين */}
       <TouchableOpacity 
         style={[
           styles.languageButton,
@@ -212,6 +241,17 @@ export default function LocalPage() {
         </Text>
       </TouchableOpacity>
 
+      {/* زر الخروج في اليسار */}
+      <TouchableOpacity 
+        style={[
+          styles.logoutButton,
+          isRTL ? { right: 20 } : { left: 20 }
+        ]}
+        onPress={confirmLogout}
+      >
+        <MaterialIcons name="logout" size={20} color="#FFD54F" />
+        <Text style={styles.logoutButtonText}>{t('logout')}</Text>
+      </TouchableOpacity>
       <ScrollView style={[styles.container, isRTL && { direction: 'rtl' }]}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
@@ -452,16 +492,13 @@ const styles = StyleSheet.create({
     top: 50,
     zIndex: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#FFD54F',
-  },
-  languageButtonText: {
-    color: '#FFD54F',
-    fontWeight: 'bold',
-    fontSize: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   profileHeader: {
     backgroundColor: '#6d4c41',
@@ -621,5 +658,31 @@ const styles = StyleSheet.create({
   requestStatusText: {
     color: '#6d4c41',
     fontSize: 14,
+  },
+  logoutButton: {
+    position: 'absolute',
+    top: 50,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FFD54F',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  languageButtonText: {
+    color: '#FFD54F',
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginHorizontal: 5,
+  },
+  
+  logoutButtonText: {
+    color: '#FFD54F',
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginLeft: 5,
   },
 });
