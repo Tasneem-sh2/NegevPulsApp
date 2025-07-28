@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     KeyboardAvoidingView, Platform,
     ScrollView,
@@ -9,6 +9,9 @@ import {
     Text, TextInput, TouchableOpacity,
     View
 } from 'react-native';
+import { useLanguage } from '@/frontend/context/LanguageProvider';
+import { useTranslations } from '@/frontend/constants/locales';
+import { I18nManager } from 'react-native';
 
 // Update your SignupData type
 type SignupData = {
@@ -21,7 +24,6 @@ type SignupData = {
 };
 
 const Signup = () => {
-  const router = useRouter();
 // Update your initial state
   const [data, setData] = useState<SignupData>({
     firstName: "",
@@ -36,6 +38,13 @@ const Signup = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const router = useRouter();
+  const { isRTL } = useLanguage();
+  const t = useTranslations().signup;
+
+  useEffect(() => {
+    I18nManager.forceRTL(isRTL);
+  }, [isRTL]);
 
 
   const handleChange = (name: keyof SignupData, value: string) => {
@@ -46,41 +55,42 @@ const Signup = () => {
 const handleSubmit = async () => {
   // Basic validation
   if (!data.firstName || !data.lastName) {
-    setError("First name and last name are required");
+    setError(t.errors.nameRequired);
     return;
   }
 
   if (data.password !== data.confirmPassword) {
-    setError("Passwords do not match");
+    setError(t.errors.passwordMismatch);
     return;
   }
-
-  // Password complexity validation
   // Password complexity validation
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
   if (!passwordRegex.test(data.password)) {
-    setError("Password must contain: 8+ chars, uppercase, lowercase, number, and special character");
+    setError(t.errors.passwordComplexity);
     return;
   }
 
   setIsSubmitting(true);
   setError("");
 
-  try {
-   const url = `https://negevpulsapp.onrender.com/api/signup`;
+    try {
+    const url = `https://negevpulsapp.onrender.com/api/signup`;
 
     const payload = {
-      firstName: data.firstName,
-      lastName: data.lastName,
+      firstName: data.firstName,  // string
+      lastName: data.lastName,    // string
       email: data.email,
       password: data.password,
       confirmPassword: data.confirmPassword,
       role: data.role
     };
 
-    const response = await axios.post(url, payload);
-    
-    setSuccessMessage("Account created successfully!");
+      const response = await axios.post("https://negevpulsapp.onrender.com/api/signup", payload, {
+        headers: {
+          "Content-Type": "application/json", // تأكد من وجود هذا الهيدر
+        },
+    });    
+    setSuccessMessage(t.accountCreated);
     // Clear form
     setData({
       firstName: "",
@@ -109,6 +119,13 @@ const handleSubmit = async () => {
     setIsSubmitting(false);
   }
 };
+  console.log("Payload being sent:", {
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email,
+    password: data.password,
+    role: data.role,
+  });
 
   return (
     <KeyboardAvoidingView
@@ -119,13 +136,13 @@ const handleSubmit = async () => {
         <View style={styles.container}>
           <View style={styles.header}>
             <MaterialIcons name="person-add" size={40} color="#FFD700" />
-            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.title}>{t.title}</Text>
           </View>
 
           <View style={styles.formContainer}>
             <TextInput
               style={styles.input}
-              placeholder="First Name"
+              placeholder={t.firstName}
               value={data.firstName}
               onChangeText={(text) => handleChange('firstName', text)}
               placeholderTextColor="#8d6e63"
@@ -133,7 +150,7 @@ const handleSubmit = async () => {
 
             <TextInput
               style={styles.input}
-              placeholder="Last Name"
+              placeholder={t.lastName}
               value={data.lastName}
               onChangeText={(text) => handleChange('lastName', text)}
               placeholderTextColor="#8d6e63"
@@ -141,7 +158,7 @@ const handleSubmit = async () => {
 
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder={t.email}
               value={data.email}
               onChangeText={(text) => handleChange('email', text)}
               keyboardType="email-address"
@@ -151,7 +168,7 @@ const handleSubmit = async () => {
                 <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
-                placeholder="Password"
+                placeholder={t.password}
                 value={data.password}
                 onChangeText={(text) => handleChange('password', text)}
                 secureTextEntry={!showPassword}
@@ -172,7 +189,7 @@ const handleSubmit = async () => {
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
-                placeholder="Confirm Password"
+                placeholder={t.confirmPassword}
                 value={data.confirmPassword}
                 onChangeText={(text) => handleChange('confirmPassword', text)}
                 secureTextEntry={!showConfirmPassword}
@@ -190,9 +207,8 @@ const handleSubmit = async () => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.passwordHint}>
-              Password must contain: 8+ characters, uppercase, lowercase, number, and special character
-            </Text>
+            <Text style={styles.passwordHint}>{t.passwordHint}</Text>
+
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -202,21 +218,21 @@ const handleSubmit = async () => {
               disabled={isSubmitting}
             >
               <Text style={styles.buttonText}>
-                {isSubmitting ? "Creating Account..." : "Sign Up"}
+                {isSubmitting ? t.creatingAccount : t.signupButton}
               </Text>
             </TouchableOpacity>
 
             {successMessage ? (
               <View style={styles.successContainer}>
                 <MaterialIcons name="check-circle" size={24} color="#4CAF50" />
-                <Text style={styles.successText}>{successMessage}</Text>
+                <Text style={styles.successText}>{t.accountCreated}</Text>
               </View>
             ) : null}
 
             <View style={styles.loginLinkContainer}>
-              <Text style={styles.loginText}>Already have an account?</Text>
+              <Text style={styles.loginText}>{t.loginText}</Text>
               <TouchableOpacity onPress={() => router.push('./login')}>
-                <Text style={styles.loginLink}>Log In</Text>
+                <Text style={styles.loginLink}>{t.loginLink}</Text>
               </TouchableOpacity>
             </View>
           </View>

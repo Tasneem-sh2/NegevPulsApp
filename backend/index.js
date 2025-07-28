@@ -66,37 +66,6 @@ app.get('/api/users', async (req, res) => {
       });
     }
   });
-  app.post("/api/signup", async (req, res) => {
-  try {
-    const { name, email, password, confirmPassword, role } = req.body;
-    
-    // Validation
-    if (password !== confirmPassword) {
-      return res.status(400).json({ message: "Passwords don't match" });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already exists" });
-    }
-
-    // Create user with plain password - the pre-save hook will hash it
-    const user = new User({
-      name,
-      email,
-      password, // This will be hashed by the pre-save hook
-      role
-    });
-
-    await user.save();
-    
-    res.status(201).json({ message: "User created successfully" });
-  } catch (error) {
-    console.error("Signup error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-  
-});
 
 // Login route
 app.post("/api/auth/login", async (req, res) => {

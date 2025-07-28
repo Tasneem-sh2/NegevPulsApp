@@ -6,27 +6,33 @@ const jwt = require("jsonwebtoken");
 
 router.post("/signup", async (req, res) => {
   try {
+    const { firstName, lastName, email, password, confirmPassword, role } = req.body;
+       // 1. سجل البيانات الواردة للتأكد من شكلها
+    console.log("Incoming data:", req.body);
+
+    // 2. تحقق من الصحة
     const { error } = validateUser(req.body);
     if (error) {
-      return res.status(400).send({ message: error.details[0].message });
+      console.log("Validation error:", error.details);
+      return res.status(400).json({ message: error.details[0].message });
     }
-
-    const existingUser = await User.findOne({ email: req.body.email });
+    // التحقق من وجود المستخدم
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).send({ message: "User already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
-
+    // إنشاء مستخدم جديد
     const user = new User({
-      name: req.body.name,
-      email: req.body.email,
-      password: hashedPassword,
-      role: req.body.role,
+      firstName,
+      lastName,
+      name: `${firstName} ${lastName}`,
+      email,
+      password,
+      role
     });
 
     await user.save();
-
     res.status(201).send({ message: "User created successfully" });
   } catch (error) {
     console.error("Signup error:", error);

@@ -4,8 +4,8 @@ const Joi = require('joi');
 
 const userSchema = new mongoose.Schema(
   {
-    firstName: { type: String, required: false }, // Make optional
-    lastName: { type: String, required: false }, // Make optional
+    firstName: { type: String, required: true },  // غيرت من object إلى string
+    lastName: { type: String, required: true },  // غيرت من object إلى string
     name: { type: String, required: true }, // Add this
     email: { 
       type: String, 
@@ -127,10 +127,10 @@ userSchema.pre('save', async function(next) {
 
 // Change the validation schema to match your frontend
 const validateUser = (data) => {
+  console.log("VALIDATING:", data);  // 👈 أضف هذا
   const schema = Joi.object({
-    firstName: { type: String, required: true },
-    lastName: { type: String, required: true },
-    name: { type: String, required: true },
+    firstName: Joi.string().required().label("firstName"),  // ← غيرها من object إلى string
+    lastName: Joi.string().required().label("lastName"),
     email: Joi.string().email().required().label("Email"),
     password: Joi.string()
       .min(8)
@@ -138,7 +138,7 @@ const validateUser = (data) => {
       .required()
       .label("Password"),
     confirmPassword: Joi.string().valid(Joi.ref("password")).required().label("Confirm Password"),
-    role: Joi.string().valid("local", "emergency", "admin").required().label("Role"),
+    role: Joi.string().valid("local", "admin").required().label("Role"),
   });
   return schema.validate(data);
 };
