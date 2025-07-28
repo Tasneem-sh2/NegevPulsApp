@@ -2,66 +2,60 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const Joi = require('joi');
 
-const userSchema = new mongoose.Schema(
-  {
-    firstName: { type: String, required: true },  // غيرت من object إلى string
-    lastName: { type: String, required: true },  // غيرت من object إلى string
-    name: { type: String, required: true }, // Add this
-    email: { 
-      type: String, 
-      required: true, 
-      unique: true,
-      validate: {
-        validator: function(v) {
-          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-        },
-        message: props => `${props.value} is not a valid email address!`
-      }
-    },
-    password: { 
+// Mongoose schema
+const userSchema = new mongoose.Schema({
+  firstName: { type: String, required: false },
+  lastName: { type: String, required: false },
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    validate: {
+      validator: function(v) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+      },
+      message: props => `${props.value} is not a valid email address!`
+    }
+  },
+ role: {
       type: String,
-      required: true,
-      select: false,
-      validate: {
-        validator: function(v) {
-          // Check for bcrypt hash format or strong password before hashing
-          if (/^\$2[aby]\$\d+\$/.test(v)) return true; // Already hashed
-          return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(v);
-        },
-        message: props => `Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character`
-      }
+      enum: ['admin', 'local', 'emergency'],
+      default: 'local', // default role if not supplied
     },
-    role: { 
-      type: String, 
-      required: true, 
-      enum: ['local', 'emergency', 'admin'],
-      default: 'local'
+    
+  password: {
+  type: String,
+  required: true,
+  minlength: 8,
+  validate: {
+    validator: function (value) {
+      return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/.test(value);
     },
-    isSuperlocal: {
-        type: Boolean,
-        default: false
-      },
-      reputationScore: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 100
-      },
-      contributions: {
-        verified: { type: Number, default: 0 },
-        rejected: { type: Number, default: 0 }
-      },
-    lastActive: Date, // For reputation decay
-    verifiedLandmarksAdded: {
-      type: Number,
-      default: 0
-    },
-    verifiedRoutesAdded: {
-      type: Number,
-     default: 0
-    },
+    message:
+      "Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character",
+  },
+   
+  select: false,
+},
+  isSuperlocal: { type: Boolean, default: false },
+  reputationScore: { type: Number, default: 0, min: 0, max: 100 },
+  contributions: {
+    verified: { type: Number, default: 0 },
+    rejected: { type: Number, default: 0 }
+  },
+  lastActive: Date,
+  verifiedLandmarksAdded: { type: Number, default: 0 },
+  verifiedRoutesAdded: { type: Number, default: 0 }
+});
 
-  });
+// Virtual field
+
+userSchema.virtual('fullName').get(function() {
+  return `${this.firstName || ''} ${this.lastName || ''}`.trim();
+});
+
+// Vote weight calculation
+
 // Add method to calculate weight
 userSchema.methods.getVoteWeight = function() {
   let weight = 1.0; // Base weight
@@ -84,37 +78,11 @@ userSchema.methods.getVoteWeight = function() {
   
   return weight;
 };
-// Password hashing middleware
-userSchema.pre('save', function(next) {
-  if (this.isModified('password')) {
-    console.log('Password being saved:', this.password);
-    if (!/^\$2[aby]\$\d+\$/.test(this.password)) {
-      console.error('Invalid hash format detected!');
-      throw new Error('Corrupted password hash detected');
-    }
-  }
-  next();
-});
-
-// Replace the existing comparePassword method with:
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  try {
-    return await bcrypt.compare(candidatePassword, this.password);
-  } catch (error) {
-    console.error('Password comparison error:', error);
-    return false;
-  }
-};
-// Add virtual fullName field
-userSchema.virtual('fullName').get(function() {
-  return `${this.firstName} ${this.lastName}`;
-});
 
 // Password hashing middleware
 userSchema.pre('save', async function(next) {
   if (this.isModified('password')) {
     try {
-      // Only hash if not already hashed
       if (!/^\$2[aby]\$\d+\$/.test(this.password)) {
         this.password = await bcrypt.hash(this.password, 10);
       }
@@ -125,24 +93,32 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-// Change the validation schema to match your frontend
+// Password comparison
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  try {
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
+};
+
+// Joi validation
 const validateUser = (data) => {
-  console.log("VALIDATING:", data);  // 👈 أضف هذا
   const schema = Joi.object({
-    firstName: Joi.string().required().label("firstName"),  // ← غيرها من object إلى string
-    lastName: Joi.string().required().label("lastName"),
+    firstName: Joi.string().required().label("First Name"),
+    lastName: Joi.string().required().label("Last Name"),
     email: Joi.string().email().required().label("Email"),
     password: Joi.string()
       .min(8)
       .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#])'))
       .required()
       .label("Password"),
-    confirmPassword: Joi.string().valid(Joi.ref("password")).required().label("Confirm Password"),
-    role: Joi.string().valid("local", "admin").required().label("Role"),
+    confirmPassword: Joi.string().valid(Joi.ref("password")).required().label("Confirm Password")
   });
   return schema.validate(data);
 };
-// At the bottom of models/User.js:
+
+// Export model and validation
 const User = mongoose.model('User', userSchema);
-// Change this at the bottom of User.js:
-module.exports = { User, validateUser }; // Keep this as is
+module.exports = { User, validateUser };

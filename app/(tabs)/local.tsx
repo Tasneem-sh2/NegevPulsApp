@@ -6,9 +6,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { jwtDecode } from 'jwt-decode';
-import React, { useCallback, useState, useEffect } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { I18nManager } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, I18nManager, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface UserData {
   _id: string;

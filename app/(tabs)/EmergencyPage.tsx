@@ -1,3 +1,5 @@
+import { useTranslations } from '@/frontend/constants/locales';
+import { useLanguage } from '@/frontend/context/LanguageProvider';
 import { AntDesign, FontAwesome, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import MapboxGL, {
   UserLocationRenderMode,
@@ -10,6 +12,7 @@ import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  I18nManager,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,9 +21,6 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-import { useLanguage } from '@/frontend/context/LanguageProvider';
-import { useTranslations } from '@/frontend/constants/locales';
-import { I18nManager } from 'react-native';
 
 const MAPBOX_TOKEN = process.env.MAPBOX_DOWNLOADS_TOKEN || 'sk.eyJ1IjoidGFzbmVlbTIwMDIiLCJhIjoiY21jZ3l4bHJ3MGVyejJqc2h3YjkyY3hhcSJ9.OJCc5jNljboKnrfP1yfpYA';
 

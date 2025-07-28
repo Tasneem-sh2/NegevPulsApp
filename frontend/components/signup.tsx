@@ -1,17 +1,14 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-    KeyboardAvoidingView, Platform,
-    ScrollView,
-    StyleSheet,
-    Text, TextInput, TouchableOpacity,
-    View
+  KeyboardAvoidingView, Platform,
+  ScrollView,
+  StyleSheet,
+  Text, TextInput, TouchableOpacity,
+  View
 } from 'react-native';
-import { useLanguage } from '@/frontend/context/LanguageProvider';
-import { useTranslations } from '@/frontend/constants/locales';
-import { I18nManager } from 'react-native';
 
 // Update your SignupData type
 type SignupData = {
@@ -20,10 +17,11 @@ type SignupData = {
   email: string;
   password: string;
   confirmPassword: string;
-  role: string;
+  //role: string;
 };
 
 const Signup = () => {
+  const router = useRouter();
 // Update your initial state
   const [data, setData] = useState<SignupData>({
     firstName: "",
@@ -31,66 +29,63 @@ const Signup = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "local",
+   // role: "local",
   });
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const router = useRouter();
-  const { isRTL } = useLanguage();
-  const t = useTranslations().signup;
-
-  useEffect(() => {
-    I18nManager.forceRTL(isRTL);
-  }, [isRTL]);
 
 
   const handleChange = (name: keyof SignupData, value: string) => {
     setData((prevData) => ({ ...prevData, [name]: value }));
   };
 
+  
+
 // Update your handleSubmit function
 const handleSubmit = async () => {
+  
   // Basic validation
   if (!data.firstName || !data.lastName) {
-    setError(t.errors.nameRequired);
+    setError("First name and last name are required");
     return;
   }
 
   if (data.password !== data.confirmPassword) {
-    setError(t.errors.passwordMismatch);
+    setError("Passwords do not match");
     return;
   }
+
+  // Password complexity validation
   // Password complexity validation
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
   if (!passwordRegex.test(data.password)) {
-    setError(t.errors.passwordComplexity);
+    setError("Password must contain: 8+ chars, uppercase, lowercase, number, and special character");
     return;
   }
 
   setIsSubmitting(true);
   setError("");
 
-    try {
+  try {
     const url = `https://negevpulsapp.onrender.com/api/signup`;
 
     const payload = {
-      firstName: data.firstName,  // string
-      lastName: data.lastName,    // string
+      firstName: data.firstName,
+      lastName: data.lastName,
       email: data.email,
       password: data.password,
       confirmPassword: data.confirmPassword,
-      role: data.role
+     // role: data.role
     };
+    console.log("🚀 Sending payload:", payload); // ← أضف هذا السطر هنا
 
-      const response = await axios.post("https://negevpulsapp.onrender.com/api/signup", payload, {
-        headers: {
-          "Content-Type": "application/json", // تأكد من وجود هذا الهيدر
-        },
-    });    
-    setSuccessMessage(t.accountCreated);
+
+    const response = await axios.post(url, payload);
+    
+    setSuccessMessage("Account created successfully!");
     // Clear form
     setData({
       firstName: "",
@@ -98,7 +93,7 @@ const handleSubmit = async () => {
       email: "",
       password: "",
       confirmPassword: "",
-      role: "local",
+     // role: "local",
     });
 
     setTimeout(() => {
@@ -108,6 +103,8 @@ const handleSubmit = async () => {
   }  catch (error: any) {
     console.error('API call failed:', error);
     console.log('Error response:', error.response?.data); // Add this line
+    console.log('إعدادات الطلب:', error.config); // سيعرض البيانات المرسلة بالضبط
+
     if (error.response) {
       setError(error.response.data.message || 'Signup failed');
     } else if (error.request) {
@@ -119,13 +116,6 @@ const handleSubmit = async () => {
     setIsSubmitting(false);
   }
 };
-  console.log("Payload being sent:", {
-    firstName: data.firstName,
-    lastName: data.lastName,
-    email: data.email,
-    password: data.password,
-    role: data.role,
-  });
 
   return (
     <KeyboardAvoidingView
@@ -136,13 +126,13 @@ const handleSubmit = async () => {
         <View style={styles.container}>
           <View style={styles.header}>
             <MaterialIcons name="person-add" size={40} color="#FFD700" />
-            <Text style={styles.title}>{t.title}</Text>
+            <Text style={styles.title}>Create Account</Text>
           </View>
 
           <View style={styles.formContainer}>
             <TextInput
               style={styles.input}
-              placeholder={t.firstName}
+              placeholder="First Name"
               value={data.firstName}
               onChangeText={(text) => handleChange('firstName', text)}
               placeholderTextColor="#8d6e63"
@@ -150,7 +140,7 @@ const handleSubmit = async () => {
 
             <TextInput
               style={styles.input}
-              placeholder={t.lastName}
+              placeholder="Last Name"
               value={data.lastName}
               onChangeText={(text) => handleChange('lastName', text)}
               placeholderTextColor="#8d6e63"
@@ -158,7 +148,7 @@ const handleSubmit = async () => {
 
             <TextInput
               style={styles.input}
-              placeholder={t.email}
+              placeholder="Email"
               value={data.email}
               onChangeText={(text) => handleChange('email', text)}
               keyboardType="email-address"
@@ -168,7 +158,7 @@ const handleSubmit = async () => {
                 <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
-                placeholder={t.password}
+                placeholder="Password"
                 value={data.password}
                 onChangeText={(text) => handleChange('password', text)}
                 secureTextEntry={!showPassword}
@@ -189,7 +179,7 @@ const handleSubmit = async () => {
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
-                placeholder={t.confirmPassword}
+                placeholder="Confirm Password"
                 value={data.confirmPassword}
                 onChangeText={(text) => handleChange('confirmPassword', text)}
                 secureTextEntry={!showConfirmPassword}
@@ -207,8 +197,9 @@ const handleSubmit = async () => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.passwordHint}>{t.passwordHint}</Text>
-
+            <Text style={styles.passwordHint}>
+              Password must contain: 8+ characters, uppercase, lowercase, number, and special character
+            </Text>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -218,21 +209,21 @@ const handleSubmit = async () => {
               disabled={isSubmitting}
             >
               <Text style={styles.buttonText}>
-                {isSubmitting ? t.creatingAccount : t.signupButton}
+                {isSubmitting ? "Creating Account..." : "Sign Up"}
               </Text>
             </TouchableOpacity>
 
             {successMessage ? (
               <View style={styles.successContainer}>
                 <MaterialIcons name="check-circle" size={24} color="#4CAF50" />
-                <Text style={styles.successText}>{t.accountCreated}</Text>
+                <Text style={styles.successText}>{successMessage}</Text>
               </View>
             ) : null}
 
             <View style={styles.loginLinkContainer}>
-              <Text style={styles.loginText}>{t.loginText}</Text>
+              <Text style={styles.loginText}>Already have an account?</Text>
               <TouchableOpacity onPress={() => router.push('./login')}>
-                <Text style={styles.loginLink}>{t.loginLink}</Text>
+                <Text style={styles.loginLink}>Log In</Text>
               </TouchableOpacity>
             </View>
           </View>

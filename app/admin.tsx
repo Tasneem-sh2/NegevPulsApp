@@ -1,5 +1,7 @@
-import { MaterialIcons, FontAwesome } from '@expo/vector-icons';
+import { useTranslations } from '@/frontend/constants/locales';
+import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Slider from '@react-native-community/slider';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -7,16 +9,14 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  I18nManager,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  I18nManager
+  View
 } from 'react-native';
-import Slider from '@react-native-community/slider';
-import { useTranslations } from '@/frontend/constants/locales';
 
 interface User {
   _id: string;
