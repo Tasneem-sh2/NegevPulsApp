@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useTranslations } from '@/frontend/constants/locales';
 import type { LocaleKeys } from '@/frontend/constants/locales/types';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../app/AuthContext';
 
 interface LogoutTranslation {
   auth: {

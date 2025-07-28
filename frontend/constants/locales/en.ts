@@ -306,7 +306,9 @@ export default {
       filterVerified: "Verified",
       filterPending: "Pending",
       pendingRoutesTitle: "Pending Routes",
-      noPendingRoutes: "No pending routes",
+      noPendingRoutes: "No pending routes in this area",
+      noVerifiedRoutes: "No verified routes in this area",
+      noRoutes: "No routes in this area",
       yourLocation: "Your location",
       verified: "Verified",
       pendingVerification: "Pending verification",
@@ -342,8 +344,14 @@ export default {
       close: "Close",
       routeInformation: "Route Information",
       needsTribalReview: "Needs Tribal Review",
-      verificationStatus: "Verification Status"
-
+      verificationStatus: "Verification Status",
+      routeInfo: "Route Information",
+      verifiedRoute: "Verified Route",
+      cancelButton: "Cancel",
+      showRoutes: "show Routes",
+      hideRoutes: "Hide Routes",
+      points: "Points",
+      noPendingRoutesNearby: "No pending routes nearby"
     },
     admin: {
     title: 'Admin Dashboard',

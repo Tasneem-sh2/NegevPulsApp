@@ -297,7 +297,9 @@ export default {
     filterVerified: "موثق",
     filterPending: "قيد الانتظار",
     pendingRoutesTitle: "المسارات قيد المراجعة",
-    noPendingRoutes: "لا توجد مسارات قيد المراجعة",
+    noPendingRoutes: "لا توجد مسارات قيد المراجعة في هذه المنطقة",
+    noVerifiedRoutes: "لا توجد مسارات موثقة في هذه المنطقة",
+    noRoutes: "لا توجد مسارات في هذه المنطقة",
     yourLocation: "موقعك الحالي",
     verified: "موثق",
     pendingVerification: "قيد المراجعة",
@@ -333,7 +335,14 @@ export default {
     close: "إغلاق",
     routeInformation: "معلومات المسار",
     needsTribalReview: "يحتاج إلى مراجعة قبلية",
-    verificationStatus: "حالة التحقق"
+    verificationStatus: "حالة التحقق",
+    routeInfo: "معلومات المسار",
+    verifiedRoute: "مسار موثق",
+    cancelButton: "إلغاء",
+    showRoutes: "عرض الطرق",
+    hideRoutes: "إخفاء الطرق",
+    points: "النقاط",
+    noPendingRoutesNearby: "لا توجد طرق قيد المراجعة في هذه المنطقة"
     },
   admin: {
     title: 'لوحة تحكم الأدمن',

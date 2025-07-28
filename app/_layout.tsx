@@ -9,6 +9,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { LanguageProvider } from '@/frontend/context/LanguageProvider'; // ✅ تأكدي من المسار الصحيح
 
 export default function RootLayout() {
+
+
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
