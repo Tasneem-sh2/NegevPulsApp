@@ -242,6 +242,8 @@ export default {
       filterPending: "ממתין",
       pendingLandmarksTitle: "ציוני דרך ממתינים",
       noPendingLandmarks: "אין ציוני דרך ממתינים באזור זה",
+      noVerifiedLandmarks: "אין ציוני דרך מאומתים באזור זה",
+      noLandmarks: "אין ציוני דרך באזור זה",
       yourLocation: "המיקום שלך",
       verified: "מאומת",
       pendingVerification: "ממתין לאימות",
@@ -264,7 +266,30 @@ export default {
       locationRequired: "נדרש מיקום"
       },
       success: "ציון דרך נוסף בהצלחה!",
-      error: "שגיאה בהוספת ציון דרך"
+      error: "שגיאה בהוספת ציון דרך",
+      noNearbyLandmarks: "אין ציוני דרך קרובים",
+      errors: {
+        landmarkNotFound: "ציון הדרך לא נמצא",
+        outOfRange: "ניתן להצביע רק על ציוני דרך קרובים",
+        general: "אירעה שגיאה. אנא נסה שוב",
+        auth: "נדרש אימות. אנא התחבר",
+        nearbyOnly: "אתה יכול לתקשר רק עם ציוני דרך באזור הנוכחי שלך"
+      },
+      common: {
+      ok: "אוקי",
+      cancel: "ביטול",
+      locationRequired:"גישה למיקום נדרשת לתכונה זו",
+      errors: {
+        landmarkNotFound: "ציון הדרך לא נמצא",
+        outOfRange: "ניתן להצביע רק על ציוני דרך קרובים",
+        general: "אירעה שגיאה. אנא נסה שוב",
+        auth: "נדרש אימות. אנא התחבר",
+        nearbyOnly:"אתה יכול לתקשר רק עם ציוני דרך באזור הנוכחי שלך"
+      }
+    }
+      
+
+
     },
     addRoute: {
       route: "מסלול",

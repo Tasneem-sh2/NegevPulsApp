@@ -243,6 +243,8 @@ export default {
       filterPending: "قيد الانتظار",
       pendingLandmarksTitle: "المعالم قيد المراجعة",
       noPendingLandmarks: "لا توجد معالم قيد المراجعة في هذه المنطقة",
+      noVerifiedLandmarks: "لا توجد معالم موثقة في هذه المنطقة",
+      noLandmarks: "لا توجد معالم في هذه المنطقة",
       yourLocation: "موقعك الحالي",
       verified: "موثق",
       pendingVerification: "قيد المراجعة",
@@ -265,7 +267,28 @@ export default {
       locationRequired: "الموقع مطلوب"
       },
       success: "تمت إضافة المعلم بنجاح!",
-      error: "حدث خطأ أثناء إضافة المعلم"
+      error: "حدث خطأ أثناء إضافة المعلم",
+      noNearbyLandmarks: "لا توجد معالم قريبة",
+      common: {
+        ok: "حسنا",
+        cancel: "إلغاء",
+        locationRequired:"مطلوب الوصول إلى الموقع لهذه الميزة",
+        errors: {
+          landmarkNotFound: "المعلم غير موجود",
+          outOfRange: "يمكنك فقط التصويت على المعالم القريبة",
+          general: "حدث خطأ. يرجى المحاولة مرة أخرى",
+          auth: "مطلوب تسجيل الدخول. يرجى تسجيل الدخول",
+          nearbyOnly: "يمكنك التفاعل فقط مع المعالم ضمن منطقتك الحالية"
+        }
+      },
+      errors: {
+          landmarkNotFound: "المعلم غير موجود",
+          outOfRange: "يمكنك فقط التصويت على المعالم القريبة",
+          general: "حدث خطأ. يرجى المحاولة مرة أخرى",
+          auth: "مطلوب تسجيل الدخول. يرجى تسجيل الدخول",
+          nearbyOnly:"يمكنك التفاعل فقط مع المعالم ضمن منطقتك الحالية"
+        }
+
     }, 
   addRoute: {
     route: "مسار",

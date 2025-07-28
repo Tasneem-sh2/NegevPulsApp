@@ -7,26 +7,28 @@ const jwt = require("jsonwebtoken");
 router.post("/signup", async (req, res) => {
   try {
     const { firstName, lastName, email, password, confirmPassword, role } = req.body;
+       // 1. سجل البيانات الواردة للتأكد من شكلها
+    console.log("Incoming data:", req.body);
 
-    // أنشئ حقل name من firstName و lastName
-    const name = `${firstName} ${lastName}`;
-    
-    const { error } = validateUser({ ...req.body, name });
+    // 2. تحقق من الصحة
+    const { error } = validateUser(req.body);
     if (error) {
-      return res.status(400).send({ message: error.details[0].message });
+      console.log("Validation error:", error.details);
+      return res.status(400).json({ message: error.details[0].message });
     }
-
+    // التحقق من وجود المستخدم
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).send({ message: "User already exists" });
     }
 
+    // إنشاء مستخدم جديد
     const user = new User({
       firstName,
       lastName,
-      name,
+      name: `${firstName} ${lastName}`,
       email,
-      password, // سيتم تشفيرها تلقائيًا بواسطة middleware
+      password,
       role
     });
 

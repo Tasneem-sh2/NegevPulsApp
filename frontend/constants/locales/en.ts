@@ -251,6 +251,8 @@ export default {
       filterPending: "Pending",
       pendingLandmarksTitle: "Pending Landmarks",
       noPendingLandmarks: "No pending landmarks in this area",
+      noVerifiedLandmarks: "No verified landmarks in this area",
+      noLandmarks: "لا توجد معالم في هذه المنطقة",
       yourLocation: "Your Location",
       verified: "Verified",
       pendingVerification: "Pending Verification",
@@ -273,7 +275,29 @@ export default {
       locationRequired: "Location is required"
       },
       success: "Landmark added successfully!",
-      error: "Error adding landmark"
+      error: "Error adding landmark",
+      noNearbyLandmarks: "No nearby landmarks found",
+      errors: {
+        landmarkNotFound: "Landmark not found",
+        outOfRange: "You can only vote on nearby landmarks",
+        general: "An error occurred. Please try again",
+        auth: "Authentication required. Please login",
+        nearbyOnly: "You can only interact with landmarks within your current area"
+      },
+      common: {
+        ok: "ok",
+        cancel: "Cancel",
+        locationRequired:"Location access is required for this feature",
+      errors: {
+        landmarkNotFound: "Landmark not found",
+        outOfRange: "You can only vote on nearby landmarks",
+        general: "An error occurred. Please try again",
+        auth: "Authentication required. Please login",
+        nearbyOnly:"You can only interact with landmarks within your current area"
+
+      }
+      }
+
     },
     addRoute: {
       route: "Route",

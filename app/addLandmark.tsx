@@ -866,7 +866,7 @@ const handleMapPress = (e: any) => {
   }));
   setShowForm(true);
 };
-// 2. دالة لحساب المسافة بين نقطتين
+// دالة لحساب المسافة بين نقطتين
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371e3; // نصف قطر الأرض بالمتر
   const φ1 = lat1 * Math.PI/180;
@@ -882,7 +882,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c; // المسافة بالمتر
 };
 // دالة واحدة معدلة لجميع الاستخدامات
-const getNearbyLandmarks = (landmarksList: Landmark[] = landmarks, radius = 300) => { // تقليل نصف القطر إلى 300 متر
+const getNearbyLandmarks = (landmarksList: Landmark[] = landmarks, radius = 300) => {
   if (!location) return landmarksList;
   
   return landmarksList.filter(landmark => {
@@ -896,22 +896,34 @@ const getNearbyLandmarks = (landmarksList: Landmark[] = landmarks, radius = 300)
   });
 };
 
-// تعديل دالة getDisplayedLandmarks لاستخدام الدالة المعدلة
 const getDisplayedLandmarks = () => {
-  const filtered = getFilteredLandmarks();
-  return showNearbyOnly ? getNearbyLandmarks(filtered) : filtered;
+  if (!location) return landmarks;
+  
+  return landmarks.filter(landmark => {
+    // المعالم المعرفة تظهر دائماً
+    if (landmark.verified) return true;
+    
+    // المعالم المعلقة تظهر فقط إذا كانت قريبة
+    const distance = calculateDistance(
+      location.latitude,
+      location.longitude,
+      landmark.lat,
+      landmark.lon
+    );
+    return distance <= verificationRadius;
+  });
 };
-// 5. دالة للحصول على المعالم حسب الفلتر
+// دالة التصفية حسب النوع
 const getFilteredLandmarks = () => {
-  const allLandmarks = landmarks; // استخدام جميع المعالم بدلاً من القريبة فقط
+  const displayed = getDisplayedLandmarks();
   
   switch(filter) {
     case 'verified':
-      return allLandmarks.filter(l => l.verified);
+      return displayed.filter(l => l.verified);
     case 'unverified':
-      return allLandmarks.filter(l => !l.verified);
+      return displayed.filter(l => !l.verified);
     default:
-      return allLandmarks;
+      return displayed;
   }
 };
 // 6. دالة لتحديث الفلتر
@@ -944,11 +956,11 @@ const handleMarkerPress = (marker: Landmark) => {
       }));
     }
   };
-// Update the showRandomLandmarkForVerification function
-// Update the showRandomLandmarkForVerification function to use the dynamic radius
+// دالة عرض معلم عشوائي للتحقق - معدلة لعرض المعالم القريبة فقط
 const showRandomLandmarkForVerification = () => {
   if (!location) return;
 
+  // تصفية المعالم القريبة غير المؤكدة فقط
   const unverifiedNearby = landmarks.filter(landmark => {
     if (landmark.verified) return false;
     
@@ -958,7 +970,7 @@ const showRandomLandmarkForVerification = () => {
       landmark.lat,
       landmark.lon
     );
-    return distance <= verificationRadius; // Use the dynamic radius
+    return distance <= verificationRadius;
   });
 
   if (unverifiedNearby.length > 0) {
@@ -967,6 +979,17 @@ const showRandomLandmarkForVerification = () => {
     setShowBot(true);
   }
 };
+
+// في useEffect الخاص بالروبوت، أضف تحقق من الموقع
+useEffect(() => {
+  const interval = setInterval(() => {
+    if (!showBot && !botDisabled && location) {
+      showRandomLandmarkForVerification();
+    }
+  }, 10000); // كل 10 ثواني
+
+  return () => clearInterval(interval);
+}, [landmarks, showBot, botDisabled, location, verificationRadius]); // إضافة verificationRadius للمراقبة
 // Add this useEffect to show the bot periodically
 useEffect(() => {
   const interval = setInterval(() => {
@@ -978,30 +1001,43 @@ useEffect(() => {
   return () => clearInterval(interval);
 }, [landmarks, showBot, botDisabled, location]); // إضافة location إلى dependencies
 
-// في الـ return الرئيسي، أضف:
-// في المكون الرئيسي (LandmarkPage)، عدل عرض VerificationBot ليصبح:
-<VerificationBot
-  visible={showBot && !botDisabled}
-  landmark={currentBotLandmark}
-  onVote={(vote) => {
-    if (currentBotLandmark) {
-      handleLandmarkVote(currentBotLandmark._id, vote);
-    }
-    setShowBot(false);
-    setTimeout(showRandomLandmarkForVerification, 60000);
-  }}
-  onClose={() => setShowBot(false)}
-  onLandmarkPress={() => {
-    if (currentBotLandmark) {
-      mapRef.current?.animateToRegion({
-        latitude: currentBotLandmark.lat,
-        longitude: currentBotLandmark.lon,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      });
-    }
-  }}
-/>
+  <VerificationBot
+    visible={!!(showBot && !botDisabled && currentBotLandmark)}
+    landmark={currentBotLandmark}
+    onVote={(vote) => {
+      if (currentBotLandmark) {
+        // تحقق إضافي من المسافة قبل التصويت
+        const distance = calculateDistance(
+          location?.latitude || 0,
+          location?.longitude || 0,
+          currentBotLandmark.lat,
+          currentBotLandmark.lon
+        );
+        
+        if (distance <= verificationRadius) {
+          handleLandmarkVote(currentBotLandmark._id, vote);
+        } else {
+          Alert.alert(
+            "المعلم بعيد",
+            "لا يمكنك التصويت على معلم خارج نطاقك الجغرافي"
+          );
+        }
+      }
+      setShowBot(false);
+      setTimeout(showRandomLandmarkForVerification, 60000);
+    }}
+    onClose={() => setShowBot(false)}
+    onLandmarkPress={() => {
+      if (currentBotLandmark && mapRef.current) {
+        mapRef.current.animateToRegion({
+          latitude: currentBotLandmark.lat,
+          longitude: currentBotLandmark.lon,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        });
+      }
+    }}
+  />
   // Add new landmark
   const addLandmark = async () => {
     try {
@@ -1084,10 +1120,23 @@ const getUnverifiedLandmarks = () => {
         router.push('/login');
         return;
       }
-        // تحقق أن المستخدم ليس هو المنشئ
-      const landmarkObj = landmarks.find(l => l._id === landmarkId);
-      if (landmarkObj && landmarkObj.createdBy.toString() === currentUser?._id) {
-        setVoteError("You cannot vote on your own landmark");
+
+      const landmark = landmarks.find(l => l._id === landmarkId);
+      if (!landmark || !location) {
+        setVoteError(t.errors.landmarkNotFound);
+        return;
+      }
+
+      // تحقق من المسافة
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        landmark.lat,
+        landmark.lon
+      );
+
+      if (distance > verificationRadius) {
+        setVoteError(t.errors.outOfRange);
         return;
       }
 
@@ -1394,12 +1443,7 @@ const editDistance = (s1: string, s2: string) => {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity 
-                style={styles.nearbyButton}
-                onPress={() => setShowNearbyOnly(!showNearbyOnly)}
-              >
-                <MaterialIcons name="near-me" size={24} color="#6d4c41" />
-              </TouchableOpacity>
+    
             </View>
           </View>
 
@@ -1428,8 +1472,8 @@ const editDistance = (s1: string, s2: string) => {
                   style={styles.landmarksList}
                   contentContainerStyle={styles.landmarksListContent}
                 >
-                  {getUnverifiedLandmarks().length > 0 ? (
-                    getUnverifiedLandmarks().map(landmark => (
+                  {getFilteredLandmarks().length > 0 ? (
+                    getFilteredLandmarks().map(landmark => (
                       <LandmarkListItem 
                         key={landmark._id}
                         landmark={landmark}
@@ -1446,7 +1490,14 @@ const editDistance = (s1: string, s2: string) => {
                       />
                     ))
                   ) : (
-                    <Text style={styles.noLandmarksText}>{t.noPendingLandmarks}</Text>
+                    <Text style={styles.noLandmarksText}>
+                      {filter === 'verified' 
+                        ? t.noVerifiedLandmarks
+                        : filter === 'unverified'
+                        ? t.noPendingLandmarks
+                        : t.noLandmarks
+                      }
+                    </Text>
                   )}
                 </ScrollView>
               </>
@@ -1478,7 +1529,7 @@ const editDistance = (s1: string, s2: string) => {
                   longitude: landmark.lon
                 }}
                 title={landmark.title}
-                description={landmark.verified ? t.verified : t.pendingVerification}
+                description={landmark.description}
                 pinColor={landmark.verified ? '#4CAF50' : '#FFD700'}
                 onPress={() => handleMarkerPress(landmark)}
               />
@@ -1533,12 +1584,12 @@ const editDistance = (s1: string, s2: string) => {
                 onPress={() => setIsFormMinimized(!isFormMinimized)}
               >
                 <MaterialIcons 
-                  name={isFormMinimized ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} 
+                  name={isFormMinimized ? 'keyboard-arrow-up' : 'remove'} 
                   size={24} 
                   color="#6d4c41" 
                 />
                 <Text style={styles.toggleFormText}>
-                  {isFormMinimized ? t.showForm : t.minimizeForm}
+                  {isFormMinimized ? t.showForm : ''}
                 </Text>
               </TouchableOpacity>
               
@@ -1573,28 +1624,28 @@ const editDistance = (s1: string, s2: string) => {
                     />
                   )}
                   
-                  <View style={[styles.formButtons, isRTL && { flexDirection: 'row-reverse' }]}>
-                    <TouchableOpacity 
-                      onPress={addLandmark}
-                      disabled={!newLandmark.title.trim()}
-                      style={[
-                        styles.submitButton,
-                        !newLandmark.title.trim() && styles.disabledButton
-                      ]}
-                    >
-                      <Text style={styles.submitButtonText}>{t.addLandmarkButton}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      onPress={() => setShowForm(false)}
-                      style={styles.cancelButton}
-                    >
-                      <Text style={styles.cancelButtonText}>{t.cancelButton}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-            </View>
-          )}
+                <View style={[styles.formButtons, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <TouchableOpacity 
+                    onPress={addLandmark}
+                    disabled={!newLandmark.title.trim()}
+                    style={[
+                      styles.submitButton,
+                      !newLandmark.title.trim() && styles.disabledButton
+                    ]}
+                  >
+                    <Text style={styles.submitButtonText}>{t.addLandmarkButton}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => setShowForm(false)}
+                    style={styles.cancelButton}
+                  >
+                    <Text style={styles.cancelButtonText}>{t.cancelButton}</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        )}
           <View>
         </View>
 
@@ -1624,28 +1675,49 @@ const editDistance = (s1: string, s2: string) => {
       />
     )}
        {/* تأكد من وجود هذا السطر في المكان الصحيح */}
-    <VerificationBot
-      visible={showBot && !botDisabled}
-      landmark={currentBotLandmark}
-      onVote={(vote) => {
-        if (currentBotLandmark) {
-          handleLandmarkVote(currentBotLandmark._id, vote);
-        }
-        setShowBot(false);
-        setTimeout(showRandomLandmarkForVerification, 60000);
-      }}
-      onClose={() => setShowBot(false)}
-      onLandmarkPress={() => {
-        if (currentBotLandmark && mapRef.current) {
-          mapRef.current.animateToRegion({
-            latitude: currentBotLandmark.lat,
-            longitude: currentBotLandmark.lon,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          });
-        }
-      }}
-      
+<VerificationBot
+  visible={!!(showBot && !botDisabled && currentBotLandmark)}
+  landmark={currentBotLandmark}
+  onVote={(vote) => {
+    if (!currentBotLandmark || !location) {
+      Alert.alert(
+        t.errors.general,
+        t.errors.landmarkNotFound,
+        [{ text: t.common.ok }]
+      );
+      return;
+    }
+
+    const distance = calculateDistance(
+      location.latitude,
+      location.longitude,
+      currentBotLandmark.lat,
+      currentBotLandmark.lon
+    );
+
+ if (distance > verificationRadius) {
+    Alert.alert(
+      t.errors.outOfRange,
+      t.errors.nearbyOnly,
+      [{ text: t.common.ok }]
+    );
+    return;
+  }
+
+    handleLandmarkVote(currentBotLandmark._id, vote);
+    setShowBot(false);
+  }}
+  onClose={() => setShowBot(false)}
+  onLandmarkPress={() => {
+    if (currentBotLandmark && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: currentBotLandmark.lat,
+        longitude: currentBotLandmark.lon,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+    }
+  }}
 />
 
    

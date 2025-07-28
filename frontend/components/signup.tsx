@@ -63,8 +63,6 @@ const handleSubmit = async () => {
     setError(t.errors.passwordMismatch);
     return;
   }
-
-  // Password complexity validation
   // Password complexity validation
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
   if (!passwordRegex.test(data.password)) {
@@ -75,20 +73,23 @@ const handleSubmit = async () => {
   setIsSubmitting(true);
   setError("");
 
-  try {
-   const url = `https://negevpulsapp.onrender.com/api/signup`;
+    try {
+    const url = `https://negevpulsapp.onrender.com/api/signup`;
 
     const payload = {
-      firstName: data.firstName,
-      lastName: data.lastName,
+      firstName: data.firstName,  // string
+      lastName: data.lastName,    // string
       email: data.email,
       password: data.password,
       confirmPassword: data.confirmPassword,
       role: data.role
     };
 
-    const response = await axios.post(url, payload);
-    
+      const response = await axios.post("https://negevpulsapp.onrender.com/api/signup", payload, {
+        headers: {
+          "Content-Type": "application/json", // تأكد من وجود هذا الهيدر
+        },
+    });    
     setSuccessMessage(t.accountCreated);
     // Clear form
     setData({
@@ -118,6 +119,13 @@ const handleSubmit = async () => {
     setIsSubmitting(false);
   }
 };
+  console.log("Payload being sent:", {
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email,
+    password: data.password,
+    role: data.role,
+  });
 
   return (
     <KeyboardAvoidingView
