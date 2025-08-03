@@ -1,3 +1,4 @@
+
 export default {
     languages: {
       en: "الإنجليزية",
@@ -27,6 +28,7 @@ export default {
     auth: {
       signIn: "تسجيل الدخول",
       signUp: "إنشاء حساب",
+      continueWithOut: "متابعة بدون حساب",
       logout:{
         title: "تسجيل الخروج",
         message: "هل أنت متأكد أنك تريد تسجيل الخروج؟",
@@ -393,7 +395,6 @@ export default {
       passwordComplexity: "يجب أن تحتوي كلمة المرور على: 8+ أحرف، حرف كبير، حرف صغير، رقم، ورموز خاصة"
     }
   }
-      
-    
-  
   };
+
+

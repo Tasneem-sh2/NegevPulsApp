@@ -61,6 +61,8 @@ const HomePage: React.FC = () => {
   const [selectedLandmark, setSelectedLandmark] = useState<{ lat: number, lon: number, title: string } | null>(null);
   const [startAddress, setStartAddress] = useState("");
   const [destinationAddress, setDestinationAddress] = useState("");
+  const [showOnlyDestination, setShowOnlyDestination] = useState(false);
+
   const [cameraSettings, setCameraSettings] = useState({
     center: [35.513889, 33.892166] as [number, number],
     zoom: 10
@@ -140,6 +142,18 @@ const HomePage: React.FC = () => {
     const arrival = new Date(Date.now() + minutes * 60 * 1000);
     return arrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
+  // Modify the stop navigation function
+const stopNavigation = () => {
+  setNavigationMode(false);
+  setShowControls(true);
+  setShowOnlyDestination(false); // Reset landmark visibility
+  setDestination(null);
+  setStartAddress("");
+  setDestinationAddress("");
+  setRoute(null);
+  setNavigationSteps([]);
+  setRouteDetails(null);
+};
 
   const [landmarks, setLandmarks] = useState(staticLandmarks);
   const getCurrentLocation = async (): Promise<{ lat: number; lon: number }> => {
@@ -246,6 +260,10 @@ const HomePage: React.FC = () => {
       console.error("Error fetching routes:", err);
     }
   };
+const handleShowRoute = async () => {
+  setShowOnlyDestination(true);
+  await fetchRoute(); // Your existing route fetching logic
+};
 
   const handleLandmarkClick = (landmark: Landmark) => {
     setSelectedLandmark({
@@ -459,18 +477,6 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 
     return (
     <View style={styles.container}>
-      {/* زر تغيير اللغة */}
-      <TouchableOpacity 
-        style={[
-          styles.languageButton,
-          isRTL ? { left: 20 } : { right: 20 }
-        ]}
-        onPress={toggleLanguage}
-      >
-        <Text style={styles.languageText}>
-          {getCurrentLanguageName()}
-        </Text>
-      </TouchableOpacity>
 
       {/* واجهة الملاحة */}
       {navigationMode && navigationSteps.length > 0 && (

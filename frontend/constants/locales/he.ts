@@ -1,3 +1,4 @@
+
 export default {
     languages: {
       en: "אנגלית",
@@ -31,7 +32,8 @@ export default {
         confirmMessage: "האם אתה בטוח שברצונך להתנתק?",
         confirmButton: "כן, התנתק",
         cancelButton: "ביטול",
-      },// ✅ Add this line
+      },
+      continueWithOut: "המשך ללא חשבון",
       signUp: "הרשמה",
       login: {
         title: "התחברות",
@@ -391,6 +393,4 @@ export default {
       passwordComplexity: "הסיסמה חייבת להכיל: 8+ תווים, אות גדולה, אות קטנה, מספר ותו מיוחד"
     }
   }
-    
-    
   };

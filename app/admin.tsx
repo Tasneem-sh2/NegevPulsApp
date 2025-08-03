@@ -364,15 +364,6 @@ useEffect(() => {
 
   return (
     <View style={styles.container}>
-      {/* Language Toggle Button */}
-      <TouchableOpacity 
-        style={[styles.languageButton, I18nManager.isRTL ? { left: 20 } : { right: 20 }]}
-        onPress={toggleLanguage}
-      >
-        <Text style={styles.languageText}>
-          {I18nManager.isRTL ? 'EN' : 'العربية'}
-        </Text>
-      </TouchableOpacity>
 
       {/* Header */}
       <View style={styles.header}>
