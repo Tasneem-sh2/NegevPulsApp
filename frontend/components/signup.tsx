@@ -79,7 +79,6 @@ const Signup = () => {
         password: data.password,
         confirmPassword: data.confirmPassword,
       });
-      
       setSuccessMessage(t('auth.signup.accountCreated'));
       setData({
         firstName: "",

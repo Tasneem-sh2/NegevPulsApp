@@ -88,32 +88,35 @@ export default function Login() {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.container}>
-          {/* Language Selector */}
-          <View style={styles.languageSelector}>
-            {(['en', 'ar', 'he'] as LocaleKeys[]).map((lang) => (
-              <TouchableOpacity
-                key={lang}
-                onPress={() => changeLanguage(lang)}
-                style={[
-                  styles.languageButton,
-                  language === lang && styles.activeLanguage
-                ]}
-                activeOpacity={0.7}
-              >
-                <Text style={[
-                  styles.languageText,
-                  language === lang && styles.activeLanguageText,
-                  lang === 'ar' && { fontSize: 14 }
-                ]}>
-                  {lang === 'en' ? 'EN' : lang === 'ar' ? 'عربي' : 'עברית'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.header}>
-            <MaterialIcons name="login" size={40} color="#FFD700" />
-            <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>{t('auth.login.title')}</Text>
+          {/* Header with Language Selector */}
+          <View style={styles.headerContainer}>
+            <View style={styles.languageSelector}>
+              {(['en', 'ar', 'he'] as LocaleKeys[]).map((lang) => (
+                <TouchableOpacity
+                  key={lang}
+                  onPress={() => changeLanguage(lang)}
+                  style={[
+                    styles.languageButton,
+                    language === lang && styles.activeLanguage
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.languageText,
+                    language === lang && styles.activeLanguageText,
+                    lang === 'ar' && { fontSize: 14 }
+                  ]}>
+                    {lang === 'en' ? 'EN' : lang === 'ar' ? 'عربي' : 'עברית'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            {/* Icon and Title */}
+            <View style={styles.headerContent}>
+              <MaterialIcons name="login" size={40} color="#FFD700" />
+              <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>{t('auth.login.title')}</Text>
+            </View>
           </View>
 
           <View style={styles.formContainer}>
@@ -141,6 +144,7 @@ export default function Login() {
               <TextInput
                 style={[
                   styles.input,
+                  styles.passwordInput,
                   isRTL ? styles.inputRTL : styles.inputLTR
                 ]}
                 placeholder={t('auth.login.password')}
@@ -209,10 +213,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    paddingTop: 60,
   },
-  header: {
+  headerContainer: {
+    width: '100%',
     alignItems: 'center',
     marginBottom: 30,
+  },
+  headerContent: {
+    alignItems: 'center',
+    marginTop: 10,
   },
   title: {
     fontSize: 28,
@@ -222,29 +232,31 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     backgroundColor: '#fff',
-    padding: 30,
+    padding: 25,
     borderRadius: 12,
-    width: '100%',
-    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: '#f0e6e2',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 5,
-    borderWidth: 1,
-    borderColor: '#f0e6e2',
+    width: '100%',
+    maxWidth: 400,
   },
   input: {
     width: '100%',
     padding: 15,
-    paddingRight: 45, // إضافة مسافة على اليمين للأيقونة
     borderWidth: 1,
-    borderColor: '#d7ccc8',
+    borderColor: '#ddd',
     borderRadius: 8,
-    marginBottom: 20,
+    marginBottom: 15,
     fontSize: 16,
     backgroundColor: '#fff',
     color: '#5d4037',
+  },
+  passwordInput: {
+    paddingRight: 50,
   },
   inputRTL: {
     textAlign: 'right',
@@ -256,7 +268,7 @@ const styles = StyleSheet.create({
   },
   passwordContainer: {
     position: 'relative',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   eyeIcon: {
     position: 'absolute',
@@ -302,8 +314,8 @@ const styles = StyleSheet.create({
   },
   languageSelector: {
     position: 'absolute',
-    top: 40,
-    right: 20,
+    top: -40,
+    right: 0,
     flexDirection: 'row',
     backgroundColor: '#f5f5f5',
     borderRadius: 20,
@@ -313,6 +325,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    zIndex: 10,
   },
   languageButton: {
     paddingHorizontal: 12,

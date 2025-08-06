@@ -866,7 +866,7 @@ const handleMapPress = (e: any) => {
 };
 // دالة لحساب المسافة بين نقطتين
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-  const R = 6371e3; // نصف قطر الأرض بالمتر
+  const R = 6371e3; // Earth radius in meters
   const φ1 = lat1 * Math.PI/180;
   const φ2 = lat2 * Math.PI/180;
   const Δφ = (lat2-lat1) * Math.PI/180;
@@ -877,7 +877,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
             Math.sin(Δλ/2) * Math.sin(Δλ/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-  return R * c; // المسافة بالمتر
+  return R * c; // Distance in meters
 };
 // دالة واحدة معدلة لجميع الاستخدامات
 const getNearbyLandmarks = (landmarksList: Landmark[] = landmarks, radius = 300) => {
@@ -1036,63 +1036,190 @@ useEffect(() => {
       }
     }}
   />
-  // Add new landmark
-  const addLandmark = async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-         if (Platform.OS === 'web' && newLandmark.imageUrl) {
-      // معالجة الصور للويب
-      const response = await axios.post(`${API_BASE_URL}/upload`, {
-        image: newLandmark.imageUrl
-      });
-      newLandmark.imageUrl = response.data.url;
+// Add new landmark with validation checks
+const addLandmark = async () => {
+  try {
+    // 1. Validate required fields
+    if (!newLandmark.title.trim()) {
+      Alert.alert('Missing Information', 'Please enter a name for the landmark');
+      return;
     }
 
-      if (!newLandmark.title.trim()) {
-        Alert.alert('Error', 'Please enter a landmark title');
+    // 2. Check for existing landmark at same coordinates
+    const existingAtSameLocation = landmarks.find(landmark => 
+      landmark.lat.toFixed(6) === newLandmark.lat.toFixed(6) && 
+      landmark.lon.toFixed(6) === newLandmark.lon.toFixed(6)
+    );
+
+    if (existingAtSameLocation) {
+      Alert.alert(
+        'Location Already Taken', 
+        `❌ There's already a landmark at this exact location:
+        
+        "${existingAtSameLocation.title}"
+        
+        Please choose a different location.`,
+        [{ text: 'OK', style: 'cancel' }]
+      );
+      return;
+    }
+
+    // 3. Check for same name within 500m radius
+    const existingWithSameName = landmarks.find(landmark => {
+      const distance = calculateDistance(
+        newLandmark.lat,
+        newLandmark.lon,
+        landmark.lat,
+        landmark.lon
+      );
+      return (
+        landmark.title.toLowerCase() === newLandmark.title.toLowerCase().trim() && 
+        distance <= 500
+      );
+    });
+
+    if (existingWithSameName) {
+      Alert.alert(
+        'Duplicate Landmark Name', 
+        `⚠️ A landmark named "${newLandmark.title.trim()}" already exists within 500 meters.
+        
+        Distance: ${Math.round(calculateDistance(
+          newLandmark.lat,
+          newLandmark.lon,
+          existingWithSameName.lat,
+          existingWithSameName.lon
+        ))}m away
+        
+        Please choose a different name or location.`,
+        [{ text: 'OK', style: 'cancel' }]
+      );
+      return;
+    }
+
+    // 4. Check authentication only after validations pass
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      Alert.alert(
+        'Login Required',
+        'You need to be logged in to add landmarks',
+        [
+          { 
+            text: 'Cancel', 
+            style: 'cancel' 
+          },
+          { 
+            text: 'Go to Login', 
+            onPress: () => router.push('/login') 
+          }
+        ]
+      );
+      return;
+    }
+
+    // 5. Handle image upload
+    let imageUrl = newLandmark.imageUrl;
+    if (Platform.OS === 'web' && imageUrl) {
+      try {
+        Alert.alert('Uploading', 'Please wait while we upload your image...');
+        const uploadResponse = await axios.post(`${API_BASE_URL}/upload`, {
+          image: imageUrl
+        });
+        imageUrl = uploadResponse.data.url;
+      } catch (uploadError) {
+        Alert.alert(
+          'Upload Failed', 
+          'Could not upload the image. Please try again with a different image.',
+          [{ text: 'OK', style: 'cancel' }]
+        );
         return;
       }
-      // سجل البيانات قبل الإرسال للتأكد
-      console.log('Sending data:', {
-        title: newLandmark.title,
-        description: newLandmark.description, // تأكد من وجود القيمة
-        lat: newLandmark.lat,
-        lon: newLandmark.lon,
-        color: newLandmark.color,
-        imageUrl: newLandmark.imageUrl
-      });
-      const response = await axios.post(`${API_BASE_URL}/landmarks`, {
-        title: newLandmark.title.trim(),
-        description: newLandmark.description || '', // تأكد من إرسال قيمة افتراضية إذا كانت فارغة
-        lat: newLandmark.lat,
-        lon: newLandmark.lon,
-        color: newLandmark.color || '#8B4513',
-        imageUrl: newLandmark.imageUrl || ''
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      setLandmarks(prev => [...prev, response.data]);
-      setShowForm(false);
-      setNewLandmark({
-        title: '',
-        description: '',
-        lat: 0,
-        lon: 0,
-        color: '#8B4513',
-        imageUrl: ''
-      });
-    } catch (error) {
-      console.error("Error adding landmark:", error);
-      Alert.alert("Error", "Failed to add landmark. Please try again.");
     }
-  };
+
+    // 6. Submit to server
+    Alert.alert('Processing', 'Adding your new landmark...');
+    const response = await axios.post(`${API_BASE_URL}/landmarks`, {
+      title: newLandmark.title.trim(),
+      description: newLandmark.description || '',
+      lat: newLandmark.lat,
+      lon: newLandmark.lon,
+      color: newLandmark.color || '#8B4513',
+      imageUrl: imageUrl || ''
+    }, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    // 7. Success handling
+    setLandmarks(prev => [...prev, response.data]);
+    setShowForm(false);
+    setNewLandmark({
+      title: '',
+      description: '',
+      lat: 0,
+      lon: 0,
+      color: '#8B4513',
+      imageUrl: ''
+    });
+
+    Alert.alert(
+      'Success! 🎉',
+      `"${response.data.title}" has been added successfully!`,
+      [
+        {
+          text: 'View Landmark',
+          onPress: () => {
+            setSelectedLandmark(response.data);
+            mapRef.current?.animateToRegion({
+              latitude: response.data.lat,
+              longitude: response.data.lon,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            });
+          }
+        },
+        { 
+          text: 'OK', 
+          style: 'cancel' 
+        }
+      ]
+    );
+
+  } catch (error) {
+    console.error("Add Landmark Error:", error);
+    
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please login again to continue.',
+          [
+            { 
+              text: 'Cancel', 
+              style: 'cancel' 
+            },
+            { 
+              text: 'Login', 
+              onPress: () => router.push('/login') 
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Submission Failed',
+          error.response?.data?.message || 'Could not add the landmark. Please try again later.',
+          [{ text: 'OK', style: 'cancel' }]
+        );
+      }
+    } else {
+      Alert.alert(
+        'Unexpected Error',
+        'An unexpected error occurred. Please try again.',
+        [{ text: 'OK', style: 'cancel' }]
+      );
+    }
+  }
+};
 const getUnverifiedLandmarks = () => {
   // إذا كان هناك معلم محدد، نستخدم موقعه كمركز للتصفية
   const center = selectedLandmark ? {
