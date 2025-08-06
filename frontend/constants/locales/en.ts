@@ -43,27 +43,27 @@ export default {
         noAccount: "Don't have an account? ",
         signupLink: "Sign Up"
       },
-
       signup: {
         title: "Create Account",
-        name: "Name",
+        firstName: "First Name",
+        lastName: "Last Name",
         email: "Email",
         password: "Password",
         confirmPassword: "Confirm Password",
-        roleLocal: "Local Resident",
-        roleEmergency: "Emergency Responder",
-        button: "Sign Up",
-        passwordMismatch: "Passwords do not match",
-        successMessage: "Account created successfully!",
+        passwordHint: "Password must contain: 8+ chars, uppercase, lowercase, number, and special character",
+        signupButton: "Sign Up",
+        creatingAccount: "Creating Account...",
+        accountCreated: "Account created successfully!",
+        loginText: "Already have an account?",
         loginLink: "Log In",
-        loginPrompt:"Already have an account?",
-        roleLabel:"Account Type:",
-        unexpectedError:"An unexpected error occurred",
-
-
-
-
-
+        errors: {
+          nameRequired: "First name and last name are required",
+          passwordMismatch: "Passwords do not match",
+          passwordComplexity: "Password must contain: 8+ chars, uppercase, lowercase, number, and special character",
+          general: "Signup failed",
+          noResponse: "No response received from server",
+          network: "Network error or server unavailable"
+        }
       }
     },
     tabs: {
@@ -250,6 +250,7 @@ export default {
       filterVerified: "Verified",
       filterPending: "Pending",
       pendingLandmarksTitle: "Pending Landmarks",
+      LandmarksTitle: "Landmarks On The Map",
       noPendingLandmarks: "No pending landmarks in this area",
       noVerifiedLandmarks: "No verified landmarks in this area",
       noLandmarks: "لا توجد معالم في هذه المنطقة",

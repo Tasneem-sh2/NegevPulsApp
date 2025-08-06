@@ -113,20 +113,24 @@ export default function MainIndex() {
       {/* Header */}
       <View style={styles.header}>
         {/* Top Row - Language Selector */}
-        <View style={styles.topRow}>
-          <View style={styles.languageSelector}>
-            {(['en', 'ar', 'he'] as LocaleKeys[]).map((lang) => (
-              <TouchableOpacity
-                key={lang}
-                onPress={() => changeLanguage(lang)}
-                style={[styles.languageButton, language === lang && styles.activeLanguage]}
-              >
-                <Text style={[styles.languageText, language === lang && styles.activeLanguageText]}>
-                  {t(`languages.${lang}`)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        <View style={styles.languageSelector}>
+          {(['en', 'ar', 'he'] as LocaleKeys[]).map((lang) => (
+            <TouchableOpacity
+              key={lang}
+              onPress={() => changeLanguage(lang)}
+              style={[
+                styles.languageButton, 
+                language === lang && styles.activeLanguage
+              ]}
+            >
+              <Text style={[
+                styles.languageText,
+                language === lang && styles.activeLanguageText
+              ]}>
+                {lang === 'en' ? 'EN' : lang === 'ar' ? 'عربي' : 'עברית'}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Middle Row - Welcome Message */}

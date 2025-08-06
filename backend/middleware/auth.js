@@ -27,11 +27,16 @@ const auth = async (req, res, next) => {
     }
 
     // Attach complete user data to request
+      // إعداد بيانات المستخدم للطلب
     req.user = {
-      ...user.toObject(),
-      isSuperlocal: decoded.isSuperlocal || user.isSuperlocal
+      userId: user._id, // <<< هذا الحقل ضروري للنقاط النهائية
+      email: user.email,
+      name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email.split('@')[0],
+      isSuperlocal: user.isSuperlocal || decoded.isSuperlocal || false,
+      verifiedLandmarksAdded: user.verifiedLandmarksAdded || 0,
+      verifiedRoutesAdded: user.verifiedRoutesAdded || 0,
+      votingStats: user.votingStats || { correctVotes: 0, totalVotes: 0 }
     };
-    req.token = token;
     
     next();
   } catch (error) {

@@ -1,36 +1,34 @@
-import React, { useEffect, useRef, useState } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  Image, 
-  TextInput, 
-  Alert,
-  Modal,
-  ActivityIndicator,
-  Platform
-} from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import MapView, { Marker } from 'react-native-maps';
-import axios, { AxiosError } from 'axios';
-import { useRouter } from 'expo-router/build/hooks';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
-import * as ImagePicker from 'expo-image-picker';
-import Constants from 'expo-constants';
-import {
-  widthPercentageToDP as wp,
-  heightPercentageToDP as hp,
-} from 'react-native-responsive-screen';
-import { useLanguage } from '@/frontend/context/LanguageProvider';
 import { useTranslations } from '@/frontend/constants/locales';
-import { I18nManager } from 'react-native';
+import { useLanguage } from '@/frontend/context/LanguageProvider';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios, { AxiosError } from 'axios';
+import Constants from 'expo-constants';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import { useRouter } from 'expo-router/build/hooks';
+import React, { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import {
+  heightPercentageToDP as hp,
+  widthPercentageToDP as wp,
+} from 'react-native-responsive-screen';
 
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
-const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
+const API_BASE_URL = 'http://negevpulsapp.onrender.comapi';
 
 // Types
 interface LocationCoords {
@@ -1058,10 +1056,18 @@ useEffect(() => {
         Alert.alert('Error', 'Please enter a landmark title');
         return;
       }
-
+      // سجل البيانات قبل الإرسال للتأكد
+      console.log('Sending data:', {
+        title: newLandmark.title,
+        description: newLandmark.description, // تأكد من وجود القيمة
+        lat: newLandmark.lat,
+        lon: newLandmark.lon,
+        color: newLandmark.color,
+        imageUrl: newLandmark.imageUrl
+      });
       const response = await axios.post(`${API_BASE_URL}/landmarks`, {
         title: newLandmark.title.trim(),
-        description: newLandmark.description.trim(),
+        description: newLandmark.description || '', // تأكد من إرسال قيمة افتراضية إذا كانت فارغة
         lat: newLandmark.lat,
         lon: newLandmark.lon,
         color: newLandmark.color || '#8B4513',
@@ -1466,7 +1472,7 @@ const editDistance = (s1: string, s2: string) => {
             {isLandmarksListVisible && (
               <>
                 <Text style={styles.landmarksTitle}>
-                  {t.pendingLandmarksTitle} ({getUnverifiedLandmarks().length})
+                  {t.LandmarksTitle} ({getUnverifiedLandmarks().length})
                 </Text>
                 <ScrollView 
                   style={styles.landmarksList}

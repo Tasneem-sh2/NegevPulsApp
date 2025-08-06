@@ -3,6 +3,7 @@ const router = express.Router();
 const { User, validateUser } = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const auth = require("../middleware/auth"); // أضف هذا السطر
 
 router.post("/signup", async (req, res) => {
   try {
@@ -79,5 +80,4 @@ router.post("/login", async (req, res) => {
     });
   }
 });
-
 module.exports = router;
