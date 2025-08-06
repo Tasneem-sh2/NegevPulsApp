@@ -28,7 +28,7 @@ import {
 } from 'react-native-responsive-screen';
 
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
-const API_BASE_URL = 'http://negevpulsapp.onrender.comapi';
+const API_BASE_URL = 'http://negevpulsapp.onrender.com/api';
 
 // Types
 interface LocationCoords {

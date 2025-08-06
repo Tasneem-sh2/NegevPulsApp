@@ -72,7 +72,7 @@ const Signup = () => {
     setError("");
 
     try {
-      const response = await axios.post('http://negevpulsapp.onrender.comapi/signup', {
+      const response = await axios.post('http://negevpulsapp.onrender.com/api/signup', {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,

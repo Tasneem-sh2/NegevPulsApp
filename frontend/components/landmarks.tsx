@@ -9,7 +9,7 @@ const AddLandmark: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      await axios.post("http://negevpulsapp.onrender.comapi/landmarks", {
+      await axios.post("http://negevpulsapp.onrender.com/api/landmarks", {
         name,
         lat: Number(lat),
         lon: Number(lon),

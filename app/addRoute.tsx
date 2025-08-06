@@ -28,7 +28,7 @@ import { useAuth } from './AuthContext';
 
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
 type ObjectId = string;
-const API_BASE_URL = 'http://negevpulsapp.onrender.comapi';
+const API_BASE_URL = 'http://negevpulsapp.onrender.com/api';
 
 interface Location {
   lat: number;

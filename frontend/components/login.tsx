@@ -38,7 +38,7 @@ export default function Login() {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.post('http://negevpulsapp.onrender.comapi/auth/login', {
+      const response = await axios.post('http://negevpulsapp.onrender.com/api/auth/login', {
         email: email.trim(),
         password: password.trim()
       });

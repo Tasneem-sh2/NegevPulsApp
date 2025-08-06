@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
 import { useRouter } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-const API_BASE_URL = 'http://negevpulsapp.onrender.comapi';
+const API_BASE_URL = 'http://negevpulsapp.onrender.com/api';
 const BASE_URL = API_BASE_URL; // استخدم BASE_URL في كل مكان في التطبيق
 interface User {
   _id: string;
