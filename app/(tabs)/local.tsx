@@ -10,6 +10,7 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { I18nManager } from 'react-native';
 import { useAuth } from '../AuthContext';
+type LocaleKeys = 'en' | 'ar' | 'he'; // أو أي لغات أخرى تدعمها التطبيق
 
 interface UserData {
   [x: string]: any;
@@ -56,25 +57,22 @@ export default function LocalPage() {
   const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://negevpulsapp.onrender.com";
   const { logout } = useAuth();
 
-
-  // دالة تبديل اللغة
-  const toggleLanguage = () => {
-    const newLang = language === 'en' ? 'ar' : language === 'ar' ? 'he' : 'en';
-    changeLanguage(newLang);
+const getLanguageButtonText = (): string => {
+  const languageNames = {
+    en: 'EN',
+    ar: 'العربية', 
+    he: 'עברית'
   };
+  
+  return languageNames[language] || `🌐 ${language.toUpperCase()}`;
+};
 
-  // نص زر اللغة
-  const getLanguageButtonText = () => {
-    switch(language) {
-      case 'en': return 'العربية';
-      case 'ar': return 'עברית';
-      case 'he': return 'English';
-      default: return 'EN';
-    }
-  };
-    useEffect(() => {
-    I18nManager.forceRTL(isRTL);
-  }, [isRTL]);
+const toggleLanguage = () => {
+  const languages: LocaleKeys[] = ['en', 'ar', 'he']; // يجب أن تكون من نفس نوع LocaleKeys
+  const currentIndex = languages.indexOf(language);
+  const nextIndex = (currentIndex + 1) % languages.length;
+  changeLanguage(languages[nextIndex]);
+};
 
 const fetchUserData = async () => {
   try {

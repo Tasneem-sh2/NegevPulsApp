@@ -4,10 +4,9 @@ import { useTranslations } from '@/frontend/constants/locales';
 import { useLanguage } from '@/frontend/context/LanguageProvider';
 
 export default function AboutUs() {
+  type LocaleKeys = 'en' | 'ar' | 'he';
   const { t } = useTranslations();
   const { language, changeLanguage, isRTL } = useLanguage();
-  // الحصول على بيانات الترجمة ككائنات
-    // تحديد الأنواع بشكل صريح
   const problemList = t('about.problemList', { returnObjects: true }) as Record<string, string>;
   const solutionLevels = t('about.solutionLevels', { returnObjects: true }) as Array<{
     level: string;
@@ -16,29 +15,27 @@ export default function AboutUs() {
   }>;
   const verificationCriteria = t('about.verificationCriteria', { returnObjects: true }) as string[];
 
-
-  // دالة لتبديل اللغة
   const toggleLanguage = () => {
-    const newLang = language === 'en' ? 'ar' : language === 'ar' ? 'he' : 'en';
-    changeLanguage(newLang);
+    const languages: LocaleKeys[] = ['en', 'ar', 'he'];
+    const currentIndex = languages.indexOf(language);
+    const nextIndex = (currentIndex + 1) % languages.length;
+    changeLanguage(languages[nextIndex]);
   };
 
-  // نص زر اللغة
-  const getLanguageButtonText = () => {
-    switch(language) {
-      case 'en': return 'العربية';
-      case 'ar': return 'עברית';
-      case 'he': return 'English';
-      default: return 'EN';
-    }
+  const getLanguageButtonText = (): string => {
+    const languageNames = {
+      en: 'EN',
+      ar: 'العربية', 
+      he: 'עברית'
+    };
+    return languageNames[language] || `🌐 ${language.toUpperCase()}`;
   };
 
   return (
-     <ScrollView 
+    <ScrollView 
       contentContainerStyle={[styles.container, isRTL && { direction: 'rtl' }]}
       showsVerticalScrollIndicator={false}
     >
-      {/* زر تغيير اللغة */}
       <TouchableOpacity 
         style={[
           styles.languageButton,
@@ -51,7 +48,6 @@ export default function AboutUs() {
         </Text>
       </TouchableOpacity>
 
-      {/* Hero Section */}
       <View style={styles.hero}>
         <View style={styles.heroContent}>
           <Text style={styles.heroTitle}>{t('about.title')}</Text>
@@ -60,16 +56,19 @@ export default function AboutUs() {
         <View style={styles.heroDecoration} />
       </View>
 
-      {/* Content Sections */}
       <View style={styles.content}>
-
-        {/* Story Section */}
+        {/* Mission Section */}
         <View style={styles.section}>
           <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-            <Ionicons name="book" size={24} color="#6D4C41" />
+            <View style={styles.iconContainer}>
+              <Ionicons name="book" size={24} color="#6D4C41" />
+            </View>
             <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
               {t('about.missionTitle')}
             </Text>
+            <View style={styles.iconContainer}>
+              <FontAwesome5 name="university" size={20} color="#8D6E63" />
+            </View>
           </View>
           <Text style={[styles.sectionText, { 
             textAlign: isRTL ? 'right' : 'left',
@@ -77,22 +76,24 @@ export default function AboutUs() {
           }]}>
             {t('about.missionText')}
           </Text>
-          <View style={[styles.sectionIcon, isRTL ? { left: 20 } : { right: 20 }]}>
-            <FontAwesome5 name="university" size={20} color="#8D6E63" />
-          </View>
         </View>
 
         {/* Problem Section */}
         <View style={styles.section}>
           <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-            <Ionicons name="alert-circle" size={24} color="#6D4C41" />
+            <View style={styles.iconContainer}>
+              <Ionicons name="alert-circle" size={24} color="#6D4C41" />
+            </View>
             <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
               {t('about.problemTitle')}
             </Text>
+            <View style={styles.iconContainer} />
           </View>
           {Object.entries(problemList).map(([key, item], i) => (
             <View key={key} style={[styles.listItem, isRTL && { flexDirection: 'row-reverse' }]}>
-              <MaterialIcons name="fiber-manual-record" size={12} color="#D4A59A" />
+              <View style={styles.listIcon}>
+                <MaterialIcons name="fiber-manual-record" size={12} color="#D4A59A" />
+              </View>
               <Text style={[styles.listText, { 
                 textAlign: isRTL ? 'right' : 'left',
                 writingDirection: isRTL ? 'rtl' : 'ltr'
@@ -106,10 +107,13 @@ export default function AboutUs() {
         {/* Solution Section */}
         <View style={styles.section}>
           <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-            <Ionicons name="bulb" size={24} color="#6D4C41" />
+            <View style={styles.iconContainer}>
+              <Ionicons name="bulb" size={24} color="#6D4C41" />
+            </View>
             <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
               {t('about.goalTitle')}
             </Text>
+            <View style={styles.iconContainer} />
           </View>
           <Text style={[styles.sectionText, { 
             textAlign: isRTL ? 'right' : 'left',
@@ -144,10 +148,13 @@ export default function AboutUs() {
         {/* Verification Section */}
         <View style={styles.section}>
           <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-            <Ionicons name="shield-checkmark" size={24} color="#6D4C41" />
+            <View style={styles.iconContainer}>
+              <Ionicons name="shield-checkmark" size={24} color="#6D4C41" />
+            </View>
             <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
               {t('about.howItWorksTitle')}
             </Text>
+            <View style={styles.iconContainer} />
           </View>
           <Text style={[styles.sectionText, { 
             textAlign: isRTL ? 'right' : 'left',
@@ -157,7 +164,9 @@ export default function AboutUs() {
           </Text>
           {verificationCriteria.map((item, i) => (
             <View key={`criteria-${i}`} style={[styles.listItem, isRTL && { flexDirection: 'row-reverse' }]}>
-              <Feather name="check-circle" size={16} color="#8D6E63" />
+              <View style={styles.listIcon}>
+                <Feather name="check-circle" size={16} color="#8D6E63" />
+              </View>
               <Text style={[styles.listText, { 
                 textAlign: isRTL ? 'right' : 'left',
                 writingDirection: isRTL ? 'rtl' : 'ltr'
@@ -171,10 +180,13 @@ export default function AboutUs() {
         {/* Tech Section */}
         <View style={styles.section}>
           <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-            <Ionicons name="code" size={24} color="#6D4C41" />
+            <View style={styles.iconContainer}>
+              <Ionicons name="code" size={24} color="#6D4C41" />
+            </View>
             <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
               {t('about.techTitle')}
             </Text>
+            <View style={styles.iconContainer} />
           </View>
           <Text style={[styles.sectionText, { 
             textAlign: isRTL ? 'right' : 'left',
@@ -192,12 +204,13 @@ export default function AboutUs() {
 
         {/* CTA Section */}
         <View style={[styles.section, styles.ctaSection]}>
-          <Ionicons 
-            name={isRTL ? "hand-right" : "hand-left"} 
-            size={32} 
-            color="#6D4C41" 
-            style={styles.ctaIcon} 
-          />
+          <View style={styles.ctaIconContainer}>
+            <Ionicons 
+              name={isRTL ? "hand-right" : "hand-left"} 
+              size={32} 
+              color="#6D4C41" 
+            />
+          </View>
           <Text style={[styles.ctaTitle, { 
             textAlign: isRTL ? 'right' : 'left',
             writingDirection: isRTL ? 'rtl' : 'ltr'
@@ -316,37 +329,37 @@ const styles = StyleSheet.create({
     color: '#5D4037',
     fontWeight: '600',
     fontFamily: 'sans-serif-medium',
+    flex: 1,
   },
   sectionText: {
     fontSize: 16,
     color: '#5D4037',
     lineHeight: 24,
     marginBottom: 15,
+    marginTop: 10,
     fontFamily: 'sans-serif',
   },
-  sectionIcon: {
-    position: 'absolute',
-    top: 20,
+  iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#EFEBE9',
-  },
-  highlight: {
-    color: '#8D6E63',
-    fontWeight: 'bold',
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 10,
   },
+  listIcon: {
+    marginTop: 3,
+    width: 24,
+    alignItems: 'center',
+  },
   listText: {
     fontSize: 15,
     color: '#5D4037',
     marginLeft: 10,
+    marginRight: 10,
     flex: 1,
     lineHeight: 22,
     fontFamily: 'sans-serif',
@@ -390,7 +403,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#5D4037',
     alignItems: 'center',
   },
-  ctaIcon: {
+  ctaIconContainer: {
     marginBottom: 10,
   },
   ctaTitle: {
@@ -399,12 +412,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 5,
     fontFamily: 'sans-serif-medium',
+    textAlign: 'center',
   },
   ctaText: {
     fontSize: 16,
     color: '#FFD54F',
     marginBottom: 15,
     fontFamily: 'sans-serif',
+    textAlign: 'center',
   },
   contactButton: {
     flexDirection: 'row',

@@ -2,7 +2,6 @@ import { View, Text, StyleSheet, ScrollView, Linking, TouchableOpacity, I18nMana
 import { MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { useTranslations } from '@/frontend/constants/locales';
 import { useLanguage } from '@/frontend/context/LanguageProvider';
-type LocaleKeys = 'en' | 'ar' | 'he'; // أضف هذا في ملف الأعراف أو حيث يتم تعريف الأنواع
 
 interface ContactPerson {
   name: string;
@@ -24,29 +23,27 @@ interface ContactTranslations {
 }
 
 export default function ContactUs() {
+  type LocaleKeys = 'en' | 'ar' | 'he';
   const { language, changeLanguage, isRTL } = useLanguage();
   const t = (useTranslations() as unknown as ContactTranslations).contactUs;
 
-  // Function to toggle language between English, Arabic, and Hebrew
   const toggleLanguage = () => {
-    let newLang: LocaleKeys;
-    if (language === 'en') newLang = 'ar';
-    else if (language === 'ar') newLang = 'he';
-    else newLang = 'en';
-    
-    changeLanguage(newLang);
-    I18nManager.forceRTL(newLang === 'ar' || newLang === 'he');
-  };
+  const languages: LocaleKeys[] = ['en', 'ar', 'he'];
+  const currentIndex = languages.indexOf(language);
+  const nextIndex = (currentIndex + 1) % languages.length;
+  changeLanguage(languages[nextIndex]);
+};
 
-  // Function to get current language name
-  const getCurrentLanguageName = () => {
-    switch(language) {
-      case 'en': return 'English';
-      case 'ar': return 'العربية';
-      case 'he': return 'עברית';
-      default: return 'English';
-    }
+const getLanguageButtonText = (): string => {
+  const languageNames = {
+    en: 'EN',
+    ar: 'العربية', 
+    he: 'עברית'
   };
+  
+  return languageNames[language] || `🌐 ${language.toUpperCase()}`;
+};
+
 
   const contacts = [
     {
@@ -93,23 +90,25 @@ export default function ContactUs() {
   };
 
   return (
-    <ScrollView contentContainerStyle={[styles.container, isRTL && { transform: [{ scaleX: -1 }] }]}>
-      {/* Language Toggle Button */}
-      <TouchableOpacity 
-        style={[
-          styles.languageButton, 
-          isRTL ? { left: 20 } : { right: 20 },
-          { backgroundColor: '#5D4037' }
-        ]}
-        onPress={toggleLanguage}
-      >
-        <Text style={styles.languageText}>
-          {getCurrentLanguageName()}
-        </Text>
-      </TouchableOpacity>
+        <ScrollView 
+          contentContainerStyle={[styles.container, isRTL && { direction: 'rtl' }]}
+          showsVerticalScrollIndicator={false}
+        >          {/* زر تغيير اللغة */}
+        <TouchableOpacity 
+            style={[
+              styles.languageButton,
+              isRTL ? { left: 20 } : { right: 20 }
+            ]}
+            onPress={toggleLanguage}
+          >
+            <Text style={styles.languageButtonText}>
+              {getLanguageButtonText()}
+            </Text>
+          </TouchableOpacity>
+      
 
       {/* Header with decorative elements */}
-      <View style={[styles.headerContainer, isRTL && { transform: [{ scaleX: -1 }] }]}>
+      <View style={[styles.headerContainer]}>
         <View style={styles.header}>
           <Ionicons name="people" size={32} color="#FFF8E1" style={styles.headerIcon} />
           <Text style={[styles.headerText, isRTL && { textAlign: 'right' }]}>{t.title}</Text>
@@ -119,14 +118,14 @@ export default function ContactUs() {
       </View>
 
       {/* Contact Cards */}
-      <View style={[styles.contactsContainer, isRTL && { transform: [{ scaleX: -1 }] }]}>
+      <View style={[styles.contactsContainer]}>
         {contacts.map((contact, index) => (
           <View key={index} style={[
             styles.contactCard, 
             isRTL ? { borderRightWidth: 5, borderRightColor: contact.color } 
                   : { borderLeftWidth: 5, borderLeftColor: contact.color }
           ]}>
-            <View style={[styles.contactHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={[styles.contactHeader ]}>
               <View style={[styles.iconContainer, { backgroundColor: contact.color }]}>
                 <FontAwesome5 name={contact.icon} size={20} color="white" />
               </View>
@@ -139,7 +138,7 @@ export default function ContactUs() {
             <View style={styles.separator} />
 
             <TouchableOpacity 
-              style={[styles.contactInfo, isRTL && { flexDirection: 'row-reverse' }]}
+              style={[styles.contactInfo]}
               onPress={() => handleEmailPress(contact.email)}
               activeOpacity={0.7}
             >
@@ -153,7 +152,7 @@ export default function ContactUs() {
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.contactInfo, isRTL && { flexDirection: 'row-reverse' }]}
+              style={[styles.contactInfo]}
               onPress={() => handlePhonePress(contact.phone)}
               activeOpacity={0.7}
             >
@@ -167,7 +166,7 @@ export default function ContactUs() {
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.whatsappButton, isRTL && { flexDirection: 'row-reverse' }]}
+              style={[styles.whatsappButton]}
               onPress={() => handleWhatsAppPress(contact.phone)}
               activeOpacity={0.7}
             >
@@ -186,7 +185,7 @@ export default function ContactUs() {
       </View>
 
       {/* Social Media Section */}
-      <View style={[styles.socialSection, isRTL && { transform: [{ scaleX: -1 }] }]}>
+      <View style={[styles.socialSection]}>
         <View style={[styles.socialHeader, isRTL && { flexDirection: 'row-reverse' }]}>
           <Ionicons name="share-social" size={24} color="#6D4C41" />
           <Text style={[styles.socialTitle, { marginHorizontal: 10 }, isRTL && { textAlign: 'right' }]}>
@@ -223,15 +222,24 @@ const styles = StyleSheet.create({
     top: 40,
     zIndex: 10,
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 15,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    backgroundColor: 'rgba(93, 64, 55, 0.9)',
     borderWidth: 1,
-    borderColor: 'white',
+    borderColor: '#FFD54F',
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   languageText: {
-    color: 'white',
+    color: '#FFD54F',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 14,
+    marginHorizontal: 4,
   },
   headerContainer: {
     marginBottom: 25,
@@ -404,5 +412,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 3,
+  },
+  languageButtonText: {
+    color: '#FFD54F',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });
