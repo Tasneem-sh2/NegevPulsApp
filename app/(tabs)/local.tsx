@@ -448,15 +448,6 @@ const confirmLogout = () => {
             </View>
           )}
 
-          {/* SuperLocal Application */}
-          {!userData.isSuperlocal && totalVerified >= 2 && !requestSent && (
-            <TouchableOpacity 
-              style={[styles.requestButton, { backgroundColor: userStatus.color }]}
-              onPress={handleRequestSuperLocal}
-            >
-              <Text style={styles.requestButtonText}>{t('buttons.applySuperLocal')}</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Action Buttons */}

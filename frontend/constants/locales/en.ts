@@ -352,7 +352,17 @@ export default {
       showRoutes: "show Routes",
       hideRoutes: "Hide Routes",
       points: "Points",
-      noPendingRoutesNearby: "No pending routes nearby"
+      noPendingRoutesNearby: "No pending routes nearby",
+      tooFarToVote: "Too Far to Vote",
+      mustBeWithinRadius: "You must be within {radius}m to vote",
+      understand: "I Understand",
+      minPointsRequired: "Route needs at least 2 points",
+      routeTooShort: "Route is too short (minimum 50m)",
+      pointsTooClose: "Some points are too close together (minimum 10m apart)",
+      invalidRoute: "Invalid Route",
+      tapToAddPoints: "Tap to add route points",
+      tapToAddMorePoints: "Tap to add more points",
+      longPressToDrawFreehand: "Long press and drag to draw freehand"
     },
     admin: {
     title: 'Admin Dashboard',

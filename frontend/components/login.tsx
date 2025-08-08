@@ -88,31 +88,31 @@ export default function Login() {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.container}>
-          {/* Header with Language Selector */}
+          {/* Language Selector - Updated to match signup page */}
+          <View style={styles.languageSelector}>
+            {(['en', 'ar', 'he'] as LocaleKeys[]).map((lang) => (
+              <TouchableOpacity
+                key={lang}
+                onPress={() => changeLanguage(lang)}
+                style={[
+                  styles.languageButton,
+                  language === lang && styles.activeLanguage
+                ]}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.languageText,
+                  language === lang && styles.activeLanguageText,
+                  lang === 'ar' && { fontSize: 14 }
+                ]}>
+                  {lang === 'en' ? 'EN' : lang === 'ar' ? 'عربي' : 'עברית'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          {/* Header with Icon and Title */}
           <View style={styles.headerContainer}>
-            <View style={styles.languageSelector}>
-              {(['en', 'ar', 'he'] as LocaleKeys[]).map((lang) => (
-                <TouchableOpacity
-                  key={lang}
-                  onPress={() => changeLanguage(lang)}
-                  style={[
-                    styles.languageButton,
-                    language === lang && styles.activeLanguage
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.languageText,
-                    language === lang && styles.activeLanguageText,
-                    lang === 'ar' && { fontSize: 14 }
-                  ]}>
-                    {lang === 'en' ? 'EN' : lang === 'ar' ? 'عربي' : 'עברית'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            
-            {/* Icon and Title */}
             <View style={styles.headerContent}>
               <MaterialIcons name="login" size={40} color="#FFD700" />
               <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>{t('auth.login.title')}</Text>
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 60, // Increased top padding to accommodate language selector
   },
   headerContainer: {
     width: '100%',
@@ -312,10 +312,11 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     textDecorationLine: 'underline',
   },
+  // Updated language selector styles to match signup page
   languageSelector: {
     position: 'absolute',
-    top: -40,
-    right: 0,
+    top: 20, // Positioned at the top of the container
+    right: 20, // Positioned at the right of the container
     flexDirection: 'row',
     backgroundColor: '#f5f5f5',
     borderRadius: 20,

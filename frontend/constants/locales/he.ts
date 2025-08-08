@@ -347,6 +347,16 @@ export default {
       hideRoutes: "הסתר מסלולים",
       points: "נקודות",
       noPendingRoutesNearby: "אין מסלולים ממתינים בקרבת מקום",
+      tooFarToVote: "רחוק מדי להצביע",
+      mustBeWithinRadius: "עליך להיות בטווח של {radius} מטר כדי להצביע",
+      understand: "אני מבין",
+      minPointsRequired: "המסלול דורש לפחות 2 נקודות",
+      routeTooShort: "המסלול קצר מדי (מינימום 50 מטר)",
+      pointsTooClose: "חלק מהנקודות קרובות מדי זו לזו (מינימום 10 מטר זו מזו)",
+      invalidRoute: "מסלול לא חוקי",
+      tapToAddPoints: "הקש כדי להוסיף נקודות מסלול",
+      tapToAddMorePoints: "הקש כדי להוסיף נקודות נוספות",
+      longPressToDrawFreehand: "לחץ לחיצה ארוכה וגרור כדי לצייר ביד חופשית"
     },
       admin: {
     title: 'לוח בקרה למנהל',

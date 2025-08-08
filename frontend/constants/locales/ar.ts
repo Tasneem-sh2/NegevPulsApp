@@ -348,8 +348,19 @@ export default {
     showRoutes: "عرض الطرق",
     hideRoutes: "إخفاء الطرق",
     points: "النقاط",
-    noPendingRoutesNearby: "لا توجد طرق قيد المراجعة في هذه المنطقة"
+    noPendingRoutesNearby: "لا توجد طرق قيد المراجعة في هذه المنطقة",
+    tooFarToVote: "بعيد جدًا للتصويت",
+    mustBeWithinRadius: "يجب أن تكون ضمن {radius} متر للتصويت",
+    understand: "أفهم",
+    minPointsRequired: "يحتاج المسار إلى نقطتين على الأقل",
+    routeTooShort: "المسار قصير جدًا (الحد الأدنى ٥٠ مترًا)",
+    pointsTooClose: "بعض النقاط قريبة جدًا (الحد الأدنى ١٠ أمتار)",
+    invalidRoute: "مسار غير صالح",
+    tapToAddPoints: "انقر لإضافة نقاط المسار",
+    tapToAddMorePoints: "انقر لإضافة المزيد من النقاط",
+    longPressToDrawFreehand: "اضغط مطولًا واسحب للرسم الحر"
     },
+
   admin: {
     title: 'لوحة تحكم الأدمن',
     logout: 'تسجيل خروج',
