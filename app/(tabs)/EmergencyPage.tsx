@@ -285,6 +285,8 @@ const handleShowRoute = async () => {
     }
 
     setLoading(true);
+    setShowOnlyDestination(true); // إضافة هذا السطر
+
     const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startPoint.lon},${startPoint.lat};${destination.lon},${destination.lat}?alternatives=false&geometries=geojson&language=en&overview=full&steps=true&access_token=pk.eyJ1Ijoic3JhZWwxMiIsImEiOiJjbTVpZmk1angwd2puMmlzNzliendwcDZhIn0.K1gCuh7b0tNdi58FGEhBcA`;
 
     try {
@@ -387,13 +389,16 @@ const updateDestination = async () => {
     return;
   }
 
-  // 🔍 أولا: جرب نلاقيها في الـ landmarks (بما فيهم verified)
   const landmark = landmarks.find(
     (lm) => lm.title.toLowerCase() === destinationAddress.trim().toLowerCase()
   );
 
   if (landmark) {
-    setDestination({ lat: landmark.lat, lon: landmark.lon, title: landmark.title });
+    setDestination({ 
+      lat: landmark.lat, 
+      lon: landmark.lon, 
+      title: landmark.title // حفظ العنوان الأصلي
+    });
     setCameraSettings({
       center: [landmark.lon, landmark.lat],
       zoom: 14
@@ -401,10 +406,12 @@ const updateDestination = async () => {
     return;
   }
 
-  // 📍 إذا ما لقيناها ضمن المعالم، جرب نعمل Geocoding على الإنترنت
   const result = await geocodeAddress(destinationAddress);
   if (result) {
-    setDestination({ ...result, title: result.title || destinationAddress });
+    setDestination({ 
+      ...result, 
+      title: result.title || destinationAddress // استخدام العنوان المدخل إذا لم يكن هناك عنوان من الخريطة
+    });
     setCameraSettings({
       center: [result.lon, result.lat],
       zoom: 14
@@ -567,31 +574,73 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
       renderMode={UserLocationRenderMode.Normal}
       androidRenderMode={UserLocationRenderMode.Normal}
     />
-            {startPoint && (
-          <PointAnnotation
-            id="startPoint"
-            coordinate={[startPoint.lon, startPoint.lat]}
-            title="Start Point"
-          >
-            <View style={styles.annotationContainer}>
-              <View style={[styles.annotation, { backgroundColor: '#FF5252' }]} />
-              <Text style={styles.annotationText}>Start</Text>
-            </View>
-          </PointAnnotation>
-        )}
-        
-        {destination && (
-          <PointAnnotation
-            id="destination"
-            coordinate={[destination.lon, destination.lat]}
-            title="Destination"
-          >
-            <View style={styles.annotationContainer}>
-              <View style={[styles.annotation, { backgroundColor: '#4CAF50' }]} />
-              <Text style={styles.annotationText}>Destination</Text>
-            </View>
-          </PointAnnotation>
-        )}
+           {/* تحميل صور الأيقونات */}
+<MapboxGL.Images
+  images={{
+    endIcon: require('@/assets/images/end_icon.png'),
+  }}
+/>
+
+{/* أيقونة البداية */}
+{startPoint && (
+  <MapboxGL.ShapeSource
+    id="startPointSource"
+    shape={{
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [startPoint.lon, startPoint.lat],
+      },
+      properties: {},
+    }}
+  >
+    <MapboxGL.SymbolLayer
+      id="startPointLayer"
+      style={{
+        iconImage: 'startIcon',
+        iconSize: 0.04,
+        iconAllowOverlap: true,
+        textField: 'Start',
+        textOffset: [0, 1.5],
+        textSize: 14,
+        textAnchor: 'top',
+      }}
+    />
+  </MapboxGL.ShapeSource>
+)}
+
+{/* أيقونة النهاية */}
+{destination && (
+  <MapboxGL.ShapeSource
+    id="endPointSource"
+    shape={{
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [destination.lon, destination.lat],
+      },
+      properties: {},
+    }}
+  >
+    <MapboxGL.SymbolLayer
+      id="endPointLayer"
+      style={{
+           iconImage: 'endIcon',
+        iconSize: 0.08,
+        iconAllowOverlap: true,
+        textField: destination.title || 'Destination', // عرض العنوان بدلاً من "End"
+        textOffset: [0, 1.5],
+        textSize: 14,
+        textAnchor: 'top',
+        textColor: '#000000', // لون النص
+        textHaloColor: '#ffffff', // هالة حول النص لتحسين القراءة
+        textHaloWidth: 1,
+      }}
+    />
+  </MapboxGL.ShapeSource>
+)}
+
+      
         
         {route && (
           <MapboxGL.ShapeSource
@@ -639,25 +688,38 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
           </MapboxGL.ShapeSource>
         ))}
         
-        {landmarks.map((landmark, index) => (
-          <PointAnnotation
-            key={`landmark-${index}`}
-            id={`landmark-${index}`}
-            coordinate={[landmark.lon, landmark.lat]}
-            title={landmark.title}
-            onSelected={() => handleLandmarkClick({
-              id: index,
-              name: landmark.title,
-              latitude: landmark.lat,
-              longitude: landmark.lon
-            })}
-          >
-            <View style={styles.annotationContainer}>
-              <View style={[styles.annotation, { backgroundColor: '#5D5FEF' }]} />
-              <Text style={styles.annotationText}>{landmark.title}</Text>
-            </View>
-          </PointAnnotation>
-        ))}
+       {/* عرض المعالم فقط إذا لم يكن في وضع عرض المسار */}
+  <MapboxGL.ShapeSource
+    id="landmarksSource"
+    shape={{
+      type: 'FeatureCollection',
+      features: landmarks.map(landmark => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [landmark.lon, landmark.lat],
+        },
+        properties: {
+          title: landmark.title,
+        },
+      })),
+    }}
+  >
+    <MapboxGL.SymbolLayer
+      id="landmarksLayer"
+      style={{
+        textField: '{title}',
+        textSize: 14,
+        textColor: '#000000', // لون النص الأسود القياسي
+        textHaloColor: 'rgba(255,255,255,0.7)', // هالة بيضاء خفيفة حول النص
+        textHaloWidth: 1,
+        textAnchor: 'top',
+        textOffset: [0, 0.5],
+        textFont: ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'], // خط مشابه لخط الخريطة
+      }}
+    />
+  </MapboxGL.ShapeSource>
+
         
         {navigationMode && location && (
           <>
@@ -1095,11 +1157,13 @@ const styles = StyleSheet.create({
   },
   annotationContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
+
   },
   annotation: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: 'white',
     shadowColor: '#000',
@@ -1112,10 +1176,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'white',
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 4,
+    padding: 3,
     borderRadius: 4,
     marginTop: 4,
     fontWeight: 'bold',
+      textAlign: 'center',
+
   },
   topControls: {
     position: 'absolute',
