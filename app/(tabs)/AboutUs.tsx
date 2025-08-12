@@ -8,42 +8,43 @@ import { I18nManager } from 'react-native';
 type AppLanguage = 'en' | 'ar' | 'he';
 
 export default function AboutUs() {
-  const translations = useTranslations();
+  type LocaleKeys = 'en' | 'ar' | 'he';
+  const { t } = useTranslations();
   const { language, changeLanguage, isRTL } = useLanguage();
-  
-  const t = translations.about;
-  const problemList = t.problemList as Record<string, string>;
-  const solutionLevels = t.solutionLevels as Array<{
+  const problemList = t('about.problemList', { returnObjects: true }) as Record<string, string>;
+  const solutionLevels = t('about.solutionLevels', { returnObjects: true }) as Array<{
     level: string;
     detail: string;
     icon: string;
   }>;
-  const verificationCriteria = t.verificationCriteria as string[];
-
-  useEffect(() => {
-    I18nManager.forceRTL(isRTL);
-  }, [isRTL]);
+  const verificationCriteria = t('about.verificationCriteria', { returnObjects: true }) as string[];
 
   const toggleLanguage = () => {
-    const languages: AppLanguage[] = ['en', 'ar', 'he'];
-    const currentIndex = languages.indexOf(language as AppLanguage);
+    const languages: LocaleKeys[] = ['en', 'ar', 'he'];
+    const currentIndex = languages.indexOf(language);
     const nextIndex = (currentIndex + 1) % languages.length;
     changeLanguage(languages[nextIndex]);
   };
 
-  const getLanguageButtonText = () => {
-    switch(language) {
-      case 'en': return 'EN';
-      case 'ar': return 'عربي';
-      case 'he': return 'עבר';
-      default: return 'EN';
-    }
+  const getLanguageButtonText = (): string => {
+    const languageNames = {
+      en: 'EN',
+      ar: 'العربية', 
+      he: 'עברית'
+    };
+    return languageNames[language] || `🌐 ${language.toUpperCase()}`;
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <TouchableOpacity
-        style={styles.languageButton}
+    <ScrollView 
+      contentContainerStyle={[styles.container, isRTL && { direction: 'rtl' }]}
+      showsVerticalScrollIndicator={false}
+    >
+      <TouchableOpacity 
+        style={[
+          styles.languageButton,
+          isRTL ? { left: 20 } : { right: 20 }
+        ]}
         onPress={toggleLanguage}
       >
         <MaterialIcons name="language" size={20} color="#FFD700" />
@@ -52,183 +53,196 @@ export default function AboutUs() {
         </Text>
       </TouchableOpacity>
 
-      <ScrollView 
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.hero}>
-          <View style={styles.heroContent}>
-            <Text style={[styles.heroTitle, { 
-              textAlign: isRTL ? 'right' : 'left',
-              writingDirection: isRTL ? 'rtl' : 'ltr'
-            }]}>{t.title}</Text>
-            <Text style={[styles.heroSubtitle, { 
-              textAlign: isRTL ? 'right' : 'left',
-              writingDirection: isRTL ? 'rtl' : 'ltr'
-            }]}>{t.subtitle}</Text>
-          </View>
-          <View style={styles.heroDecoration} />
+      <View style={styles.hero}>
+        <View style={styles.heroContent}>
+          <Text style={styles.heroTitle}>{t('about.title')}</Text>
+          <Text style={styles.heroSubtitle}>{t('about.subtitle')}</Text>
         </View>
+        <View style={styles.heroDecoration} />
+      </View>
 
-        <View style={styles.content}>
-          <View style={styles.section}>
-            <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+      <View style={styles.content}>
+        {/* Mission Section */}
+        <View style={styles.section}>
+          <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={styles.iconContainer}>
               <Ionicons name="book" size={24} color="#6D4C41" />
-              <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
-                {t.missionTitle}
-              </Text>
             </View>
-            <Text style={[styles.sectionText, { 
-              textAlign: isRTL ? 'right' : 'left',
-              writingDirection: isRTL ? 'rtl' : 'ltr'
-            }]}>
-              {t.missionText}
+            <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
+              {t('about.missionTitle')}
             </Text>
-            <View style={[styles.sectionIcon, isRTL ? { left: 20 } : { right: 20 }]}>
+            <View style={styles.iconContainer}>
               <FontAwesome5 name="university" size={20} color="#8D6E63" />
             </View>
           </View>
+          <Text style={[styles.sectionText, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.missionText')}
+          </Text>
+        </View>
 
-          <View style={styles.section}>
-            <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+        {/* Problem Section */}
+        <View style={styles.section}>
+          <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={styles.iconContainer}>
               <Ionicons name="alert-circle" size={24} color="#6D4C41" />
-              <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
-                {t.problemTitle}
-              </Text>
             </View>
-            {Object.entries(problemList).map(([key, item]) => (
-              <View key={key} style={[styles.listItem, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
+              {t('about.problemTitle')}
+            </Text>
+            <View style={styles.iconContainer} />
+          </View>
+          {Object.entries(problemList).map(([key, item], i) => (
+            <View key={key} style={[styles.listItem, isRTL && { flexDirection: 'row-reverse' }]}>
+              <View style={styles.listIcon}>
                 <MaterialIcons name="fiber-manual-record" size={12} color="#D4A59A" />
-                <Text style={[styles.listText, { 
-                  textAlign: isRTL ? 'right' : 'left',
-                  writingDirection: isRTL ? 'rtl' : 'ltr'
-                }]}>
-                  {item}
-                </Text>
               </View>
-            ))}
-          </View>
+              <Text style={[styles.listText, { 
+                textAlign: isRTL ? 'right' : 'left',
+                writingDirection: isRTL ? 'rtl' : 'ltr'
+              }]}>
+                {item}
+              </Text>
+            </View>
+          ))}
+        </View>
 
-          <View style={styles.section}>
-            <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+        {/* Solution Section */}
+        <View style={styles.section}>
+          <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={styles.iconContainer}>
               <Ionicons name="bulb" size={24} color="#6D4C41" />
-              <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
-                {t.goalTitle}
-              </Text>
             </View>
-            <Text style={[styles.sectionText, { 
-              textAlign: isRTL ? 'right' : 'left',
-              writingDirection: isRTL ? 'rtl' : 'ltr'
-            }]}>
-              {t.goalText}
+            <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
+              {t('about.goalTitle')}
             </Text>
-            
-            {solutionLevels.map((item, i) => (
-              <View key={`solution-${i}`} style={[styles.solutionItem, isRTL && { flexDirection: 'row-reverse' }]}>
-                <View style={[styles.solutionIcon, isRTL ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12 }]}>
-                  <FontAwesome5 name={item.icon} size={16} color="#6D4C41" />
-                </View>
-                <View style={styles.solutionText}>
-                  <Text style={[styles.solutionLevel, { 
-                    textAlign: isRTL ? 'right' : 'left',
-                    writingDirection: isRTL ? 'rtl' : 'ltr'
-                  }]}>
-                    {item.level}
-                  </Text>
-                  <Text style={[styles.solutionDetail, { 
-                    textAlign: isRTL ? 'right' : 'left',
-                    writingDirection: isRTL ? 'rtl' : 'ltr'
-                  }]}>
-                    {item.detail}
-                  </Text>
-                </View>
-              </View>
-            ))}
+            <View style={styles.iconContainer} />
           </View>
-
-          <View style={styles.section}>
-            <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-              <Ionicons name="shield-checkmark" size={24} color="#6D4C41" />
-              <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
-                {t.howItWorksTitle}
-              </Text>
-            </View>
-            <Text style={[styles.sectionText, { 
-              textAlign: isRTL ? 'right' : 'left',
-              writingDirection: isRTL ? 'rtl' : 'ltr'
-            }]}>
-              {t.verificationText}
-            </Text>
-            {verificationCriteria.map((item, i) => (
-              <View key={`criteria-${i}`} style={[styles.listItem, isRTL && { flexDirection: 'row-reverse' }]}>
-                <Feather name="check-circle" size={16} color="#8D6E63" />
-                <Text style={[styles.listText, { 
+          <Text style={[styles.sectionText, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.goalText')}
+          </Text>
+          
+          {solutionLevels.map((item, i) => (
+            <View key={`solution-${i}`} style={[styles.solutionItem, isRTL && { flexDirection: 'row-reverse' }]}>
+              <View style={[styles.solutionIcon, isRTL ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12 }]}>
+                <FontAwesome5 name={item.icon} size={16} color="#6D4C41" />
+              </View>
+              <View style={styles.solutionText}>
+                <Text style={[styles.solutionLevel, { 
                   textAlign: isRTL ? 'right' : 'left',
                   writingDirection: isRTL ? 'rtl' : 'ltr'
                 }]}>
-                  {item}
+                  {item.level}
+                </Text>
+                <Text style={[styles.solutionDetail, { 
+                  textAlign: isRTL ? 'right' : 'left',
+                  writingDirection: isRTL ? 'rtl' : 'ltr'
+                }]}>
+                  {item.detail}
                 </Text>
               </View>
-            ))}
-          </View>
+            </View>
+          ))}
+        </View>
 
-          <View style={styles.section}>
-            <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-              <Ionicons name="code" size={24} color="#6D4C41" />
-              <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
-                {t.techTitle}
+        {/* Verification Section */}
+        <View style={styles.section}>
+          <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="shield-checkmark" size={24} color="#6D4C41" />
+            </View>
+            <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
+              {t('about.howItWorksTitle')}
+            </Text>
+            <View style={styles.iconContainer} />
+          </View>
+          <Text style={[styles.sectionText, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.verificationText')}
+          </Text>
+          {verificationCriteria.map((item, i) => (
+            <View key={`criteria-${i}`} style={[styles.listItem, isRTL && { flexDirection: 'row-reverse' }]}>
+              <View style={styles.listIcon}>
+                <Feather name="check-circle" size={16} color="#8D6E63" />
+              </View>
+              <Text style={[styles.listText, { 
+                textAlign: isRTL ? 'right' : 'left',
+                writingDirection: isRTL ? 'rtl' : 'ltr'
+              }]}>
+                {item}
               </Text>
             </View>
-            <Text style={[styles.sectionText, { 
-              textAlign: isRTL ? 'right' : 'left',
-              writingDirection: isRTL ? 'rtl' : 'ltr'
-            }]}>
-              {t.techText}
-            </Text>
-            <View style={styles.techIcons}>
-              <FontAwesome5 name="android" size={24} color="#8D6E63" />
-              <FontAwesome5 name="apple" size={24} color="#8D6E63" style={{ marginHorizontal: 20 }} />
-              <FontAwesome5 name="waze" size={24} color="#8D6E63" />
-              <FontAwesome5 name="google" size={24} color="#8D6E63" style={{ marginLeft: 20 }} />
-            </View>
-          </View>
+          ))}
+        </View>
 
-          <View style={[styles.section, styles.ctaSection]}>
+        {/* Tech Section */}
+        <View style={styles.section}>
+          <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="code" size={24} color="#6D4C41" />
+            </View>
+            <Text style={[styles.sectionTitle, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
+              {t('about.techTitle')}
+            </Text>
+            <View style={styles.iconContainer} />
+          </View>
+          <Text style={[styles.sectionText, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.techText')}
+          </Text>
+          <View style={styles.techIcons}>
+            <FontAwesome5 name="android" size={24} color="#8D6E63" />
+            <FontAwesome5 name="apple" size={24} color="#8D6E63" style={{ marginHorizontal: 20 }} />
+            <FontAwesome5 name="waze" size={24} color="#8D6E63" />
+            <FontAwesome5 name="google" size={24} color="#8D6E63" style={{ marginLeft: 20 }} />
+          </View>
+        </View>
+
+        {/* CTA Section */}
+        <View style={[styles.section, styles.ctaSection]}>
+          <View style={styles.ctaIconContainer}>
             <Ionicons 
               name={isRTL ? "hand-right" : "hand-left"} 
               size={32} 
               color="#6D4C41" 
-              style={styles.ctaIcon} 
             />
-            <Text style={[styles.ctaTitle, { 
-              textAlign: isRTL ? 'right' : 'left',
-              writingDirection: isRTL ? 'rtl' : 'ltr'
-            }]}>
-              {t.visionTitle}
-            </Text>
-            <Text style={[styles.ctaText, { 
-              textAlign: isRTL ? 'right' : 'left',
-              writingDirection: isRTL ? 'rtl' : 'ltr'
-            }]}>
-              {t.contactText}
-            </Text>
-            <TouchableOpacity 
-              style={styles.contactButton}
-              onPress={() => Linking.openURL(`mailto:${t.contactEmail}`)}
-            >
-              <MaterialIcons name="email" size={20} color="white" />
-              <Text style={[styles.contactButtonText, { 
-                marginLeft: 10,
-                textAlign: isRTL ? 'right' : 'left',
-                writingDirection: isRTL ? 'rtl' : 'ltr'
-              }]}>
-                {t.contactEmail}
-              </Text>
-            </TouchableOpacity>
           </View>
+          <Text style={[styles.ctaTitle, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.visionTitle')}
+          </Text>
+          <Text style={[styles.ctaText, { 
+            textAlign: isRTL ? 'right' : 'left',
+            writingDirection: isRTL ? 'rtl' : 'ltr'
+          }]}>
+            {t('about.contactText')}
+          </Text>
+          <TouchableOpacity 
+            style={styles.contactButton}
+            onPress={() => Linking.openURL(`mailto:${t('about.contactEmail')}`)}
+          >
+            <MaterialIcons name="email" size={20} color="white" />
+            <Text style={[styles.contactButtonText, { 
+              textAlign: isRTL ? 'right' : 'left',
+              writingDirection: isRTL ? 'rtl' : 'ltr'
+            }]}>
+              {t('about.contactEmail')}
+            </Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -327,33 +341,37 @@ const styles = StyleSheet.create({
     color: '#5D4037',
     fontWeight: '600',
     fontFamily: 'sans-serif-medium',
+    flex: 1,
   },
   sectionText: {
     fontSize: 16,
     color: '#5D4037',
     lineHeight: 24,
     marginBottom: 15,
+    marginTop: 10,
     fontFamily: 'sans-serif',
   },
-  sectionIcon: {
-    position: 'absolute',
-    top: 20,
+  iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#EFEBE9',
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 10,
   },
+  listIcon: {
+    marginTop: 3,
+    width: 24,
+    alignItems: 'center',
+  },
   listText: {
     fontSize: 15,
     color: '#5D4037',
     marginLeft: 10,
+    marginRight: 10,
     flex: 1,
     lineHeight: 22,
     fontFamily: 'sans-serif',
@@ -397,7 +415,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#5D4037',
     alignItems: 'center',
   },
-  ctaIcon: {
+  ctaIconContainer: {
     marginBottom: 10,
   },
   ctaTitle: {
@@ -406,12 +424,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 5,
     fontFamily: 'sans-serif-medium',
+    textAlign: 'center',
   },
   ctaText: {
     fontSize: 16,
     color: '#FFD54F',
     marginBottom: 15,
     fontFamily: 'sans-serif',
+    textAlign: 'center',
   },
   contactButton: {
     flexDirection: 'row',

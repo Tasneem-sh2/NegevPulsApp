@@ -1,121 +1,100 @@
+import { useTranslations } from '@/frontend/constants/locales';
+import { useLanguage } from '@/frontend/context/LanguageProvider';
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView, Platform,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
-  Text, TextInput, TouchableOpacity,
+  Text,
+  TextInput,
+  TouchableOpacity,
   View
 } from 'react-native';
 
-// Update your SignupData type
 type SignupData = {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
   confirmPassword: string;
-  //role: string;
 };
 
 const Signup = () => {
   const router = useRouter();
-// Update your initial state
   const [data, setData] = useState<SignupData>({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
-   // role: "local",
   });
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
+  const { language, changeLanguage, isRTL } = useLanguage();
+  const { t } = useTranslations();
 
   const handleChange = (name: keyof SignupData, value: string) => {
     setData((prevData) => ({ ...prevData, [name]: value }));
   };
 
-  
-
-// Update your handleSubmit function
-const handleSubmit = async () => {
-  
-  // Basic validation
-  if (!data.firstName || !data.lastName) {
-    setError("First name and last name are required");
-    return;
-  }
-
-  if (data.password !== data.confirmPassword) {
-    setError("Passwords do not match");
-    return;
-  }
-
-  // Password complexity validation
-  // Password complexity validation
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
-  if (!passwordRegex.test(data.password)) {
-    setError("Password must contain: 8+ chars, uppercase, lowercase, number, and special character");
-    return;
-  }
-
-  setIsSubmitting(true);
-  setError("");
-
-  try {
-    const url = `https://negevpulsapp.onrender.com/api/signup`;
-
-    const payload = {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      password: data.password,
-      confirmPassword: data.confirmPassword,
-     // role: data.role
-    };
-    console.log("🚀 Sending payload:", payload); // ← أضف هذا السطر هنا
-
-
-    const response = await axios.post(url, payload);
-    
-    setSuccessMessage("Account created successfully!");
-    // Clear form
-    setData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-     // role: "local",
-    });
-
-    setTimeout(() => {
-      router.push('./login');
-    }, 2000);
-
-  }  catch (error: any) {
-    console.error('API call failed:', error);
-    console.log('Error response:', error.response?.data); // Add this line
-    console.log('إعدادات الطلب:', error.config); // سيعرض البيانات المرسلة بالضبط
-
-    if (error.response) {
-      setError(error.response.data.message || 'Signup failed');
-    } else if (error.request) {
-      setError('No response received from server');
-    } else {
-      setError('Network error or server unavailable');
+  const handleSubmit = async () => {
+    if (!data.firstName || !data.lastName) {
+      setError(t('auth.signup.errors.nameRequired'));
+      return;
     }
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+
+    if (data.password !== data.confirmPassword) {
+      setError(t('auth.signup.errors.passwordMismatch'));
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      setError(t('auth.signup.errors.invalidEmail'));
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    if (!passwordRegex.test(data.password)) {
+      setError(t('auth.signup.errors.passwordComplexity'));
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      const response = await axios.post('http://negevpulsapp.onrender.com/api/signup', {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        password: data.password,
+        confirmPassword: data.confirmPassword,
+      });
+      setSuccessMessage(t('auth.signup.accountCreated'));
+      setData({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+      });
+
+      setTimeout(() => router.push('./login'), 2000);
+    } catch (error: any) {
+      setError(error.response?.data?.message || t('errors.unexpectedError'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -124,49 +103,99 @@ const handleSubmit = async () => {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.container}>
-          <View style={styles.header}>
-            <MaterialIcons name="person-add" size={40} color="#FFD700" />
-            <Text style={styles.title}>Create Account</Text>
+          {/* Header with Language Selector */}
+          <View style={styles.headerContainer}>
+            <View style={styles.languageSelector}>
+              {(['en', 'ar', 'he'] as const).map((lang) => (
+                <TouchableOpacity
+                  key={lang}
+                  onPress={() => changeLanguage(lang)}
+                  style={[
+                    styles.languageButton,
+                    language === lang && styles.activeLanguage
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.languageText,
+                    language === lang && styles.activeLanguageText,
+                    lang === 'ar' && { fontSize: 14 }
+                  ]}>
+                    {lang === 'en' ? 'EN' : lang === 'ar' ? 'عربي' : 'עברית'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            {/* Icon and Title */}
+            <View style={styles.headerContent}>
+              <MaterialIcons name="person-add" size={40} color="#FFD700" />
+              <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>{t('auth.signup.title')}</Text>
+            </View>
           </View>
-
+          {/* Form Container */}
           <View style={styles.formContainer}>
+            {/* Name Inputs */}
             <TextInput
-              style={styles.input}
-              placeholder="First Name"
+              style={[
+                styles.input,
+                isRTL ? styles.inputRTL : styles.inputLTR
+              ]}
+              placeholder={t('auth.signup.firstName')}
               value={data.firstName}
               onChangeText={(text) => handleChange('firstName', text)}
               placeholderTextColor="#8d6e63"
+              textAlign={isRTL ? 'right' : 'left'}
+              autoCapitalize="words"
             />
 
             <TextInput
-              style={styles.input}
-              placeholder="Last Name"
+              style={[
+                styles.input,
+                isRTL ? styles.inputRTL : styles.inputLTR
+              ]}
+              placeholder={t('auth.signup.lastName')}
               value={data.lastName}
               onChangeText={(text) => handleChange('lastName', text)}
               placeholderTextColor="#8d6e63"
+              textAlign={isRTL ? 'right' : 'left'}
+              autoCapitalize="words"
             />
 
+            {/* Email Input */}
             <TextInput
-              style={styles.input}
-              placeholder="Email"
+              style={[
+                styles.input,
+                isRTL ? styles.inputRTL : styles.inputLTR
+              ]}
+              placeholder={t('auth.signup.email')}
               value={data.email}
               onChangeText={(text) => handleChange('email', text)}
               keyboardType="email-address"
               placeholderTextColor="#8d6e63"
+              textAlign={isRTL ? 'right' : 'left'}
+              autoCapitalize="none"
             />
 
-                <View style={styles.passwordContainer}>
+            {/* Password Input with Eye Icon */}
+            <View style={styles.passwordContainer}>
               <TextInput
-                style={[styles.input, styles.passwordInput]}
-                placeholder="Password"
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  isRTL ? styles.inputRTL : styles.inputLTR
+                ]}
+                placeholder={t('auth.signup.password')}
                 value={data.password}
                 onChangeText={(text) => handleChange('password', text)}
                 secureTextEntry={!showPassword}
                 placeholderTextColor="#8d6e63"
+                textAlign={isRTL ? 'right' : 'left'}
               />
               <TouchableOpacity 
                 style={styles.eyeIcon}
                 onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
               >
                 <MaterialIcons 
                   name={showPassword ? 'visibility-off' : 'visibility'} 
@@ -176,18 +205,25 @@ const handleSubmit = async () => {
               </TouchableOpacity>
             </View>
 
+            {/* Confirm Password Input with Eye Icon */}
             <View style={styles.passwordContainer}>
               <TextInput
-                style={[styles.input, styles.passwordInput]}
-                placeholder="Confirm Password"
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  isRTL ? styles.inputRTL : styles.inputLTR
+                ]}
+                placeholder={t('auth.signup.confirmPassword')}
                 value={data.confirmPassword}
                 onChangeText={(text) => handleChange('confirmPassword', text)}
                 secureTextEntry={!showConfirmPassword}
                 placeholderTextColor="#8d6e63"
+                textAlign={isRTL ? 'right' : 'left'}
               />
               <TouchableOpacity 
                 style={styles.eyeIcon}
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                activeOpacity={0.7}
               >
                 <MaterialIcons 
                   name={showConfirmPassword ? 'visibility-off' : 'visibility'} 
@@ -197,22 +233,38 @@ const handleSubmit = async () => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.passwordHint}>
-              Password must contain: 8+ characters, uppercase, lowercase, number, and special character
+            {/* Password Hint */}
+            <Text style={[styles.passwordHint, isRTL && { textAlign: 'right' }]}>
+              {t('auth.signup.passwordHint')}
             </Text>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {/* Error Message */}
+            {error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
 
+            {/* Submit Button */}
             <TouchableOpacity
-              style={styles.button}
+              style={[
+                styles.button,
+                isSubmitting && styles.buttonDisabled
+              ]}
               onPress={handleSubmit}
               disabled={isSubmitting}
+              activeOpacity={0.7}
             >
-              <Text style={styles.buttonText}>
-                {isSubmitting ? "Creating Account..." : "Sign Up"}
-              </Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFD700" />
+              ) : (
+                <Text style={styles.buttonText}>
+                  {t('auth.signup.signupButton')}
+                </Text>
+              )}
             </TouchableOpacity>
 
+            {/* Success Message */}
             {successMessage ? (
               <View style={styles.successContainer}>
                 <MaterialIcons name="check-circle" size={24} color="#4CAF50" />
@@ -220,10 +272,14 @@ const handleSubmit = async () => {
               </View>
             ) : null}
 
-            <View style={styles.loginLinkContainer}>
-              <Text style={styles.loginText}>Already have an account?</Text>
-              <TouchableOpacity onPress={() => router.push('./login')}>
-                <Text style={styles.loginLink}>Log In</Text>
+            {/* Login Link */}
+            <View style={[styles.loginLinkContainer, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={styles.loginText}>{t('auth.signup.loginText')}</Text>
+              <TouchableOpacity 
+                onPress={() => router.push('./login')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.loginLink}>{t('auth.signup.loginLink')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -247,6 +303,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    paddingTop: 60, // زيادة الحشو العلوي لإفساح المجال لزر اللغة
+  },
+  headerContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  headerContent: {
+    alignItems: 'center',
+    marginTop: 10, // تقليل المسافة بين أزرار اللغة والأيقونة
   },
   header: {
     alignItems: 'center',
@@ -274,7 +340,7 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    padding: 12,
+    padding: 15,
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
@@ -283,41 +349,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     color: '#5d4037',
   },
-  roleContainer: {
+  passwordInput: {
+    paddingRight: 50, // مساحة كافية لأيقونة العين
+  },
+  inputRTL: {
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  inputLTR: {
+    textAlign: 'left',
+    writingDirection: 'ltr',
+  },
+  passwordContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: 15,
+  },
+  passwordHint: {
+    fontSize: 12,
+    color: '#8d6e63',
     marginBottom: 20,
-  },
-  roleLabel: {
-    fontSize: 16,
-    color: '#6d4c41',
-    marginBottom: 10,
-  },
-  roleButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  roleButton: {
-    flex: 1,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 5,
-  },
-  activeRole: {
-    backgroundColor: '#6d4c41',
-    borderColor: '#6d4c41',
-  },
-  roleText: {
-    color: '#6d4c41',
-    fontWeight: '500',
-  },
-  activeRoleText: {
-    color: '#FFD700',
+    textAlign: 'left',
   },
   button: {
     backgroundColor: '#6d4c41',
-    paddingVertical: 12,
+    paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 10,
@@ -327,6 +387,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 3,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: '#FFD700',
@@ -349,9 +412,16 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     textDecorationLine: 'underline',
   },
+  errorContainer: {
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: 'rgba(211, 47, 47, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d32f2f',
+  },
   errorText: {
     color: '#d32f2f',
-    marginBottom: 15,
     textAlign: 'center',
   },
   successContainer: {
@@ -371,25 +441,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
-    passwordContainer: {
-    position: 'relative',
-    marginBottom: 15,
-  },
-  passwordInput: {
-    paddingRight: 50, // Make space for the eye icon
-  },
-  eyeIcon: {
+  languageSelector: {
     position: 'absolute',
-    right: 15,
-    top: 12,
-    zIndex: 1,
+    top: -40, // رفع الأزرار لأعلى أكثر
+    right: 0,
+    flexDirection: 'row',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    padding: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    zIndex: 10, // التأكد من ظهور الأزرار فوق كل شيء
   },
-  passwordHint: {
-    fontSize: 12,
-    color: '#8d6e63',
-    marginBottom: 20,
-    textAlign: 'center',
+  languageButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginHorizontal: 3,
   },
+  activeLanguage: {
+    backgroundColor: '#6d4c41',
+  },
+  languageText: {
+    color: '#6d4c41',
+    fontWeight: 'bold',
+  },
+  activeLanguageText: {
+    color: '#FFD700',
+  }
 });
 
 export default Signup;

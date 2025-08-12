@@ -10,8 +10,10 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { I18nManager } from 'react-native';
 import { useAuth } from '../AuthContext';
+type LocaleKeys = 'en' | 'ar' | 'he'; // أو أي لغات أخرى تدعمها التطبيق
 
 interface UserData {
+  [x: string]: any;
   _id: string;
   name: string;
   email: string;
@@ -55,65 +57,64 @@ export default function LocalPage() {
   const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://negevpulsapp.onrender.com";
   const { logout } = useAuth();
 
-
-  // دالة تبديل اللغة
-  const toggleLanguage = () => {
-    const newLang = language === 'en' ? 'ar' : language === 'ar' ? 'he' : 'en';
-    changeLanguage(newLang);
+const getLanguageButtonText = (): string => {
+  const languageNames = {
+    en: 'EN',
+    ar: 'العربية', 
+    he: 'עברית'
   };
+  
+  return languageNames[language] || `🌐 ${language.toUpperCase()}`;
+};
 
-  // نص زر اللغة
-  const getLanguageButtonText = () => {
-    switch(language) {
-      case 'en': return 'العربية';
-      case 'ar': return 'עברית';
-      case 'he': return 'English';
-      default: return 'EN';
-    }
-  };
-    useEffect(() => {
-    I18nManager.forceRTL(isRTL);
-  }, [isRTL]);
+const toggleLanguage = () => {
+  const languages: LocaleKeys[] = ['en', 'ar', 'he']; // يجب أن تكون من نفس نوع LocaleKeys
+  const currentIndex = languages.indexOf(language);
+  const nextIndex = (currentIndex + 1) % languages.length;
+  changeLanguage(languages[nextIndex]);
+};
 
-  const fetchUserData = async () => {
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('token');
-      if (!token) return;
+const fetchUserData = async () => {
+  try {
+    setLoading(true);
+    const token = await AsyncStorage.getItem('token');
+    if (!token) return;
 
-      const response = await axios.get(`${BASE_URL}/api/auth/me`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+    const response = await axios.get(`${BASE_URL}/api/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.data?.success) {
+      const user = response.data.user;
+      const decoded = jwtDecode<JwtPayload>(token);
       
-      if (response.data?.success) {
-        const user = response.data.user;
-        const decoded = jwtDecode<JwtPayload>(token);
-        
-        const newUserData = {
-          _id: user._id,
-          name: user.name || user.email.split('@')[0],
-          email: user.email,
-          isSuperlocal: user.isSuperlocal || decoded.isSuperlocal || false,
-          verifiedLandmarksAdded: user.verifiedLandmarksAdded || 0,
-          verifiedRoutesAdded: user.verifiedRoutesAdded || 0,
-          votingStats: user.votingStats || { correctVotes: 0, totalVotes: 0 }
-        };
-        
-        setUserData(prev => {
-          if (JSON.stringify(prev) !== JSON.stringify(newUserData)) {
-            return newUserData;
-          }
-          return prev;
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      setError(t('errors.loadUserData'));
-    } finally {
-      setLoading(false);
+      const newUserData = {
+        _id: user._id,
+        name: user.name || user.email.split('@')[0],
+        email: user.email,
+        isSuperlocal: user.isSuperlocal || decoded.isSuperlocal || false,
+        verifiedLandmarksAdded: user.verifiedLandmarksAdded || 0,
+        verifiedRoutesAdded: user.verifiedRoutesAdded || 0,
+        contributions: user.contributions || { verified: 0, rejected: 0 }, // تأكد من وجود هذا الحقل
+        votingStats: user.votingStats || { correctVotes: 0, totalVotes: 0 }
+      };
+      
+      console.log('User data received:', newUserData); // سجل البيانات المستلمة
+      
+      setUserData(prev => {
+        if (JSON.stringify(prev) !== JSON.stringify(newUserData)) {
+          return newUserData;
+        }
+        return prev;
+      });
     }
-  };
-
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    setError(t('errors.loadUserData'));
+  } finally {
+    setLoading(false);
+  }
+};
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -158,24 +159,34 @@ const confirmLogout = () => {
   );
 };
   const getUserStatus = () => {
-    if (userData.isSuperlocal === true) {
+    const totalVerified = userData.verifiedLandmarksAdded + userData.verifiedRoutesAdded;
+    const totalContributions = userData.contributions?.verified || 0;
+
+    if (userData.isSuperlocal) {
       return {
         status: t('userStatus.superLocal'),
-        description: t('userStatus.superLocalDesc'),
+        description: t('userStatus.superLocalDesc', { 
+          landmarks: userData.verifiedLandmarksAdded,
+          routes: userData.verifiedRoutesAdded,
+          contributions: totalContributions
+        }),
         color: '#4caf50',
         icon: 'verified' as const
       };
     }
 
-    const totalVerified = userData.verifiedLandmarksAdded + userData.verifiedRoutesAdded;
-    const votingAccuracy = userData.votingStats.totalVotes > 0 
+    const votingAccuracy = userData.votingStats?.totalVotes > 0 
       ? userData.votingStats.correctVotes / userData.votingStats.totalVotes 
       : 0;
     
-    if (totalVerified >= 2 || (votingAccuracy >= 0.8 && userData.votingStats.totalVotes >= 5)) {
+    if (totalVerified >= 2 || (votingAccuracy >= 0.8 && userData.votingStats?.totalVotes >= 5)) {
       return {
         status: t('userStatus.activeResident'),
-        description: t('userStatus.activeResidentDesc', { count: totalVerified }),
+        description: t('userStatus.activeResidentDesc', { 
+          landmarks: userData.verifiedLandmarksAdded,
+          routes: userData.verifiedRoutesAdded,
+          contributions: totalContributions
+        }),
         color: '#FFD700',
         icon: 'star' as const
       };
@@ -183,12 +194,15 @@ const confirmLogout = () => {
 
     return {
       status: t('userStatus.regularResident'),
-      description: t('userStatus.regularResidentDesc'),
+      description: t('userStatus.regularResidentDesc', {
+        landmarks: userData.verifiedLandmarksAdded,
+        routes: userData.verifiedRoutesAdded,
+        contributions: totalContributions
+      }),
       color: '#6d4c41',
       icon: 'person' as const
     };
   };
-
   type MaterialIconName = 'verified' | 'star' | 'person' | 'place' | 'add-road' | 'how-to-vote' | 'hourglass-empty';
 
   const userStatus = getUserStatus();
@@ -329,6 +343,7 @@ const confirmLogout = () => {
                 {t('stats.landmarks')}: {userData.verifiedLandmarksAdded}
               </Text>
             </View>
+            
             <View style={[styles.statItem, isRTL && { flexDirection: 'row-reverse' }]}>
               <MaterialIcons name="add-road" size={20} color="#6d4c41" />
               <Text style={[
@@ -342,6 +357,21 @@ const confirmLogout = () => {
                 {t('stats.routes')}: {userData.verifiedRoutesAdded}
               </Text>
             </View>
+            
+            <View style={[styles.statItem, isRTL && { flexDirection: 'row-reverse' }]}>
+              <MaterialIcons name="verified" size={20} color="#6d4c41" />
+              <Text style={[
+                styles.statText,
+                isRTL ? { marginRight: 8 } : { marginLeft: 8 },
+                { 
+                  textAlign: isRTL ? 'right' : 'left',
+                  writingDirection: isRTL ? 'rtl' : 'ltr'
+                }
+              ]}>
+                {t('stats.contributions')}: {userData.contributions?.verified || 0}
+              </Text>
+            </View>
+            
             <View style={[styles.statItem, isRTL && { flexDirection: 'row-reverse' }]}>
               <MaterialIcons name="how-to-vote" size={20} color="#6d4c41" />
               <Text style={[
@@ -352,7 +382,7 @@ const confirmLogout = () => {
                   writingDirection: isRTL ? 'rtl' : 'ltr'
                 }
               ]}>
-                {t('stats.correctVotes')}: {userData.votingStats.correctVotes}
+                {t('stats.correctVotes')}: {userData.votingStats?.correctVotes || 0}
               </Text>
             </View>
           </View>
@@ -416,15 +446,6 @@ const confirmLogout = () => {
             </View>
           )}
 
-          {/* SuperLocal Application */}
-          {!userData.isSuperlocal && totalVerified >= 2 && !requestSent && (
-            <TouchableOpacity 
-              style={[styles.requestButton, { backgroundColor: userStatus.color }]}
-              onPress={handleRequestSuperLocal}
-            >
-              <Text style={styles.requestButtonText}>{t('buttons.applySuperLocal')}</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Action Buttons */}

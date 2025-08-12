@@ -48,19 +48,25 @@ export default {
       },
       signup: {
         title: "إنشاء حساب",
-        name: "الاسم",
+        firstName: "الاسم الأول",
+        lastName: "الاسم الأخير",
         email: "البريد الإلكتروني",
         password: "كلمة المرور",
         confirmPassword: "تأكيد كلمة المرور",
-        roleLocal: "مقيم محلي",
-        roleEmergency: "مسعف",
-        button: "تسجيل",
-        passwordMismatch: "كلمات المرور غير متطابقة",
-        successMessage: "تم إنشاء الحساب بنجاح	",
-        loginLink:"تسجيل الدخول	",
-        loginPrompt:"هل لديك حساب بالفعل؟	",
-        roleLabel:"نوع الحساب:	",
-        unexpectedError:"حدث خطأ غير متوقع	 ",
+        passwordHint: "يجب أن تحتوي كلمة المرور على: 8+ أحرف، حرف كبير، حرف صغير، رقم، ورموز خاصة",
+        signupButton: "تسجيل",
+        creatingAccount: "جاري إنشاء الحساب...",
+        accountCreated: "تم إنشاء الحساب بنجاح!",
+        loginText: "لديك حساب بالفعل؟",
+        loginLink: "تسجيل الدخول",
+        errors: {
+          nameRequired: "الاسم الأول والاسم الأخير مطلوبان",
+          passwordMismatch: "كلمات المرور غير متطابقة",
+          passwordComplexity: "يجب أن تحتوي كلمة المرور على: 8+ أحرف، حرف كبير، حرف صغير، رقم، ورموز خاصة",
+          general: "فشل إنشاء الحساب",
+          noResponse: "لا يوجد رد من الخادم",
+          network: "خطأ في الشبكة أو الخادم غير متاح"
+        }
       }
     },
     tabs: {
@@ -243,7 +249,7 @@ export default {
       filterAll: "الكل",
       filterVerified: "موثق",
       filterPending: "قيد الانتظار",
-      pendingLandmarksTitle: "المعالم قيد المراجعة",
+      LandmarksTitle: "المعالم على الخريطة",
       noPendingLandmarks: "لا توجد معالم قيد المراجعة في هذه المنطقة",
       noVerifiedLandmarks: "لا توجد معالم موثقة في هذه المنطقة",
       noLandmarks: "لا توجد معالم في هذه المنطقة",
@@ -344,8 +350,19 @@ export default {
     showRoutes: "عرض الطرق",
     hideRoutes: "إخفاء الطرق",
     points: "النقاط",
-    noPendingRoutesNearby: "لا توجد طرق قيد المراجعة في هذه المنطقة"
+    noPendingRoutesNearby: "لا توجد طرق قيد المراجعة في هذه المنطقة",
+    tooFarToVote: "بعيد جدًا للتصويت",
+    mustBeWithinRadius: "يجب أن تكون ضمن {radius} متر للتصويت",
+    understand: "أفهم",
+    minPointsRequired: "يحتاج المسار إلى نقطتين على الأقل",
+    routeTooShort: "المسار قصير جدًا (الحد الأدنى ٥٠ مترًا)",
+    pointsTooClose: "بعض النقاط قريبة جدًا (الحد الأدنى ١٠ أمتار)",
+    invalidRoute: "مسار غير صالح",
+    tapToAddPoints: "انقر لإضافة نقاط المسار",
+    tapToAddMorePoints: "انقر لإضافة المزيد من النقاط",
+    longPressToDrawFreehand: "اضغط مطولًا واسحب للرسم الحر"
     },
+
   admin: {
     title: 'لوحة تحكم الأدمن',
     logout: 'تسجيل خروج',

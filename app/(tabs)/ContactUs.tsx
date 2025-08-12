@@ -3,8 +3,6 @@ import { MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { useTranslations } from '@/frontend/constants/locales';
 import { useLanguage } from '@/frontend/context/LanguageProvider';
 
-type AppLanguage = 'en' | 'ar' | 'he';
-
 interface ContactPerson {
   name: string;
   email: string;
@@ -25,24 +23,27 @@ interface ContactTranslations {
 }
 
 export default function ContactUs() {
+  type LocaleKeys = 'en' | 'ar' | 'he';
   const { language, changeLanguage, isRTL } = useLanguage();
   const t = (useTranslations() as any).contactUs;
 
   const toggleLanguage = () => {
-    const languages: AppLanguage[] = ['en', 'ar', 'he'];
-    const currentIndex = languages.indexOf(language as AppLanguage);
-    const nextIndex = (currentIndex + 1) % languages.length;
-    changeLanguage(languages[nextIndex]);
-  };
+  const languages: LocaleKeys[] = ['en', 'ar', 'he'];
+  const currentIndex = languages.indexOf(language);
+  const nextIndex = (currentIndex + 1) % languages.length;
+  changeLanguage(languages[nextIndex]);
+};
 
-  const getCurrentLanguageName = () => {
-    switch(language) {
-      case 'en': return 'English';
-      case 'ar': return 'العربية';
-      case 'he': return 'עברית';
-      default: return 'English';
-    }
+const getLanguageButtonText = (): string => {
+  const languageNames = {
+    en: 'EN',
+    ar: 'العربية', 
+    he: 'עברית'
   };
+  
+  return languageNames[language] || `🌐 ${language.toUpperCase()}`;
+};
+
 
   const contacts = [
     {
@@ -89,118 +90,124 @@ export default function ContactUs() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <TouchableOpacity
-        style={styles.languageButton}
-        onPress={toggleLanguage}
-      >
-        <MaterialIcons name="language" size={20} color="#FFD700" />
-        <Text style={styles.languageButtonText}>
-          {language.toUpperCase()}
-        </Text>
-      </TouchableOpacity>
+        <ScrollView 
+          contentContainerStyle={[styles.container, isRTL && { direction: 'rtl' }]}
+          showsVerticalScrollIndicator={false}
+        >          {/* زر تغيير اللغة */}
+        <TouchableOpacity 
+            style={[
+              styles.languageButton,
+              isRTL ? { left: 20 } : { right: 20 }
+            ]}
+            onPress={toggleLanguage}
+          >
+            <Text style={styles.languageButtonText}>
+              {getLanguageButtonText()}
+            </Text>
+          </TouchableOpacity>
       
-      <ScrollView contentContainerStyle={[styles.container, isRTL && { transform: [{ scaleX: -1 }] }]}>
 
-        <View style={[styles.headerContainer, isRTL && { transform: [{ scaleX: -1 }] }]}>
-          <View style={styles.header}>
-            <Ionicons name="people" size={32} color="#FFF8E1" style={styles.headerIcon} />
-            <Text style={[styles.headerText, isRTL && { textAlign: 'right' }]}>{t.title}</Text>
-            <Text style={[styles.subHeaderText, isRTL && { textAlign: 'right' }]}>{t.subtitle}</Text>
-          </View>
-          <View style={styles.headerDecoration} />
+      {/* Header with decorative elements */}
+      <View style={[styles.headerContainer]}>
+        <View style={styles.header}>
+          <Ionicons name="people" size={32} color="#FFF8E1" style={styles.headerIcon} />
+          <Text style={[styles.headerText, isRTL && { textAlign: 'right' }]}>{t.title}</Text>
+          <Text style={[styles.subHeaderText, isRTL && { textAlign: 'right' }]}>{t.subtitle}</Text>
         </View>
+        <View style={styles.headerDecoration} />
+      </View>
 
-        <View style={[styles.contactsContainer, isRTL && { transform: [{ scaleX: -1 }] }]}>
-          {contacts.map((contact, index) => (
-            <View key={index} style={[
-              styles.contactCard, 
-              isRTL ? { borderRightWidth: 5, borderRightColor: contact.color } 
-                    : { borderLeftWidth: 5, borderLeftColor: contact.color }
-            ]}>
-              <View style={[styles.contactHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-                <View style={[styles.iconContainer, { backgroundColor: contact.color }]}>
-                  <FontAwesome5 name={contact.icon} size={20} color="white" />
-                </View>
-                <View style={[styles.contactTitle, isRTL && { alignItems: 'flex-end' }]}>
-                  <Text style={[styles.contactName, isRTL && { textAlign: 'right' }]}>{contact.name}</Text>
-                  <Text style={[styles.contactRole, isRTL && { textAlign: 'right' }]}>{contact.role}</Text>
-                </View>
+      {/* Contact Cards */}
+      <View style={[styles.contactsContainer]}>
+        {contacts.map((contact, index) => (
+          <View key={index} style={[
+            styles.contactCard, 
+            isRTL ? { borderRightWidth: 5, borderRightColor: contact.color } 
+                  : { borderLeftWidth: 5, borderLeftColor: contact.color }
+          ]}>
+            <View style={[styles.contactHeader ]}>
+              <View style={[styles.iconContainer, { backgroundColor: contact.color }]}>
+                <FontAwesome5 name={contact.icon} size={20} color="white" />
               </View>
+              <View style={[styles.contactTitle, isRTL && { alignItems: 'flex-end' }]}>
+                <Text style={[styles.contactName, isRTL && { textAlign: 'right' }]}>{contact.name}</Text>
+                <Text style={[styles.contactRole, isRTL && { textAlign: 'right' }]}>{contact.role}</Text>
+              </View>
+            </View>
 
               <View style={styles.separator} />
 
-              <TouchableOpacity 
-                style={[styles.contactInfo, isRTL && { flexDirection: 'row-reverse' }]}
-                onPress={() => handleEmailPress(contact.email)}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons name="email" size={24} color="#6D4C41" />
-                <Text style={[styles.contactText, isRTL && { textAlign: 'right' }]}>{contact.email}</Text>
+            <TouchableOpacity 
+              style={[styles.contactInfo]}
+              onPress={() => handleEmailPress(contact.email)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="email" size={24} color="#6D4C41" />
+              <Text style={[styles.contactText, isRTL && { textAlign: 'right' }]}>{contact.email}</Text>
+              <MaterialIcons 
+                name={isRTL ? "chevron-left" : "chevron-right"} 
+                size={24} 
+                color="#BCAAA4" 
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.contactInfo]}
+              onPress={() => handlePhonePress(contact.phone)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="phone" size={24} color="#6D4C41" />
+              <Text style={[styles.contactText, isRTL && { textAlign: 'right' }]}>{contact.phone}</Text>
+              <MaterialIcons 
+                name={isRTL ? "chevron-left" : "chevron-right"} 
+                size={24} 
+                color="#BCAAA4" 
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.whatsappButton]}
+              onPress={() => handleWhatsAppPress(contact.phone)}
+              activeOpacity={0.7}
+            >
+              <FontAwesome5 name="whatsapp" size={20} color="white" />
+              <Text style={[styles.whatsappText, isRTL && { textAlign: 'right' }]}>{t.whatsapp}</Text>
+              <View style={styles.whatsappIcon}>
                 <MaterialIcons 
                   name={isRTL ? "chevron-left" : "chevron-right"} 
                   size={24} 
-                  color="#BCAAA4" 
+                  color="white" 
                 />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.contactInfo, isRTL && { flexDirection: 'row-reverse' }]}
-                onPress={() => handlePhonePress(contact.phone)}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons name="phone" size={24} color="#6D4C41" />
-                <Text style={[styles.contactText, isRTL && { textAlign: 'right' }]}>{contact.phone}</Text>
-                <MaterialIcons 
-                  name={isRTL ? "chevron-left" : "chevron-right"} 
-                  size={24} 
-                  color="#BCAAA4" 
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.whatsappButton, isRTL && { flexDirection: 'row-reverse' }]}
-                onPress={() => handleWhatsAppPress(contact.phone)}
-                activeOpacity={0.7}
-              >
-                <FontAwesome5 name="whatsapp" size={20} color="white" />
-                <Text style={[styles.whatsappText, isRTL && { textAlign: 'right' }]}>{t.whatsapp}</Text>
-                <View style={styles.whatsappIcon}>
-                  <MaterialIcons 
-                    name={isRTL ? "chevron-left" : "chevron-right"} 
-                    size={24} 
-                    color="white" 
-                  />
-                </View>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-
-        <View style={[styles.socialSection, isRTL && { transform: [{ scaleX: -1 }] }]}>
-          <View style={[styles.socialHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-            <Ionicons name="share-social" size={24} color="#6D4C41" />
-            <Text style={[styles.socialTitle, { marginHorizontal: 10 }, isRTL && { textAlign: 'right' }]}>
-              {t.socialMedia}
-            </Text>
-          </View>
-          <View style={styles.socialIcons}>
-            <TouchableOpacity style={[styles.socialIcon, { backgroundColor: '#1DA1F2' }]}>
-              <FontAwesome5 name="twitter" size={20} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialIcon, { backgroundColor: '#E1306C' }]}>
-              <FontAwesome5 name="instagram" size={20} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialIcon, { backgroundColor: '#4267B2' }]}>
-              <FontAwesome5 name="facebook" size={20} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialIcon, { backgroundColor: '#0077B5' }]}>
-              <FontAwesome5 name="linkedin" size={20} color="white" />
+              </View>
             </TouchableOpacity>
           </View>
+        ))}
+      </View>
+
+      {/* Social Media Section */}
+      <View style={[styles.socialSection]}>
+        <View style={[styles.socialHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+          <Ionicons name="share-social" size={24} color="#6D4C41" />
+          <Text style={[styles.socialTitle, { marginHorizontal: 10 }, isRTL && { textAlign: 'right' }]}>
+            {t.socialMedia}
+          </Text>
         </View>
-      </ScrollView>
-    </View>
+        <View style={styles.socialIcons}>
+          <TouchableOpacity style={[styles.socialIcon, { backgroundColor: '#1DA1F2' }]}>
+            <FontAwesome5 name="twitter" size={20} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.socialIcon, { backgroundColor: '#E1306C' }]}>
+            <FontAwesome5 name="instagram" size={20} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.socialIcon, { backgroundColor: '#4267B2' }]}>
+            <FontAwesome5 name="facebook" size={20} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.socialIcon, { backgroundColor: '#0077B5' }]}>
+            <FontAwesome5 name="linkedin" size={20} color="white" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -215,25 +222,25 @@ const styles = StyleSheet.create({
     top: 50,
     right: 20,
     zIndex: 10,
-    backgroundColor: 'rgba(141, 110, 99, 0.9)',
-    borderRadius: 20,
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 15,
+    borderRadius: 20,
+    backgroundColor: 'rgba(93, 64, 55, 0.9)',
+    borderWidth: 1,
+    borderColor: '#FFD54F',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  languageButtonText: {
-    color: '#FFD700',
+  languageText: {
+    color: '#FFD54F',
     fontWeight: 'bold',
     fontSize: 14,
-    marginLeft: 8,
-    marginTop: 2
+    marginHorizontal: 4,
   },
   headerContainer: {
     marginBottom: 25,
@@ -407,5 +414,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 3,
+  },
+  languageButtonText: {
+    color: '#FFD54F',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

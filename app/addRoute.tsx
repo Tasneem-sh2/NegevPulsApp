@@ -8,27 +8,27 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  I18nManager,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    I18nManager,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import {
-  heightPercentageToDP as hp,
-  widthPercentageToDP as wp,
+    heightPercentageToDP as hp,
+    widthPercentageToDP as wp,
 } from 'react-native-responsive-screen';
 import { useAuth } from './AuthContext';
 
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
 type ObjectId = string;
-const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
+const API_BASE_URL = 'http://negevpulsapp.onrender.com/api';
 
 interface Location {
   lat: number;
@@ -556,52 +556,136 @@ const calculateRouteDistance = (route: Route): number => {
   }
   return Math.round(total);
 };
-  const saveRoute = async () => {
-    try {
-      if (tempRoutePoints.length < 2) {
-        Alert.alert('Error', 'Route must have at least 2 points');
-        return;
-      }
+const isRouteNameTaken = (name: string): boolean => {
+  return routes.some(route => 
+    route.title.toLowerCase() === name.toLowerCase().trim()
+  );
+};
 
-      if (!newRoute.title.trim()) {
-        Alert.alert('Error', 'Please enter a route title');
-        return;
-      }
-
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-
-      const response = await axios.post(`${API_BASE_URL}/routes`, {
-        title: newRoute.title.trim(),
-        points: tempRoutePoints,
-        color: newRoute.color || '#4CAF50'
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      setRoutes(prev => [...prev, response.data.data]);
-      setIsDrawingRoute(false);
-      setTempRoutePoints([]);
-      setNewRoute({
-        title: '',
-        points: [],
-        color: '#4CAF50',
-        status: 'pending',
-        createdBy: ''
-      });
-      
-      Alert.alert('Success', 'Route saved successfully!');
-    } catch (error) {
-      console.error("Save failed:", error);
-      Alert.alert('Error', 'Failed to save route. Please try again.');
+// دالة للتحقق من تشابه الطرق
+const isRouteTooSimilar = (newPoints: RoutePoint[], existingRoute: Route): boolean => {
+  if (existingRoute.points.length < 2 || newPoints.length < 2) return false;
+  
+  // التحقق من نقاط البداية والنهاية (بدقة 6 منازل عشرية)
+  const startMatch = 
+    existingRoute.points[0].lat.toFixed(6) === newPoints[0].lat.toFixed(6) &&
+    existingRoute.points[0].lon.toFixed(6) === newPoints[0].lon.toFixed(6);
+    
+  const endMatch = 
+    existingRoute.points[existingRoute.points.length-1].lat.toFixed(6) === 
+      newPoints[newPoints.length-1].lat.toFixed(6) &&
+    existingRoute.points[existingRoute.points.length-1].lon.toFixed(6) === 
+      newPoints[newPoints.length-1].lon.toFixed(6);
+  
+  return startMatch && endMatch;
+};
+// دالة للتحقق من جودة الطريق
+const checkRouteQuality = (points: RoutePoint[]): { valid: boolean; message?: string } => {
+  if (points.length < 2) {
+    return { valid: false, message: t.minPointsRequired };
+  }
+  
+  const totalDistance = calculateTotalDistance(points);
+  if (totalDistance < 20) {
+    return { valid: false, message: t.routeTooShort };
+  }
+  
+  // التحقق من أن النقاط ليست قريبة جدًا من بعضها
+  for (let i = 0; i < points.length - 1; i++) {
+    const dist = calculateDistance(points[i], points[i+1]);
+    if (dist < 5) {
+      return { valid: false, message: t.pointsTooClose };
     }
-  };
+  }
+  
+  return { valid: true };
+};
+// دالة للتحقق إذا كان الطريق قريب من موقع المستخدم
+const isRouteNearby = (points: RoutePoint[], route: Route): boolean => {
+  if (!location) return false;
+  
+  // حساب المسافة بين نقطة البداية ونقطة المستخدم
+  const startDistance = calculateDistance(
+    { lat: location.lat, lon: location.lon },
+    points[0]
+  );
+  
+  // حساب المسافة بين نقطة النهاية ونقطة المستخدم
+  const endDistance = calculateDistance(
+    { lat: location.lat, lon: location.lon },
+    points[points.length - 1]
+  );
+  
+  // إذا كانت أي من النقطتين ضمن النطاق المحدد (500 متر)
+  return startDistance <= verificationRadius || endDistance <= verificationRadius;
+};
+
+const saveRoute = async () => {
+  try {
+    // التحقق من جودة الطريق
+    const qualityCheck = checkRouteQuality(tempRoutePoints);
+    if (!qualityCheck.valid) {
+      Alert.alert('Error', qualityCheck.message || 'Invalid route quality');
+      return;
+    }
+
+    // التحقق من وجود عنوان للطريق
+    if (!newRoute.title.trim()) {
+      Alert.alert('Error', 'Please enter a route title');
+      return;
+    }
+
+    // التحقق من عدم تكرار اسم الطريق في نطاق 500 متر
+    if (isRouteNameTaken(newRoute.title)) {
+      Alert.alert('Error', 'Route name already exists. Please choose a different name.');
+      return;
+    }
+
+    // التحقق من عدم وجود طريق مشابه في نطاق 500 متر
+    const similarRoute = routes.find(route => 
+      isRouteTooSimilar(tempRoutePoints, route) && 
+      isRouteNearby(tempRoutePoints, route)
+    );
+    
+    if (similarRoute) {
+      Alert.alert('Error', 'A similar route already exists nearby. Please draw a different path.');
+      return;
+    }
+
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    const response = await axios.post(`${API_BASE_URL}/routes`, {
+      title: newRoute.title.trim(),
+      points: tempRoutePoints,
+      color: newRoute.color || '#4CAF50'
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    setRoutes(prev => [...prev, response.data.data]);
+    setIsDrawingRoute(false);
+    setTempRoutePoints([]);
+    setNewRoute({
+      title: '',
+      points: [],
+      color: '#4CAF50',
+      status: 'pending',
+      createdBy: ''
+    });
+    
+    Alert.alert('Success', 'Route saved successfully!');
+  } catch (error) {
+    console.error("Save failed:", error);
+    Alert.alert('Error', 'Failed to save route. Please try again.');
+  }
+};
 
   const getUnverifiedRoutes = () => {
     return routes.filter(route => !route.verified);

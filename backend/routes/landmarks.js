@@ -5,7 +5,6 @@ const Landmark = require('../models/Landmark');
 const auth = require('../middleware/auth');
 const mongoose = require('mongoose');
 const { User } = require('../models/User'); // Destructure the User model
-
 // Enhanced user weight calculation
 const calculateUserWeight = (user) => {
   let weight = 1; // Base weight
@@ -21,7 +20,6 @@ const calculateUserWeight = (user) => {
   
   return Math.min(5, weight); // Cap at 5 to prevent abuse
 };
-
 // GET all landmarks (unchanged)
 router.get('/', async (req, res) => {
   try {
@@ -34,14 +32,18 @@ router.get('/', async (req, res) => {
     });
   }
 });
-
 // POST create new landmark (unchanged)
 router.post('/', auth, async (req, res) => {
   try {
-    const { title, lat, lon, color, imageUrl } = req.body;
+    // تأكيد استقبال البيانات بشكل صحيح
+    console.log("Request body received:", req.body);
     
+    const { title, description = '', lat, lon, color, imageUrl } = req.body;
+    
+    // إنشاء المعلم مع التأكد من وجود الوصف
     const landmark = new Landmark({
       title,
+      description: description || '', // تأكيد وجود قيمة افتراضية
       lat,
       lon,
       color: color || '#8B4513',
@@ -51,9 +53,14 @@ router.post('/', auth, async (req, res) => {
       createdBy: req.user._id
     });
 
+    console.log("Landmark to be saved:", landmark); // سجل قبل الحفظ
+    
     const savedLandmark = await landmark.save();
+    console.log("Landmark saved:", savedLandmark); // سجل بعد الحفظ
+    
     res.status(201).json(savedLandmark);
   } catch (error) {
+    console.error("Error saving landmark:", error);
     res.status(500).json({ 
       message: 'Error creating landmark',
       error: error.message 
@@ -64,7 +71,6 @@ router.post('/', auth, async (req, res) => {
 router.put('/:id/vote', auth, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-
   try {
     const { vote } = req.body;
     

@@ -56,42 +56,42 @@ router.post('/login', async (req, res) => {
 // Check if user is logged in
 router.get('/me', async (req, res) => {
   try {
-    // Get token from Authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
     const token = authHeader.split(' ')[1];
-    
-    // Verify using same secret as login
     const decoded = jwt.verify(token, process.env.JWTPRIVATEKEY);
     
-    // Find user without password
-    const user = await User.findById(decoded.userId).select('-password');
+    // إضافة الحقول المطلوبة: verifiedLandmarksAdded, verifiedRoutesAdded, votingStats
+    const user = await User.findById(decoded.userId)
+      .select('-password')
+      .lean();
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-  
+
     res.json({
       success: true,
       user: {
         _id: user._id,
         email: user.email,
-        role: user.role
+        role: user.role,
+        isSuperlocal: user.isSuperlocal || false,
+        verifiedLandmarksAdded: user.verifiedLandmarksAdded || 0,
+        verifiedRoutesAdded: user.verifiedRoutesAdded || 0,
+        votingStats: user.votingStats || { correctVotes: 0, totalVotes: 0 },
+        name: user.name || user.email.split('@')[0] // إضافة الاسم إذا كان العميل يحتاجه
       }
     });
-
   } catch (error) {
     console.error('Auth check error:', error);
-    // More specific error messages
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ message: 'Token expired' });
     }
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Invalid token' });
-    }
-    res.status(401).json({ message: 'Not authenticated' });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 // Example improved superlocal requests endpoint

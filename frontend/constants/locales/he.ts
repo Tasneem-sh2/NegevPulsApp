@@ -44,21 +44,26 @@ export default {
         signupLink: "הרשמה"
       },
       signup: {
-        title: "יצירת חשבון",
-        name: "שם",
+        title: "צור חשבון",
+        firstName: "שם פרטי",
+        lastName: "שם משפחה",
         email: "אימייל",
         password: "סיסמה",
-        confirmPassword: "אימות סיסמה",
-        roleLocal: "תושב מקומי",
-        roleEmergency: "מגיש עזרה ראשונה",
-        button: "הרשם",
-        passwordMismatch: "הסיסמאות לא תואמות",
-        successMessage: "החשבון נוצר בהצלחה",
-        loginLink: " התחברות",
-        loginPrompt:"כבר יש לך חשבון?",
-        roleLabel:"סוג חשבון:",
-        unexpectedError:"אירעה שגיאה בלתי צפויה",
-
+        confirmPassword: "אשר סיסמה",
+        passwordHint: "הסיסמה חייבת להכיל: 8+ תווים, אות גדולה, אות קטנה, מספר ותו מיוחד",
+        signupButton: "הרשם",
+        creatingAccount: "יוצר חשבון...",
+        accountCreated: "החשבון נוצר בהצלחה!",
+        loginText: "כבר יש לך חשבון?",
+        loginLink: "התחבר",
+        errors: {
+          nameRequired: "נדרשים שם פרטי ושם משפחה",
+          passwordMismatch: "הסיסמאות אינן תואמות",
+          passwordComplexity: "הסיסמה חייבת להכיל: 8+ תווים, אות גדולה, אות קטנה, מספר ותו מיוחד",
+          general: "הרשמה נכשלה",
+          noResponse: "לא התקבלה תגובה מהשרת",
+          network: "שגיאת רשת או השרת לא זמין"
+        }
       }
     },
     tabs: {
@@ -243,6 +248,7 @@ export default {
       filterVerified: "מאומת",
       filterPending: "ממתין",
       pendingLandmarksTitle: "ציוני דרך ממתינים",
+      LandmarksTitle: "ציוני דרך על",
       noPendingLandmarks: "אין ציוני דרך ממתינים באזור זה",
       noVerifiedLandmarks: "אין ציוני דרך מאומתים באזור זה",
       noLandmarks: "אין ציוני דרך באזור זה",
@@ -343,6 +349,16 @@ export default {
       hideRoutes: "הסתר מסלולים",
       points: "נקודות",
       noPendingRoutesNearby: "אין מסלולים ממתינים בקרבת מקום",
+      tooFarToVote: "רחוק מדי להצביע",
+      mustBeWithinRadius: "עליך להיות בטווח של {radius} מטר כדי להצביע",
+      understand: "אני מבין",
+      minPointsRequired: "המסלול דורש לפחות 2 נקודות",
+      routeTooShort: "המסלול קצר מדי (מינימום 50 מטר)",
+      pointsTooClose: "חלק מהנקודות קרובות מדי זו לזו (מינימום 10 מטר זו מזו)",
+      invalidRoute: "מסלול לא חוקי",
+      tapToAddPoints: "הקש כדי להוסיף נקודות מסלול",
+      tapToAddMorePoints: "הקש כדי להוסיף נקודות נוספות",
+      longPressToDrawFreehand: "לחץ לחיצה ארוכה וגרור כדי לצייר ביד חופשית"
     },
       admin: {
     title: 'לוח בקרה למנהל',
@@ -373,24 +389,5 @@ export default {
     percent: '%',
     yes: 'כן',
     no: 'לא'
-  },
-  signup: {
-    title: "צור חשבון",
-    firstName: "שם פרטי",
-    lastName: "שם משפחה",
-    email: "אימייל",
-    password: "סיסמה",
-    confirmPassword: "אשר סיסמה",
-    passwordHint: "הסיסמה חייבת להכיל: 8+ תווים, אות גדולה, אות קטנה, מספר ותו מיוחד",
-    signupButton: "הרשם",
-    creatingAccount: "יוצר חשבון...",
-    accountCreated: "החשבון נוצר בהצלחה!",
-    loginText: "כבר יש לך חשבון?",
-    loginLink: "התחבר",
-    errors: {
-      nameRequired: "נדרשים שם פרטי ושם משפחה",
-      passwordMismatch: "הסיסמאות אינן תואמות",
-      passwordComplexity: "הסיסמה חייבת להכיל: 8+ תווים, אות גדולה, אות קטנה, מספר ותו מיוחד"
-    }
-  }
+  },    
   };
