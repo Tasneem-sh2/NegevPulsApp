@@ -1,18 +1,20 @@
 import { Tabs, Redirect, usePathname } from 'expo-router';
 import React, { useEffect } from 'react';
-import { Platform, ActivityIndicator, View, TouchableOpacity } from 'react-native'; // Added TouchableOpacity
+import { Platform, ActivityIndicator, View } from 'react-native';
 import { IconSymbol } from '@/frontend/components/ui/IconSymbol';
 import TabBarBackground from '@/frontend/components/ui/TabBarBackground';
 import { Colors } from '@/frontend/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../AuthContext';
+import { useTranslations } from '@/frontend/constants/locales';
+import { useLanguage } from '@/frontend/context/LanguageProvider';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const pathname = usePathname();
   const { isAuthenticated, loading } = useAuth();
-  
+  const { t } = useTranslations();
+  const { isRTL } = useLanguage();
 
   useEffect(() => {
     console.log('Authentication status:', isAuthenticated);
@@ -47,7 +49,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('tabs.home'), // استخدام الترجمة من نظامك
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="house.fill" color={color} />
           ),
@@ -56,7 +58,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="ContactUs"
         options={{
-          title: 'Contact Us',
+          title: t('tabs.contact'), // استخدام الترجمة من نظامك
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="envelope.fill" color={color} />
           ),
@@ -65,7 +67,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="AboutUs"
         options={{
-          title: 'About Us',
+          title: t('tabs.about'), // استخدام الترجمة من نظامك
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="info.circle.fill" color={color} />
           ),
@@ -74,7 +76,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="EmergencyPage"
         options={{
-          title: 'Map',
+          title: t('tabs.map'), // استخدام الترجمة من نظامك
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="map.fill" color={color} />
           ),
@@ -83,7 +85,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="local"
         options={{
-          title: 'Local',
+          title: t('common.local'), // استخدام الترجمة من نظامك
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="map.fill" color={color} />
           ),

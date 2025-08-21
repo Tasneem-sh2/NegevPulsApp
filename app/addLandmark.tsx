@@ -1044,14 +1044,26 @@ const addLandmark = async () => {
       Alert.alert('Missing Information', 'Please enter a name for the landmark');
       return;
     }
+    // 2. Check for existing landmarks within 10 meter radius
+    // This accounts for GPS inaccuracy by creating a buffer zone
+    const existingInRadius = landmarks.find(landmark => {
+      const distance = calculateHaversineDistance(
+        newLandmark.lat,
+        newLandmark.lon,
+        landmark.lat,
+        landmark.lon
+      );
+      return distance <= 10; // 10 meters threshold
+    });
 
-    // 2. Check for existing landmark at same coordinates
-    const existingAtSameLocation = landmarks.find(landmark => 
-      landmark.lat.toFixed(6) === newLandmark.lat.toFixed(6) && 
-      landmark.lon.toFixed(6) === newLandmark.lon.toFixed(6)
-    );
-
-    if (existingAtSameLocation) {
+    if (existingInRadius) {
+      const exactDistance = calculateHaversineDistance(
+        newLandmark.lat,
+        newLandmark.lon,
+        existingInRadius.lat,
+        existingInRadius.lon
+      );
+      
       Alert.alert(
         'Location Already Taken', 
         `❌ There's already a landmark at this exact location:

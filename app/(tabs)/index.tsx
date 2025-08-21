@@ -2,47 +2,63 @@ import { useTranslations } from '@/frontend/constants/locales';
 import type { LocaleKeys } from '@/frontend/constants/locales/types';
 import { useLanguage } from '@/frontend/context/LanguageProvider';
 import { MaterialIcons } from '@expo/vector-icons';
-import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Village = {
-  _id: string;
+  id: string;
   name: string;
   description: string;
-  images?: string[];
-  names?: Record<LocaleKeys, string>;
-  descriptions?: Record<LocaleKeys, string>;
+  image: string;
 };
 
 export default function MainIndex() {
   const router = useRouter();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const { language, changeLanguage, isRTL } = useLanguage();
-  const [villages, setVillages] = useState<Village[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslations();
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://negevpulsapp.onrender.com";
- 
-  useEffect(() => {
-    const fetchVillages = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get(`${baseUrl}/api/villages`);
-        setVillages(response.data);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : t('errors.unknownError');
-        setError(errorMessage);
-        console.error("Error fetching villages:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchVillages();
-  }, [baseUrl]);
+  // قائمة القرى مع معرفات ثابتة
+  const villageKeys = [
+    'birAlHamam',
+    'khasimZannih',
+    'wadiAlMsas',
+    'khirbitAlWatan',
+    'alMsaadiyyah',
+    'alGharrah',
+    'alBatil',
+    'awajan'
+  ];
+
+  // الحصول على بيانات القرى من ملفات الترجمة
+  const villages = useMemo(() => {
+    return villageKeys.map(key => ({
+      id: key,
+      name: t(`villages.${key}.name`),
+      description: t(`villages.${key}.description`),
+      image: getVillageImage(key)
+    }));
+  }, [t, language]);
+
+  // دالة للحصول على صور القرى
+  function getVillageImage(villageKey: string): string {
+    // صور افتراضية لكل قرية
+    const images: Record<string, string> = {
+      birAlHamam: 'https://static.wixstatic.com/media/01368b_5cc18cf2358c4434840d28c8e3caa6e0~mv2.jpg/v1/fill/w_738,h_415,al_c,q_80,enc_avif,quality_auto/01368b_5cc18cf2358c4434840d28c8e3caa6e0~mv2.jpg',
+      khasimZannih: 'https://www.dukium.org/wp-content/uploads/2013/08/Saja-Khasham-Zanneh-17.03.2017-sheep.jpg',
+      wadiAlMsas: 'https://www.dukium.org/wp-content/uploads/2014/03/Photo-by-Michal-Rotem-3.2.14.jpg',
+      khirbitAlWatan: 'https://data.arab48.com/data/news/2020/05/29/Croped/20200529042540.jpg',
+      alMsaadiyyah: 'https://www.dukium.org/wp-content/uploads/2014/03/The-village-from-the-main-road.jpg',
+      alGharrah: 'https://www.dukium.org/wp-content/uploads/2014/01/View-of-the-village-date-uknown-photo-by-Miki-Kratsman.jpg',
+      alBatil: 'https://www.dukium.org/wp-content/uploads/2013/08/battle21_8399925786_o.jpg',
+      awajan: 'https://felesteen.news/thumb/w920/uploads/images/2023/01/c8Wq2.jpg'
+    };
+    
+    return images[villageKey] || 'https://placehold.co/600x400/8d6e63/FFFFFF/png?text=Negev+Village';
+  }
 
   const safePush = (path: string) => {
     const allowedRoutes = ['/authOptions', '/login', '/signup'];
@@ -53,29 +69,11 @@ export default function MainIndex() {
       router.push('./');
     }
   };
-  
-  const getImageUrl = (village: Village) => {
-    if (!village.images || village.images.length === 0) {
-      return '';
-    }
 
-    let imageUrl = village.images[0];
-    if (!imageUrl.startsWith('http')) {
-      imageUrl = imageUrl.replace(/^\//, '');
-      return `${baseUrl}/${imageUrl}`;
-    }
-
-    return imageUrl;
+  // معالجة أخطاء تحميل الصور
+  const handleImageError = (error: any, imageUrl: string) => {
+    console.log('Failed to load image:', imageUrl, error);
   };
-
-  const translatedVillages = useMemo(() => {
-    return villages.map(village => ({
-      ...village,
-      id: village._id,
-      name: village.names?.[language] || village.name,
-      description: village.descriptions?.[language] || village.description
-    }));
-  }, [villages, language]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -113,24 +111,20 @@ export default function MainIndex() {
       {/* Header */}
       <View style={styles.header}>
         {/* Top Row - Language Selector */}
-        <View style={styles.languageSelector}>
-          {(['en', 'ar', 'he'] as LocaleKeys[]).map((lang) => (
-            <TouchableOpacity
-              key={lang}
-              onPress={() => changeLanguage(lang)}
-              style={[
-                styles.languageButton, 
-                language === lang && styles.activeLanguage
-              ]}
-            >
-              <Text style={[
-                styles.languageText,
-                language === lang && styles.activeLanguageText
-              ]}>
-                {lang === 'en' ? 'EN' : lang === 'ar' ? 'عربي' : 'עברית'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.topRow}>
+          <View style={styles.languageSelector}>
+            {(['en', 'ar', 'he'] as LocaleKeys[]).map((lang) => (
+              <TouchableOpacity
+                key={lang}
+                onPress={() => changeLanguage(lang)}
+                style={[styles.languageButton, language === lang && styles.activeLanguage]}
+              >
+                <Text style={[styles.languageText, language === lang && styles.activeLanguageText]}>
+                  {lang === 'en' ? 'EN' : lang === 'ar' ? 'عربي' : 'עברית'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Middle Row - Welcome Message */}
@@ -189,25 +183,19 @@ export default function MainIndex() {
 
         {/* Villages Grid */}
         <View style={styles.villagesGrid}>
-          {translatedVillages.map((village) => (
+          {villages.map((village) => (
             <TouchableOpacity
-              key={village._id}
-              onPress={() => router.push(`./village/${village._id}`)}
+              key={village.id}
+              onPress={() => router.push(`./village/${village.id}`)}
               style={styles.villageCard}
             >
               <View style={styles.villageImageContainer}>
-                {village.images && village.images.length > 0 ? (
-                  <Image 
-                    source={{ uri: getImageUrl(village) }}
-                    style={styles.villageImage}
-                    resizeMode="cover"
-                    onError={(e) => console.log('Failed to load image:', e.nativeEvent.error)}
-                  />
-                ) : (
-                  <View style={styles.imagePlaceholder}>
-                    <MaterialIcons name="image" size={40} color="#8d6e63" />
-                  </View>
-                )}
+                <Image 
+                  source={{ uri: village.image }}
+                  style={styles.villageImage}
+                  resizeMode="cover"
+                  onError={(e) => handleImageError(e, village.image)}
+                />
               </View>
               
               <View style={styles.villageContent}>
@@ -403,13 +391,6 @@ const styles = StyleSheet.create({
   villageImage: {
     height: '100%',
     width: '100%',
-  },
-  imagePlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100%',
-    width: '100%',
-    backgroundColor: '#efebe9',
   },
   villageContent: {
     padding: 12,
