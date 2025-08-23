@@ -1,4 +1,3 @@
-
 export default {
   // locales/en.ts
     languages: {
@@ -65,6 +64,7 @@ export default {
     auth: {
       signIn: "Sign In",
       signUp: "Sign Up",
+      continueWithOut: "Continue without account",
       logout: {
         title: "Logout",
         message: "Are you sure you want to logout?",
@@ -450,7 +450,4 @@ export default {
       passwordComplexity: "Password must contain: 8+ chars, uppercase, lowercase, number, and special character"
     }
   }
-  
-    
-    
   };

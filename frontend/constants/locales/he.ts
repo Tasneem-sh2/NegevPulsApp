@@ -1,3 +1,4 @@
+
 export default {
   languages: {
       en: "אנגלית",
@@ -68,8 +69,9 @@ export default {
         confirmMessage: "האם אתה בטוח שברצונך להתנתק?",
         confirmButton: "כן, התנתק",
         cancelButton: "ביטול",
-      },// ✅ Add this line
-    signUp: "הרשמה",
+      },
+      continueWithOut: "המשך ללא חשבון",
+      signUp: "הרשמה",
       login: {
         title: "התחברות",
         email: "אימייל",

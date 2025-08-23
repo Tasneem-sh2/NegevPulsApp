@@ -1,7 +1,11 @@
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Linking, TouchableOpacity } from 'react-native';
 import { MaterialIcons, FontAwesome5, Ionicons, Feather } from '@expo/vector-icons';
 import { useTranslations } from '@/frontend/constants/locales';
 import { useLanguage } from '@/frontend/context/LanguageProvider';
+import { I18nManager } from 'react-native';
+
+type AppLanguage = 'en' | 'ar' | 'he';
 
 export default function AboutUs() {
   type LocaleKeys = 'en' | 'ar' | 'he';
@@ -43,8 +47,9 @@ export default function AboutUs() {
         ]}
         onPress={toggleLanguage}
       >
+        <MaterialIcons name="language" size={20} color="#FFD700" />
         <Text style={styles.languageButtonText}>
-          {getLanguageButtonText()}
+          {language.toUpperCase()}
         </Text>
       </TouchableOpacity>
 
@@ -244,23 +249,32 @@ export default function AboutUs() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffffff',
-    position: 'relative',
+    paddingBottom: 40,
   },
   languageButton: {
     position: 'absolute',
     top: 50,
+    right: 20,
     zIndex: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: '#FFD54F',
+    backgroundColor: 'rgba(141, 110, 99, 0.9)',
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
   },
   languageButtonText: {
-    color: '#FFD54F',
+    color: '#FFD700',
     fontWeight: 'bold',
     fontSize: 14,
+    marginLeft: 8,
+    marginTop: 2
   },
   hero: {
     position: 'relative',
@@ -292,13 +306,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 8,
-    textAlign: 'center',
     fontFamily: 'sans-serif-medium',
   },
   heroSubtitle: {
     fontSize: 18,
     color: '#FFD54F',
-    textAlign: 'center',
     fontFamily: 'sans-serif',
   },
   content: {
@@ -433,7 +445,6 @@ const styles = StyleSheet.create({
   contactButtonText: {
     fontSize: 16,
     color: 'white',
-    marginLeft: 10,
     fontFamily: 'sans-serif-medium',
   },
 });

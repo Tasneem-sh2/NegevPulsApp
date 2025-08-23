@@ -25,7 +25,7 @@ interface ContactTranslations {
 export default function ContactUs() {
   type LocaleKeys = 'en' | 'ar' | 'he';
   const { language, changeLanguage, isRTL } = useLanguage();
-  const t = (useTranslations() as unknown as ContactTranslations).contactUs;
+  const t = (useTranslations() as any).contactUs;
 
   const toggleLanguage = () => {
   const languages: LocaleKeys[] = ['en', 'ar', 'he'];
@@ -135,7 +135,7 @@ const getLanguageButtonText = (): string => {
               </View>
             </View>
 
-            <View style={styles.separator} />
+              <View style={styles.separator} />
 
             <TouchableOpacity 
               style={[styles.contactInfo]}
@@ -210,8 +210,8 @@ const getLanguageButtonText = (): string => {
     </ScrollView>
   );
 }
-// بقية الكود (styles) تبقى كما هي بدون تغيير
 
+// بقية الكود (styles) تبقى كما هي بدون تغيير
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
@@ -219,7 +219,8 @@ const styles = StyleSheet.create({
   },
   languageButton: {
     position: 'absolute',
-    top: 40,
+    top: 50,
+    right: 20,
     zIndex: 10,
     paddingVertical: 8,
     paddingHorizontal: 15,
@@ -244,6 +245,7 @@ const styles = StyleSheet.create({
   headerContainer: {
     marginBottom: 25,
     position: 'relative',
+    marginTop: 70,
   },
   header: {
     backgroundColor: '#5D4037',

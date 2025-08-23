@@ -1,4 +1,3 @@
-import VillageDetail from "@/app/village/[id]";
 
 export default {
     languages: {
@@ -69,6 +68,7 @@ export default {
   auth: {
       signIn: "تسجيل الدخول",
       signUp: "إنشاء حساب",
+      continueWithOut: "متابعة بدون حساب",
       logout:{
         title: "تسجيل الخروج",
         message: "هل أنت متأكد أنك تريد تسجيل الخروج؟",
