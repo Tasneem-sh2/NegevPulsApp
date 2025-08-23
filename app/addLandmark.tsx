@@ -1037,6 +1037,7 @@ useEffect(() => {
     }}
   />
 // Add new landmark with validation checks
+// Add new landmark with validation checks
 const addLandmark = async () => {
   try {
     // 1. Validate required fields
@@ -1044,10 +1045,11 @@ const addLandmark = async () => {
       Alert.alert('Missing Information', 'Please enter a name for the landmark');
       return;
     }
+    
     // 2. Check for existing landmarks within 10 meter radius
     // This accounts for GPS inaccuracy by creating a buffer zone
     const existingInRadius = landmarks.find(landmark => {
-      const distance = calculateHaversineDistance(
+      const distance = calculateDistance(
         newLandmark.lat,
         newLandmark.lon,
         landmark.lat,
@@ -1057,7 +1059,7 @@ const addLandmark = async () => {
     });
 
     if (existingInRadius) {
-      const exactDistance = calculateHaversineDistance(
+      const exactDistance = calculateDistance(
         newLandmark.lat,
         newLandmark.lon,
         existingInRadius.lat,
@@ -1066,11 +1068,11 @@ const addLandmark = async () => {
       
       Alert.alert(
         'Location Already Taken', 
-        `❌ There's already a landmark at this exact location:
+        `❌ There's already a landmark nearby:
         
-        "${existingAtSameLocation.title}"
+        "${existingInRadius.title}" (${Math.round(exactDistance)}m away)
         
-        Please choose a different location.`,
+        Please choose a different location at least 10 meters away.`,
         [{ text: 'OK', style: 'cancel' }]
       );
       return;

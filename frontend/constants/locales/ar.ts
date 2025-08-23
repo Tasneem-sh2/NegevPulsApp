@@ -77,8 +77,10 @@ export default {
         confirmMessage: "هل أنت متأكد أنك تريد تسجيل الخروج؟",
         confirmButton: "نعم، تسجيل الخروج",
         cancelButton: "إلغاء",
+        continueWithOut:"المتابعة بدون حساب"
       } , // ✅ Add this line
       login: {
+        chooseOption: "اختر خيار تسجيل الدخول",
         title: "تسجيل الدخول",
         email: "البريد الإلكتروني",
         password: "كلمة المرور",

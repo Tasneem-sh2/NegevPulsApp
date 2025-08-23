@@ -73,6 +73,7 @@ export default {
       continueWithOut: "המשך ללא חשבון",
       signUp: "הרשמה",
       login: {
+        chooseOption: "בחר אפשרות התחברות",
         title: "התחברות",
         email: "אימייל",
         password: "סיסמה",

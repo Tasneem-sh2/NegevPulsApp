@@ -62,7 +62,7 @@ export default function AuthOptions() {
     const value = authTranslations[key];
     return typeof value === 'string' ? value : fallback;
   };
-
+//chooseOption
   return (
     <View style={styles.container}>
       <View style={styles.header}>

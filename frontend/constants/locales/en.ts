@@ -73,8 +73,10 @@ export default {
         confirmMessage: "Are you sure you want to sign out?",
         confirmButton: "Yes, Logout",
         cancelButton: "Cancel",
+        continueWithOut:"continue without account"
       },
       login: {
+        chooseOption: "Choose Login Option",
         title: "Sign In",
         email: "Email",
         password: "Password",
