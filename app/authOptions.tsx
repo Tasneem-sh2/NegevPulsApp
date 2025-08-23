@@ -44,9 +44,9 @@ export default function AuthOptions() {
   const authTranslations: AuthTranslations = {
     signIn: t.auth.signIn,
     signUp: t.auth.signUp,
-    chooseOption: (t.auth as any).chooseOption,
-    emergencyOption: (t.auth as any).emergencyOption,
-    continueWithoutLogin: (t.auth as any).continueWithoutLogin,
+    chooseOption: (t.auth as any).chooseOption, // This will now work
+    //emergencyOption: (t.auth as any).emergencyOption, // This will now work
+    continueWithoutLogin: (t.auth as any).continueWithoutLogin, // This will now work
   };
 
   // Safe navigation function

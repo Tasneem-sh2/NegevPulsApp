@@ -68,6 +68,8 @@ export default {
   auth: {
       signIn: "تسجيل الدخول",
       signUp: "إنشاء حساب",
+      chooseOption: "اختر خيارًا",
+      continueWithoutLogin: "المتابعة بدون تسجيل الدخول",
       continueWithOut: "متابعة بدون حساب",
       logout:{
         title: "تسجيل الخروج",

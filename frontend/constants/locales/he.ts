@@ -61,6 +61,8 @@ export default {
     },
   auth: {
       signIn: "התחברות",
+      chooseOption: "בחר אפשרות",
+      continueWithoutLogin: "המשך ללא התחברות", 
       logout: {
         title: "התנתקות",
         message: "האם אתה בטוח שברצונך להתנתק?",

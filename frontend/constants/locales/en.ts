@@ -64,6 +64,8 @@ export default {
     auth: {
       signIn: "Sign In",
       signUp: "Sign Up",
+      chooseOption: " Choose an option",
+      continueWithoutLogin: " Continue without login", 
       continueWithOut: "Continue without account",
       logout: {
         title: "Logout",
