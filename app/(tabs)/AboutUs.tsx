@@ -28,11 +28,11 @@ export default function AboutUs() {
 
   const getLanguageButtonText = (): string => {
     const languageNames = {
-      en: 'EN',
+      en: 'English',
       ar: 'العربية', 
       he: 'עברית'
     };
-    return languageNames[language] || `🌐 ${language.toUpperCase()}`;
+    return languageNames[language] || `${language.toUpperCase()}`;
   };
 
   return (
@@ -47,7 +47,6 @@ export default function AboutUs() {
         ]}
         onPress={toggleLanguage}
       >
-        <MaterialIcons name="language" size={20} color="#FFD700" />
         <Text style={styles.languageButtonText}>
           {language.toUpperCase()}
         </Text>
@@ -249,32 +248,23 @@ export default function AboutUs() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffffff',
-    paddingBottom: 40,
+    position: 'relative',
   },
   languageButton: {
     position: 'absolute',
     top: 50,
-    right: 20,
     zIndex: 10,
-    backgroundColor: 'rgba(141, 110, 99, 0.9)',
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#FFD54F',
   },
   languageButtonText: {
-    color: '#FFD700',
+    color: '#FFD54F',
     fontWeight: 'bold',
     fontSize: 14,
-    marginLeft: 8,
-    marginTop: 2
   },
   hero: {
     position: 'relative',

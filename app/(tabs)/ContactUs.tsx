@@ -36,12 +36,12 @@ export default function ContactUs() {
 
 const getLanguageButtonText = (): string => {
   const languageNames = {
-    en: 'EN',
+    en: 'English',
     ar: 'العربية', 
     he: 'עברית'
   };
   
-  return languageNames[language] || `🌐 ${language.toUpperCase()}`;
+  return languageNames[language] || ` ${language.toUpperCase()}`;
 };
 
 
@@ -94,17 +94,17 @@ const getLanguageButtonText = (): string => {
           contentContainerStyle={[styles.container, isRTL && { direction: 'rtl' }]}
           showsVerticalScrollIndicator={false}
         >          {/* زر تغيير اللغة */}
-        <TouchableOpacity 
-            style={[
-              styles.languageButton,
-              isRTL ? { left: 20 } : { right: 20 }
-            ]}
-            onPress={toggleLanguage}
-          >
-            <Text style={styles.languageButtonText}>
-              {getLanguageButtonText()}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity 
+                style={[
+                  styles.languageButton,
+                  isRTL ? { left: 20 } : { right: 20 }
+                ]}
+                onPress={toggleLanguage}
+              >
+                <Text style={styles.languageButtonText}>
+                  {language.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
       
 
       {/* Header with decorative elements */}
@@ -220,32 +220,22 @@ const styles = StyleSheet.create({
   languageButton: {
     position: 'absolute',
     top: 50,
-    right: 20,
     zIndex: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    backgroundColor: 'rgba(93, 64, 55, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 15,
     borderWidth: 1,
     borderColor: '#FFD54F',
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
   },
   languageText: {
-    color: '#FFD54F',
+    color: 'white',
     fontWeight: 'bold',
-    fontSize: 14,
-    marginHorizontal: 4,
+    fontSize: 16,
   },
   headerContainer: {
     marginBottom: 25,
     position: 'relative',
-    marginTop: 70,
   },
   header: {
     backgroundColor: '#5D4037',
@@ -253,6 +243,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 25,
     alignItems: 'center',
     zIndex: 2,
+    // إزالة أي حدود أو هوامش لجعل الهيدير ممتلئ بالكامل
+    marginHorizontal: 0,
+    width: '100%',
   },
   headerDecoration: {
     position: 'absolute',
