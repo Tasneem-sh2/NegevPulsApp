@@ -5,15 +5,15 @@ import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 type SignupData = {
@@ -72,7 +72,7 @@ const Signup = () => {
     setError("");
 
     try {
-      const response = await axios.post('http://negevpulsapp.onrender.com/api/signup', {
+      const response = await axios.post('https://negevpulsapp.onrender.com/api/signup', {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,

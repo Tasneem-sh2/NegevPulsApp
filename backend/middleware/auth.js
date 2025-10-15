@@ -3,45 +3,45 @@ const { User } = require('../models/User');
 
 const auth = async (req, res, next) => {
   try {
-    // Get token from header
+    // 🟣 استخراج التوكن من الهيدر
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
     if (!token) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'Please authenticate' 
+        message: 'Please authenticate (no token provided)'
       });
     }
 
-    // Verify token
+    // 🟢 التحقق من التوكن
     const decoded = jwt.verify(token, process.env.JWTPRIVATEKEY);
-    
-    // Find user and include isSuperlocal status
+
+    // 🟢 إيجاد المستخدم في قاعدة البيانات
     const user = await User.findOne({ _id: decoded.userId });
-    
     if (!user) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'User not found' 
+        message: 'User not found'
       });
     }
 
-    // Attach complete user data to request
-      // إعداد بيانات المستخدم للطلب
+    // 🟢 تجهيز بيانات المستخدم وإضافتها للـ request
     req.user = {
-      userId: user._id, // <<< هذا الحقل ضروري للنقاط النهائية
+      _id: user._id, // ✅ تم تعديل الاسم من userId إلى _id
       email: user.email,
-      name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email.split('@')[0],
+      name: user.firstName
+        ? `${user.firstName} ${user.lastName || ''}`.trim()
+        : user.email.split('@')[0],
       isSuperlocal: user.isSuperlocal || decoded.isSuperlocal || false,
       verifiedLandmarksAdded: user.verifiedLandmarksAdded || 0,
       verifiedRoutesAdded: user.verifiedRoutesAdded || 0,
       votingStats: user.votingStats || { correctVotes: 0, totalVotes: 0 }
     };
-    
+
+    // 🟢 الانتقال للمرحلة التالية (المسار)
     next();
   } catch (error) {
     console.error('Authentication error:', error);
-    
+
     let message = 'Please authenticate';
     if (error.name === 'TokenExpiredError') {
       message = 'Session expired, please login again';
@@ -49,9 +49,9 @@ const auth = async (req, res, next) => {
       message = 'Invalid token';
     }
 
-    res.status(401).json({ 
+    res.status(401).json({
       success: false,
-      message 
+      message
     });
   }
 };

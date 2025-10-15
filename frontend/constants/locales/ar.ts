@@ -294,6 +294,7 @@ export default {
       LandmarksTitle: "المعالم على الخريطة",
       noPendingLandmarks: "لا توجد معالم قيد المراجعة في هذه المنطقة",
       noVerifiedLandmarks: "لا توجد معالم موثقة في هذه المنطقة",
+      pendingLandmarksTitle:"معلم معلق",
       noLandmarks: "لا توجد معالم في هذه المنطقة",
       yourLocation: "موقعك الحالي",
       verified: "موثق",

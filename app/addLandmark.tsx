@@ -26,30 +26,25 @@ import {
   heightPercentageToDP as hp,
   widthPercentageToDP as wp,
 } from 'react-native-responsive-screen';
-
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
-const API_BASE_URL = 'http://negevpulsapp.onrender.com/api';
-
+const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
 // Types
 interface LocationCoords {
   latitude: number;
   longitude: number;
 }
-
 interface VerificationData {
   totalWeight: number;
   yesWeight: number;
   noWeight: number;
   confidenceScore: number;
 }
-
 interface Vote {
   userId: string;
   vote: 'yes' | 'no';
   weight: number;
   timestamp?: Date;
 }
-
 interface Landmark {
   _id: string;
   title: string;
@@ -69,7 +64,6 @@ interface Landmark {
     noWeight: number;
   };
 }
-
 interface User {
   _id: string;
   isSuperlocallocal?: boolean;
@@ -78,14 +72,12 @@ interface User {
   verifiedLandmarksAdded?: number;
   getVoteWeight?: () => number;
 }
-
 interface VoteResponse {
   success: boolean;
   data: Landmark;
   message?: string;
   userWeight?: number;
 }
-
 interface ErrorResponse {
   message?: string;
   error?: string;
@@ -114,7 +106,6 @@ interface CollapsibleDrawerProps {
 }
 export const CollapsibleDrawer: React.FC<CollapsibleDrawerProps> = ({ title, children }) => {
   const [isExpanded, setIsExpanded] = useState(true);
-
   return (
     <>
       {isExpanded ? (
@@ -142,7 +133,6 @@ export const CollapsibleDrawer: React.FC<CollapsibleDrawerProps> = ({ title, chi
     </>
   );
 };
-
 const VerificationBot: React.FC<{
   visible: boolean;
   landmark: Landmark | null;
@@ -153,7 +143,6 @@ const VerificationBot: React.FC<{
   const t = useTranslations();
   
   if (!visible || !landmark) return null;
-
   return (
     <View style={styles.botContainer}>
       <View style={styles.botHeader}>
@@ -246,7 +235,6 @@ const LandmarkListItem: React.FC<{
               <>
                 <MaterialIcons name="verified" size={14} color="#4CAF50" />
                 <Text style={styles.pendingText}>{t.addLandmark.verified}</Text>
-
               </>
             ) : (
               <>
@@ -263,7 +251,6 @@ const LandmarkListItem: React.FC<{
     </TouchableOpacity>
   );
 };
-
 const getUserWeight = (user: User | null): number => {
   if (!user) return 1;
   if (user.isSuperlocallocal) return 4;
@@ -271,7 +258,6 @@ const getUserWeight = (user: User | null): number => {
   if (user.reputationScore && user.reputationScore >= 70) return 2;
   return 1;
 };
-
 const LandmarkModal: React.FC<{
   landmark: Landmark;
   currentUser: User | null;
@@ -299,12 +285,10 @@ const LandmarkModal: React.FC<{
     landmark.votes
       .filter(v => v.vote === 'yes')
       .reduce((sum, vote) => sum + (vote.weight || 1), 0);
-
   const noWeight = landmark.verificationData?.noWeight || 
     landmark.votes
       .filter(v => v.vote === 'no')
       .reduce((sum, vote) => sum + (vote.weight || 1), 0);
-
   const totalWeight = landmark.verificationData?.totalWeight || 
     (yesWeight + noWeight);
     
@@ -315,7 +299,6 @@ const LandmarkModal: React.FC<{
       (Math.min(1, totalWeight / (requiredWeight * 1.5)) * 50) +
       ((yesWeight / Math.max(1, totalWeight)) * 50)
        );
-
   const currentUserVote = landmark.votes.find(v => v.userId === currentUser?._id);
   const userWeight = currentUserVote?.weight || 0;
   
@@ -346,7 +329,6 @@ const LandmarkModal: React.FC<{
                 <MaterialIcons name="close" size={24} color="#6d4c41" />
               </TouchableOpacity>
             </View>
-
             {/* Status Badge */}
             <View style={styles.statusBadge}>
               {landmark.verified ? (
@@ -373,7 +355,6 @@ const LandmarkModal: React.FC<{
                 onError={() => console.log('Image load error')}
               />
             )}
-
             {/* Coordinates Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Coordinates</Text>
@@ -394,7 +375,6 @@ const LandmarkModal: React.FC<{
                 </View>
               </View>
             </View>
-
             {/* Description Section */}
             {landmark.description && (
               <View style={styles.section}>
@@ -402,7 +382,6 @@ const LandmarkModal: React.FC<{
                 <Text style={styles.descriptionText}>{landmark.description}</Text>
               </View>
             )}
-
             {/* Verification Status Section */}
             <View style={styles.verificationContainer}>
               <Text style={styles.verificationTitle}>Verification Status</Text>
@@ -449,7 +428,6 @@ const LandmarkModal: React.FC<{
                   { width: `${percentageYes}%` }
                 ]} />
               </View>
-
               {/* Weight Information */}
               <View style={styles.weightInfo}>
                 <View style={styles.weightItem}>
@@ -461,7 +439,6 @@ const LandmarkModal: React.FC<{
                   <Text style={styles.weightValue}>{requiredWeight.toFixed(1)}</Text>
                 </View>
               </View>
-
               {/* User Weight */}
               {currentUser && (
                 <View style={styles.userWeightContainer}>
@@ -491,7 +468,6 @@ const LandmarkModal: React.FC<{
                 </View>
               )}
             </View>
-
             {/* Vote Buttons */}
             {!landmark.verified && landmark.status !== 'disputed' && 
               landmark.createdBy.toString() !== currentUser?._id && (
@@ -535,7 +511,6 @@ const LandmarkModal: React.FC<{
                 </TouchableOpacity>
               </View>
             )}
-
             {/* Dispute Notice */}
             {landmark.status === 'disputed' && (
               <View style={styles.disputeNotice}>
@@ -548,7 +523,6 @@ const LandmarkModal: React.FC<{
                 </Text>
               </View>
             )}
-
             {/* Status Messages */}
             {(voteSuccess || voteError || deleteSuccess || deleteError) && (
               <View style={styles.statusMessages}>
@@ -578,7 +552,6 @@ const LandmarkModal: React.FC<{
                 )}
               </View>
             )}
-
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
               {currentUser && (
@@ -610,7 +583,6 @@ const LandmarkModal: React.FC<{
     </Modal>
   );
 };
-
 // Main Component
 const LandmarkPage: React.FC = () => {
 const [verificationRadius, setVerificationRadius] = useState(500);
@@ -662,44 +634,37 @@ const [verificationRadius, setVerificationRadius] = useState(500);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState<string | null>(null);
-
   const takePhoto = async () => {
     let result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
     });
-
     if (!result.canceled) {
       setImage(result.assets[0].uri);
     }
   };
-
   const getCurrentLocation = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(t.error, t.validation.locationRequired);
       return;
     }
-
     let location = await Location.getCurrentPositionAsync({});
     setLocation({
       latitude: location.coords.latitude,
       longitude: location.coords.longitude
     });
   };
-
   const handleSubmit = async () => {
     if (!name) {
       Alert.alert(t.error, t.validation.nameRequired);
       return;
     }
-
     if (!location) {
       Alert.alert(t.error, t.validation.locationRequired);
       return;
     }
-
     setIsLoading(true);
     
     try {
@@ -716,7 +681,6 @@ const [verificationRadius, setVerificationRadius] = useState(500);
       setIsLoading(false);
     }
   };
-
 // Load landmarks
   useEffect(() => {
     const loadLandmarks = async () => {
@@ -738,7 +702,6 @@ useEffect(() => {
   const timer = setTimeout(() => {
     setShowMapInfo(false);
   }, 3000); // 3 ثواني
-
   return () => clearTimeout(timer);
 }, []);
   // Get user location
@@ -749,7 +712,6 @@ useEffect(() => {
         if (status !== 'granted') {
           throw new Error('Permission to access location was denied');
         }
-
         let location = await Location.getCurrentPositionAsync({});
         const coords = {
           latitude: location.coords.latitude,
@@ -776,7 +738,6 @@ useEffect(() => {
         });
       }
     };
-
     getLocation();
   }, []);
 // Add this useEffect to fetch the radius when component mounts
@@ -802,7 +763,6 @@ useEffect(() => {
           console.log("No token found");
           return;
         }
-
         const response = await axios.get(`${API_BASE_URL}/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -822,10 +782,8 @@ useEffect(() => {
         await AsyncStorage.removeItem('token');
       }
     };
-
     fetchUser();
   }, []);
-
   // Clear success/error messages after timeout
   useEffect(() => {
     if (voteSuccess) {
@@ -833,7 +791,6 @@ useEffect(() => {
       return () => clearTimeout(timer);
     }
   }, [voteSuccess]);
-
   useEffect(() => {
     if (deleteSuccess || deleteError) {
       const timer = setTimeout(() => {
@@ -843,7 +800,6 @@ useEffect(() => {
       return () => clearTimeout(timer);
     }
   }, [deleteSuccess, deleteError]);
-
 // 1. تعديل handleMapPress لإخفاء الروبوت عند إضافة معلم
 const handleMapPress = (e: any) => {
   if (e.nativeEvent?.markerId) return;
@@ -866,23 +822,21 @@ const handleMapPress = (e: any) => {
 };
 // دالة لحساب المسافة بين نقطتين
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-  const R = 6371e3; // Earth radius in meters
+  const R = 6371e3; // نصف قطر الأرض بالمتر
   const φ1 = lat1 * Math.PI/180;
   const φ2 = lat2 * Math.PI/180;
   const Δφ = (lat2-lat1) * Math.PI/180;
   const Δλ = (lon2-lon1) * Math.PI/180;
-
   const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
             Math.cos(φ1) * Math.cos(φ2) *
             Math.sin(Δλ/2) * Math.sin(Δλ/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-  return R * c; // Distance in meters
+  return R * c; // المسافة بالمتر
 };
 // دالة واحدة معدلة لجميع الاستخدامات
 const getNearbyLandmarks = (landmarksList: Landmark[] = landmarks, radius = 300) => {
   if (!location) return landmarksList;
-  
+
   return landmarksList.filter(landmark => {
     const distance = calculateDistance(
       location.latitude, 
@@ -894,13 +848,14 @@ const getNearbyLandmarks = (landmarksList: Landmark[] = landmarks, radius = 300)
   });
 };
 
+// تعديل دالة getDisplayedLandmarks لاستخدام الدالة المعدلة
 const getDisplayedLandmarks = () => {
   if (!location) return landmarks;
-  
+
   return landmarks.filter(landmark => {
     // المعالم المعرفة تظهر دائماً
     if (landmark.verified) return true;
-    
+
     // المعالم المعلقة تظهر فقط إذا كانت قريبة
     const distance = calculateDistance(
       location.latitude,
@@ -914,7 +869,7 @@ const getDisplayedLandmarks = () => {
 // دالة التصفية حسب النوع
 const getFilteredLandmarks = () => {
   const displayed = getDisplayedLandmarks();
-  
+
   switch(filter) {
     case 'verified':
       return displayed.filter(l => l.verified);
@@ -946,7 +901,6 @@ const handleMarkerPress = (marker: Landmark) => {
       aspect: [4, 3],
       quality: 1,
     });
-
     if (!result.canceled) {
       setNewLandmark(prev => ({
         ...prev,
@@ -961,13 +915,14 @@ const showRandomLandmarkForVerification = () => {
   // تصفية المعالم القريبة غير المؤكدة فقط
   const unverifiedNearby = landmarks.filter(landmark => {
     if (landmark.verified) return false;
-    
-    const distance = calculateDistance(
+        const distance = calculateDistance(
       location.latitude,
       location.longitude,
       landmark.lat,
       landmark.lon
     );
+
+
     return distance <= verificationRadius;
   });
 
@@ -995,11 +950,9 @@ useEffect(() => {
       showRandomLandmarkForVerification();
     }
   }, 10000); // كل 10 ثواني
-
   return () => clearInterval(interval);
 }, [landmarks, showBot, botDisabled, location]); // إضافة location إلى dependencies
-
-  <VerificationBot
+<VerificationBot
     visible={!!(showBot && !botDisabled && currentBotLandmark)}
     landmark={currentBotLandmark}
     onVote={(vote) => {
@@ -1011,7 +964,7 @@ useEffect(() => {
           currentBotLandmark.lat,
           currentBotLandmark.lon
         );
-        
+
         if (distance <= verificationRadius) {
           handleLandmarkVote(currentBotLandmark._id, vote);
         } else {
@@ -1036,204 +989,61 @@ useEffect(() => {
       }
     }}
   />
-// Add new landmark with validation checks
-// Add new landmark with validation checks
-const addLandmark = async () => {
-  try {
-    // 1. Validate required fields
-    if (!newLandmark.title.trim()) {
-      Alert.alert('Missing Information', 'Please enter a name for the landmark');
-      return;
-    }
-    
-    // 2. Check for existing landmarks within 10 meter radius
-    // This accounts for GPS inaccuracy by creating a buffer zone
-    const existingInRadius = landmarks.find(landmark => {
-      const distance = calculateDistance(
-        newLandmark.lat,
-        newLandmark.lon,
-        landmark.lat,
-        landmark.lon
-      );
-      return distance <= 10; // 10 meters threshold
-    });
-
-    if (existingInRadius) {
-      const exactDistance = calculateDistance(
-        newLandmark.lat,
-        newLandmark.lon,
-        existingInRadius.lat,
-        existingInRadius.lon
-      );
-      
-      Alert.alert(
-        'Location Already Taken', 
-        `❌ There's already a landmark nearby:
-        
-        "${existingInRadius.title}" (${Math.round(exactDistance)}m away)
-        
-        Please choose a different location at least 10 meters away.`,
-        [{ text: 'OK', style: 'cancel' }]
-      );
-      return;
-    }
-
-    // 3. Check for same name within 500m radius
-    const existingWithSameName = landmarks.find(landmark => {
-      const distance = calculateDistance(
-        newLandmark.lat,
-        newLandmark.lon,
-        landmark.lat,
-        landmark.lon
-      );
-      return (
-        landmark.title.toLowerCase() === newLandmark.title.toLowerCase().trim() && 
-        distance <= 500
-      );
-    });
-
-    if (existingWithSameName) {
-      Alert.alert(
-        'Duplicate Landmark Name', 
-        `⚠️ A landmark named "${newLandmark.title.trim()}" already exists within 500 meters.
-        
-        Distance: ${Math.round(calculateDistance(
-          newLandmark.lat,
-          newLandmark.lon,
-          existingWithSameName.lat,
-          existingWithSameName.lon
-        ))}m away
-        
-        Please choose a different name or location.`,
-        [{ text: 'OK', style: 'cancel' }]
-      );
-      return;
-    }
-
-    // 4. Check authentication only after validations pass
-    const token = await AsyncStorage.getItem('token');
-    if (!token) {
-      Alert.alert(
-        'Login Required',
-        'You need to be logged in to add landmarks',
-        [
-          { 
-            text: 'Cancel', 
-            style: 'cancel' 
-          },
-          { 
-            text: 'Go to Login', 
-            onPress: () => router.push('/login') 
-          }
-        ]
-      );
-      return;
-    }
-
-    // 5. Handle image upload
-    let imageUrl = newLandmark.imageUrl;
-    if (Platform.OS === 'web' && imageUrl) {
-      try {
-        Alert.alert('Uploading', 'Please wait while we upload your image...');
-        const uploadResponse = await axios.post(`${API_BASE_URL}/upload`, {
-          image: imageUrl
-        });
-        imageUrl = uploadResponse.data.url;
-      } catch (uploadError) {
-        Alert.alert(
-          'Upload Failed', 
-          'Could not upload the image. Please try again with a different image.',
-          [{ text: 'OK', style: 'cancel' }]
-        );
+  // Add new landmark
+  const addLandmark = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
         return;
       }
+         if (Platform.OS === 'web' && newLandmark.imageUrl) {
+      // معالجة الصور للويب
+      const response = await axios.post(`${API_BASE_URL}/upload`, {
+        image: newLandmark.imageUrl
+      });
+      newLandmark.imageUrl = response.data.url;
     }
-
-    // 6. Submit to server
-    Alert.alert('Processing', 'Adding your new landmark...');
-    const response = await axios.post(`${API_BASE_URL}/landmarks`, {
-      title: newLandmark.title.trim(),
-      description: newLandmark.description || '',
-      lat: newLandmark.lat,
-      lon: newLandmark.lon,
-      color: newLandmark.color || '#8B4513',
-      imageUrl: imageUrl || ''
-    }, {
-      headers: {
-        'Authorization': `Bearer ${token}`
+      if (!newLandmark.title.trim()) {
+        Alert.alert('Error', 'Please enter a landmark title');
+        return;
       }
-    });
+      console.log("Current user before add:", currentUser, currentUserId);
+      const meCheck = await axios.get(`${API_BASE_URL}/auth/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      console.log("Auth check:", meCheck.data);
 
-    // 7. Success handling
-    setLandmarks(prev => [...prev, response.data]);
-    setShowForm(false);
-    setNewLandmark({
-      title: '',
-      description: '',
-      lat: 0,
-      lon: 0,
-      color: '#8B4513',
-      imageUrl: ''
-    });
+      const response = await axios.post(`${API_BASE_URL}/landmarks`, {
+        title: newLandmark.title.trim(),
+        description: newLandmark.description.trim(),
+        lat: newLandmark.lat,
+        lon: newLandmark.lon,
+        color: newLandmark.color || '#8B4513',
+        imageUrl: newLandmark.imageUrl || '',
+        createdBy: currentUser?._id || currentUserId  // ✅ أضف هذا السطر
 
-    Alert.alert(
-      'Success! 🎉',
-      `"${response.data.title}" has been added successfully!`,
-      [
-        {
-          text: 'View Landmark',
-          onPress: () => {
-            setSelectedLandmark(response.data);
-            mapRef.current?.animateToRegion({
-              latitude: response.data.lat,
-              longitude: response.data.lon,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            });
-          }
-        },
-        { 
-          text: 'OK', 
-          style: 'cancel' 
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
-      ]
-    );
-
-  } catch (error) {
-    console.error("Add Landmark Error:", error);
-    
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 401) {
-        Alert.alert(
-          'Session Expired',
-          'Your session has expired. Please login again to continue.',
-          [
-            { 
-              text: 'Cancel', 
-              style: 'cancel' 
-            },
-            { 
-              text: 'Login', 
-              onPress: () => router.push('/login') 
-            }
-          ]
-        );
-      } else {
-        Alert.alert(
-          'Submission Failed',
-          error.response?.data?.message || 'Could not add the landmark. Please try again later.',
-          [{ text: 'OK', style: 'cancel' }]
-        );
-      }
-    } else {
-      Alert.alert(
-        'Unexpected Error',
-        'An unexpected error occurred. Please try again.',
-        [{ text: 'OK', style: 'cancel' }]
-      );
+      });
+      setLandmarks(prev => [...prev, response.data]);
+      setShowForm(false);
+      setNewLandmark({
+        title: '',
+        description: '',
+        lat: 0,
+        lon: 0,
+        color: '#8B4513',
+        imageUrl: ''
+      });
+    } catch (error) {
+      console.error("Error adding landmark:", error);
+      Alert.alert("Error", "Failed to add landmark. Please try again.");
     }
-  }
-};
+  };
 const getUnverifiedLandmarks = () => {
   // إذا كان هناك معلم محدد، نستخدم موقعه كمركز للتصفية
   const center = selectedLandmark ? {
@@ -1243,11 +1053,9 @@ const getUnverifiedLandmarks = () => {
     lat: location.latitude,
     lon: location.longitude
   } : null;
-
   if (!center) {
     return landmarks.filter(l => !l.verified);
   }
-
   // تصفية المعالم ضمن نصف درجة (حوالي 55 كم) من المركز
   return landmarks.filter(l => {
     if (l.verified) return false;
@@ -1258,7 +1066,6 @@ const getUnverifiedLandmarks = () => {
     return latDiff < 0.5 && lonDiff < 0.5;
   });
 };
-
   // Handle landmark vote
   const handleLandmarkVote = async (landmarkId: string, voteType: 'yes' | 'no') => {
     try {
@@ -1290,7 +1097,6 @@ const getUnverifiedLandmarks = () => {
       setIsVoting(true);
       setVoteError("");
       setVoteSuccess("");
-
       const response = await axios.put<VoteResponse>(
         `${API_BASE_URL}/landmarks/${landmarkId}/vote`,
         { vote: voteType },
@@ -1301,7 +1107,6 @@ const getUnverifiedLandmarks = () => {
           }
         }
       );
-
       setLandmarks(prev => prev.map(l => 
         l._id === landmarkId ? response.data.data : l
       ));
@@ -1340,7 +1145,6 @@ const getUnverifiedLandmarks = () => {
       setIsVoting(false);
     }
   };
-
   // Handle landmark deletion
   const handleDeleteLandmark = async (landmarkId: string) => {
     try {
@@ -1358,7 +1162,6 @@ const getUnverifiedLandmarks = () => {
         setDeleteError("Cannot delete verified landmarks");
         return;
       }
-
       await axios.delete(`${API_BASE_URL}/landmarks/${landmarkId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1400,7 +1203,6 @@ const getUnverifiedLandmarks = () => {
 }
  const handleSearch = async () => {
   if (!searchQuery.trim()) return;
-
   // 1. First check local landmarks (case insensitive)
   const landmark = landmarks.find(l =>
     l.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -1415,14 +1217,12 @@ const getUnverifiedLandmarks = () => {
     });
     return;
   }
-
   // 2. Try Google Geocoding API with better error handling
   try {
     const response = await fetch(
       `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchQuery)}&key=${GOOGLE_API_KEY}&language=en&region=sa` // Added region parameter for Saudi Arabia
     );
     const data = await response.json();
-
     if (data.status === "OK" && data.results.length > 0) {
       const location = data.results[0].geometry.location;
       mapRef.current?.animateToRegion({
@@ -1457,7 +1257,6 @@ const getUnverifiedLandmarks = () => {
     );
   }
 };
-
 const handleFuzzySearch = (query: string) => {
   // Simple fuzzy search implementation
   const queryLower = query.toLowerCase();
@@ -1469,7 +1268,6 @@ const handleFuzzySearch = (query: string) => {
       getSimilarity(queryLower, titleLower) > 0.7
     );
   });
-
   if (similarLandmarks.length > 0) {
     Alert.alert(
       "Did you mean?",
@@ -1497,7 +1295,6 @@ const handleFuzzySearch = (query: string) => {
     );
   }
 };
-
 // Helper function to calculate string similarity
 const getSimilarity = (s1: string, s2: string) => {
   let longer = s1;
@@ -1510,12 +1307,10 @@ const getSimilarity = (s1: string, s2: string) => {
   if (longerLength === 0) return 1.0;
   return (longerLength - editDistance(longer, shorter)) / longerLength;
 };
-
 // Levenshtein distance calculation
 const editDistance = (s1: string, s2: string) => {
   s1 = s1.toLowerCase();
   s2 = s2.toLowerCase();
-
   const costs = [];
   for (let i = 0; i <= s1.length; i++) {
     let lastValue = i;
@@ -1537,7 +1332,6 @@ const editDistance = (s1: string, s2: string) => {
   }
   return costs[s2.length];
 };
-
   return (
     <View style={styles.container}>
       {isMapLoading ? (
@@ -1560,7 +1354,6 @@ const editDistance = (s1: string, s2: string) => {
               <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
                 <MaterialIcons name="search" size={24} color="#6d4c41" />
               </TouchableOpacity>
-
               <View style={styles.filterContainer}>
                 <TouchableOpacity 
                   onPress={() => setFilter('all')} 
@@ -1589,9 +1382,7 @@ const editDistance = (s1: string, s2: string) => {
                   </Text>
                 </TouchableOpacity>
               </View>
-
-    
-            </View>
+                 </View>
           </View>
 
           {/* Landmarks List */}
@@ -1610,47 +1401,46 @@ const editDistance = (s1: string, s2: string) => {
               />
             </TouchableOpacity>
           
-            {isLandmarksListVisible && (
-              <>
-                <Text style={styles.landmarksTitle}>
-                  {t.LandmarksTitle} ({getUnverifiedLandmarks().length})
-                </Text>
-                <ScrollView 
-                  style={styles.landmarksList}
-                  contentContainerStyle={styles.landmarksListContent}
-                >
-                  {getFilteredLandmarks().length > 0 ? (
-                    getFilteredLandmarks().map(landmark => (
-                      <LandmarkListItem 
-                        key={landmark._id}
-                        landmark={landmark}
-                        onClick={() => {
-                          setSelectedLandmark(landmark);
-                          mapRef.current?.animateToRegion({
-                            latitude: landmark.lat,
-                            longitude: landmark.lon,
-                            latitudeDelta: 0.01,
-                            longitudeDelta: 0.01,
-                          });
-                        }}
-                        isSelected={selectedLandmark?._id === landmark._id}
-                      />
-                    ))
-                  ) : (
-                    <Text style={styles.noLandmarksText}>
-                      {filter === 'verified' 
-                        ? t.noVerifiedLandmarks
-                        : filter === 'unverified'
-                        ? t.noPendingLandmarks
-                        : t.noLandmarks
-                      }
-                    </Text>
-                  )}
-                </ScrollView>
-              </>
-            )}
+           {isLandmarksListVisible && (
+  <>
+    <Text style={styles.landmarksTitle}>
+      {t.pendingLandmarksTitle} ({getUnverifiedLandmarks().length})
+    </Text>
+    <ScrollView 
+      style={styles.landmarksList}
+      contentContainerStyle={styles.landmarksListContent}
+    >
+      {getFilteredLandmarks().length > 0 ? (
+        getFilteredLandmarks().map(landmark => (
+          <LandmarkListItem 
+            key={landmark._id}
+            landmark={landmark}
+            onClick={() => {
+              setSelectedLandmark(landmark);
+              mapRef.current?.animateToRegion({
+                latitude: landmark.lat,
+                longitude: landmark.lon,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              });
+            }}
+            isSelected={selectedLandmark?._id === landmark._id}
+          />
+        ))
+      ) : (
+        <Text style={styles.noLandmarksText}>
+          {filter === 'verified' 
+            ? t.noVerifiedLandmarks
+            : filter === 'unverified'
+            ? t.noPendingLandmarks
+            : t.noLandmarks
+          }
+        </Text>
+      )}
+    </ScrollView>
+  </>
+)}
           </View>
-
           {/* Main Map View */}
           <MapView
             ref={mapRef}
@@ -1669,20 +1459,19 @@ const editDistance = (s1: string, s2: string) => {
             )}
             
             {getFilteredLandmarks().map(landmark => (
-              <Marker
-                key={landmark._id}
-                coordinate={{
-                  latitude: landmark.lat,
-                  longitude: landmark.lon
-                }}
-                title={landmark.title}
-                description={landmark.description}
-                pinColor={landmark.verified ? '#4CAF50' : '#FFD700'}
-                onPress={() => handleMarkerPress(landmark)}
-              />
-            ))}
+  <Marker
+    key={landmark._id}
+    coordinate={{
+      latitude: landmark.lat,
+      longitude: landmark.lon
+    }}
+    title={landmark.title}
+    description={landmark.verified ? t.verified : t.pendingVerification}
+    pinColor={landmark.verified ? '#4CAF50' : '#FFD700'}
+    onPress={() => handleMarkerPress(landmark)}
+  />
+))}
           </MapView>
-
           {/* Combined map controls and nearby routes button */}
           {/* Map Controls */}
           <View style={styles.mapControlsContainer}>
@@ -1722,7 +1511,6 @@ const editDistance = (s1: string, s2: string) => {
               </TouchableOpacity>
             </View>
           </View>
-
           {/* Add Landmark Form */}
           {showForm && (
             <View style={styles.formContainer}>
@@ -1730,16 +1518,17 @@ const editDistance = (s1: string, s2: string) => {
                 style={styles.toggleFormButton}
                 onPress={() => setIsFormMinimized(!isFormMinimized)}
               >
-                <MaterialIcons 
-                  name={isFormMinimized ? 'keyboard-arrow-up' : 'remove'} 
-                  size={24} 
-                  color="#6d4c41" 
-                />
+                  <MaterialIcons 
+                    name={isFormMinimized ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} 
+                    size={24} 
+                    color="#6d4c41" 
+                  />
                 <Text style={styles.toggleFormText}>
+                  {isFormMinimized ? t.showForm : t.minimizeForm}
                   {isFormMinimized ? t.showForm : ''}
                 </Text>
               </TouchableOpacity>
-              
+
               {!isFormMinimized && (
                 <>
                   <Text style={styles.formTitle}>{t.addLandmarkTitle}</Text>
@@ -1770,8 +1559,7 @@ const editDistance = (s1: string, s2: string) => {
                       style={styles.previewImage}
                     />
                   )}
-                  
-                <View style={[styles.formButtons, isRTL && { flexDirection: 'row-reverse' }]}>
+                       <View style={[styles.formButtons, isRTL && { flexDirection: 'row-reverse' }]}>
                   <TouchableOpacity 
                     onPress={addLandmark}
                     disabled={!newLandmark.title.trim()}
@@ -1803,7 +1591,6 @@ const editDistance = (s1: string, s2: string) => {
           )}
         </>
       )}
-
        {selectedLandmark && (
       <LandmarkModal 
         landmark={selectedLandmark}
@@ -1822,7 +1609,7 @@ const editDistance = (s1: string, s2: string) => {
       />
     )}
        {/* تأكد من وجود هذا السطر في المكان الصحيح */}
-<VerificationBot
+       <VerificationBot
   visible={!!(showBot && !botDisabled && currentBotLandmark)}
   landmark={currentBotLandmark}
   onVote={(vote) => {
@@ -1867,11 +1654,10 @@ const editDistance = (s1: string, s2: string) => {
   }}
 />
 
-   
+
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   nearbyToggle: {
   position: 'absolute',
@@ -1935,7 +1721,6 @@ separator: {
     minHeight: 100,
     textAlignVertical: 'top',
     maxHeight: 200, // حد أقصى للارتفاع
-
   },
     scrollContainer: {
     flexGrow: 1,
@@ -2345,7 +2130,6 @@ picker: {
     borderRadius: 15,
     marginHorizontal: 2,
   },
-
 landmarksListContainer: {
   position: 'absolute',
   bottom: 20,
@@ -2517,7 +2301,6 @@ botImage: {
   botNoButton: {
     backgroundColor: '#f44336',
   },
-
 botCloseButton: {
   alignItems: 'center',
   padding: 8,
@@ -2535,7 +2318,6 @@ landmarkLocationContainer: {
 botContent: {
   marginBottom: 16,
 },
-
 pendingIndicatorContainer: {
   position: 'absolute',
   bottom: 20,
@@ -2918,3 +2700,5 @@ dangerButtonText: {
   },
 });
 export default LandmarkPage;
+
+

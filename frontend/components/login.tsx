@@ -38,7 +38,7 @@ export default function Login() {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.post('http://negevpulsapp.onrender.com/api/auth/login', {
+      const response = await axios.post('https://negevpulsapp.onrender.com/api/auth/login', {
         email: email.trim(),
         password: password.trim()
       });
@@ -52,6 +52,9 @@ export default function Login() {
         ['token', response.data.token],
         ['userRole', response.data.user.role]
       ]);
+      // 🧩 اطباع التوكن في الكونسول بعد تسجيل الدخول
+      console.log('🔑 User Token:', response.data.token);
+
 
       const userRole = response.data.user?.role?.toLowerCase();
       if (!userRole) {
