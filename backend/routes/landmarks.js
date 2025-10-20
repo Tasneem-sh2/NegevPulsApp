@@ -90,14 +90,26 @@ router.put('/:id/vote', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Calculate weight
     let weight = 1.0;
     if (user.isSuperlocal) {
       weight = 4.0;
-    } else if (user.verifiedLandmarksAdded > 0) {
-      weight = 2.0;
-    } else if (user.reputationScore >= 70) {
-      weight = 2.0;
+    } else {
+      // Active Resident من خلال المساهمات
+      const verifiedLandmarks = user.verifiedLandmarksAdded || 0;
+      const verifiedRoutes = user.verifiedRoutesAdded || 0;
+      
+      const hasTwoLandmarks = verifiedLandmarks >= 2;
+      const hasTwoRoutes = verifiedRoutes >= 2;
+      const hasOneEach = verifiedLandmarks >= 1 && verifiedRoutes >= 1;
+      
+      if (hasTwoLandmarks || hasTwoRoutes || hasOneEach) {
+        weight = 2.0;
+      }
+      // Active Resident من خلال السمعة
+      else if (user.reputationScore && user.reputationScore >= 70) {
+        weight = 2.0;
+      }
+      // else يبقى 1.0 (Regular)
     }
 
     // Get and lock landmark

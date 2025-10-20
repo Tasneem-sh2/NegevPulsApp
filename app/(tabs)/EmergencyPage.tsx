@@ -2,8 +2,8 @@ import { useTranslations } from '@/frontend/constants/locales';
 import { useLanguage } from '@/frontend/context/LanguageProvider';
 import { AntDesign, FontAwesome, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import MapboxGL, {
-  UserLocationRenderMode,
-  UserTrackingMode
+    UserLocationRenderMode,
+    UserTrackingMode
 } from '@rnmapbox/maps';
 import axios from "axios";
 import * as Location from 'expo-location';
@@ -11,15 +11,15 @@ import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
-  I18nManager,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Dimensions,
+    I18nManager,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 
 const MAPBOX_TOKEN = process.env.MAPBOX_DOWNLOADS_TOKEN || 'sk.eyJ1IjoidGFzbmVlbTIwMDIiLCJhIjoiY21jZ3l4bHJ3MGVyejJqc2h3YjkyY3hhcSJ9.OJCc5jNljboKnrfP1yfpYA';

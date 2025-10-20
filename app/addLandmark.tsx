@@ -70,6 +70,7 @@ interface User {
   reputationScore?: number;
   role?: string;
   verifiedLandmarksAdded?: number;
+  verifiedRoutesAdded?: number; // تأكد من وجود هذا الحقل
   getVoteWeight?: () => number;
 }
 interface VoteResponse {
@@ -253,9 +254,28 @@ const LandmarkListItem: React.FC<{
 };
 const getUserWeight = (user: User | null): number => {
   if (!user) return 1;
+  
+  // 1. Super local - أعلى وزن
   if (user.isSuperlocallocal) return 4;
-  if (user.verifiedLandmarksAdded && user.verifiedLandmarksAdded > 0) return 2;
-  if (user.reputationScore && user.reputationScore >= 70) return 2;
+  
+  // 2. Active Resident من خلال المساهمات
+  const verifiedLandmarks = user.verifiedLandmarksAdded || 0;
+  const verifiedRoutes = user.verifiedRoutesAdded || 0;
+  
+  const hasTwoLandmarks = verifiedLandmarks >= 2;
+  const hasTwoRoutes = verifiedRoutes >= 2;
+  const hasOneEach = verifiedLandmarks >= 1 && verifiedRoutes >= 1;
+  
+  if (hasTwoLandmarks || hasTwoRoutes || hasOneEach) {
+    return 2;
+  }
+  
+  // 3. Active Resident من خلال السمعة
+  if (user.reputationScore && user.reputationScore >= 70) {
+    return 2;
+  }
+  
+  // 4. Regular Resident - وزن 1
   return 1;
 };
 const LandmarkModal: React.FC<{
@@ -289,10 +309,9 @@ const LandmarkModal: React.FC<{
     landmark.votes
       .filter(v => v.vote === 'no')
       .reduce((sum, vote) => sum + (vote.weight || 1), 0);
-  const totalWeight = landmark.verificationData?.totalWeight || 
-    (yesWeight + noWeight);
+  const totalWeight = Math.max(0, yesWeight - noWeight);
     
-  const percentageYes = totalWeight > 0 ? (yesWeight / totalWeight * 100) : 0;
+  const percentageYes = totalWeight > 0 ? (yesWeight /  (yesWeight + noWeight) * 100) : 0;
   const requiredWeight = 5 + (0.2 * landmark.votes.length);
   const confidenceScore = landmark.verificationData?.confidenceScore || 
       Math.min(100, 
