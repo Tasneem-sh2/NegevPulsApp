@@ -1,3 +1,4 @@
+
 import { useTranslations } from '@/frontend/constants/locales';
 import { useLanguage } from '@/frontend/context/LanguageProvider';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -26,6 +27,7 @@ import {
   heightPercentageToDP as hp,
   widthPercentageToDP as wp,
 } from 'react-native-responsive-screen';
+
 const GOOGLE_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ?? '';
 const API_BASE_URL = 'https://negevpulsapp.onrender.com/api';
 // Types
@@ -141,9 +143,11 @@ const VerificationBot: React.FC<{
   onClose: () => void;
   onLandmarkPress: () => void;
 }> = ({ visible, landmark, onVote, onClose, onLandmarkPress }) => {
-  const t = useTranslations();
+  const t = useTranslations().addLandmark; // إضافة الترجمات
+  const { isRTL } = useLanguage(); // للحصول على اتجاه النص
   
   if (!visible || !landmark) return null;
+  
   return (
     <View style={styles.botContainer}>
       <View style={styles.botHeader}>
@@ -151,12 +155,14 @@ const VerificationBot: React.FC<{
           <Ionicons name="close" size={24} color="#6d4c41" />
         </TouchableOpacity>
         <MaterialIcons name="support-agent" size={28} color="#6d4c41" style={styles.botIcon} />
-          <Text style={styles.botTitle}>{t.addLandmark.helpVerify}</Text>
+        <Text style={styles.botTitle}>{t.helpVerify}</Text>
       </View>
       
       {/* محتوى البطاقة */}
       <TouchableOpacity onPress={onLandmarkPress} style={styles.botContent}>
-        <Text style={styles.botQuestion}>Is this landmark accurate?</Text>
+        <Text style={[styles.botQuestion, isRTL && { textAlign: 'right' }]}>
+          {t.isAccurate || "Is this landmark accurate?"}
+        </Text>
         
         {landmark.imageUrl && (
           <Image 
@@ -166,12 +172,14 @@ const VerificationBot: React.FC<{
         )}
         
         <View style={styles.landmarkLocationContainer}>
-          <Text style={styles.botLandmarkName}>{landmark.title}</Text>
+          <Text style={[styles.botLandmarkName, isRTL && { textAlign: 'right' }]}>
+            {landmark.title}
+          </Text>
           <MaterialIcons name="location-on" size={20} color="#6d4c41" />
         </View>
         
         {landmark.description && (
-          <Text style={styles.botLandmarkDescription} numberOfLines={2}>
+          <Text style={[styles.botLandmarkDescription, isRTL && { textAlign: 'right' }]} numberOfLines={2}>
             {landmark.description}
           </Text>
         )}
@@ -184,7 +192,7 @@ const VerificationBot: React.FC<{
           onPress={() => onVote('yes')}
         >
           <MaterialIcons name="thumb-up" size={20} color="white" />
-          <Text style={styles.botButtonText}>Confirm</Text>
+          <Text style={styles.botButtonText}>{t.confirm}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -192,7 +200,7 @@ const VerificationBot: React.FC<{
           onPress={() => onVote('no')}
         >
           <MaterialIcons name="thumb-down" size={20} color="white" />
-          <Text style={styles.botButtonText}>Reject</Text>
+          <Text style={styles.botButtonText}>{t.reject}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -301,6 +309,8 @@ const LandmarkModal: React.FC<{
   deleteSuccess,
   deleteError
 }) => {
+  const t = useTranslations().addLandmark;
+
   const yesWeight = landmark.verificationData?.yesWeight || 
     landmark.votes
       .filter(v => v.vote === 'yes')
@@ -309,302 +319,355 @@ const LandmarkModal: React.FC<{
     landmark.votes
       .filter(v => v.vote === 'no')
       .reduce((sum, vote) => sum + (vote.weight || 1), 0);
-  const totalWeight = Math.max(0, yesWeight - noWeight);
-    
-  const percentageYes = totalWeight > 0 ? (yesWeight /  (yesWeight + noWeight) * 100) : 0;
-  const requiredWeight = 5 + (0.2 * landmark.votes.length);
+
+  // 🔧 التصحيح: حساب الأوزان بشكل صحيح
+  const totalCombinedWeight = yesWeight + noWeight;
+  const netWeight = yesWeight - noWeight;
+  const percentageYes = totalCombinedWeight > 0 ? (yesWeight / totalCombinedWeight * 100) : 0;
+  const percentageNo = totalCombinedWeight > 0 ? (noWeight / totalCombinedWeight * 100) : 0;
+
+  const requiredWeight = 5.6;
+
   const confidenceScore = landmark.verificationData?.confidenceScore || 
-      Math.min(100, 
-      (Math.min(1, totalWeight / (requiredWeight * 1.5)) * 50) +
-      ((yesWeight / Math.max(1, totalWeight)) * 50)
-       );
+    Math.min(100, 
+      (Math.min(1, Math.abs(netWeight) / (requiredWeight * 1.5)) * 50) +
+      ((yesWeight / Math.max(1, totalCombinedWeight)) * 50)
+    );
+
   const currentUserVote = landmark.votes.find(v => v.userId === currentUser?._id);
   const userWeight = currentUserVote?.weight || 0;
   
-  return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={true}
-      onRequestClose={onClose}
-    >
-      <TouchableOpacity 
-        style={styles.modalOverlay}
-        activeOpacity={0.7} // هنا نضيفها بشكل صحيح
-        onPress={onClose}
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={true}
+        onRequestClose={onClose}
       >
-        <ScrollView 
-          style={styles.modalContainer}
-          contentContainerStyle={styles.modalContent}
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={0.7}
+          onPress={onClose}
         >
-          <TouchableOpacity 
-            style={styles.modalContentInner}
-            activeOpacity={1}
+          <ScrollView 
+            style={styles.modalContainer}
+            contentContainerStyle={styles.modalContent}
           >
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{landmark.title}</Text>
-              <TouchableOpacity onPress={onClose}>
-                <MaterialIcons name="close" size={24} color="#6d4c41" />
-              </TouchableOpacity>
-            </View>
-            {/* Status Badge */}
-            <View style={styles.statusBadge}>
-              {landmark.verified ? (
-                <>
-                  <MaterialIcons name="verified" size={20} color="#4CAF50" />
-                  <Text style={styles.verifiedBadgeText}>Verified Landmark</Text>
-                </>
-              ) : (
-                <>
-                  <MaterialIcons name="schedule" size={20} color="#FF9800" />
-                  <Text style={styles.pendingBadgeText}>
-                    Pending Verification
-                    {landmark.status === 'disputed' && ' (Needs Tribal Review)'}
-                  </Text>
-                </>
-              )}
-            </View>
-            
-            {/* Image Preview */}
-            {landmark.imageUrl && (
-              <Image 
-                source={{ uri: landmark.imageUrl }}
-                style={styles.landmarkImage}
-                onError={() => console.log('Image load error')}
-              />
-            )}
-            {/* Coordinates Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Coordinates</Text>
-              <View style={styles.coordinatesContainer}>
-                <View style={styles.coordinateItem}>
-                  <MaterialIcons name="place" size={18} color="#8d6e63" />
-                  <View>
-                    <Text style={styles.coordinateLabel}>Latitude</Text>
-                    <Text style={styles.coordinateValue}>{landmark.lat.toFixed(6)}</Text>
-                  </View>
-                </View>
-                <View style={styles.coordinateItem}>
-                  <MaterialIcons name="place" size={18} color="#8d6e63" />
-                  <View>
-                    <Text style={styles.coordinateLabel}>Longitude</Text>
-                    <Text style={styles.coordinateValue}>{landmark.lon.toFixed(6)}</Text>
-                  </View>
-                </View>
+            <TouchableOpacity 
+              style={styles.modalContentInner}
+              activeOpacity={1}
+            >
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{landmark.title}</Text>
+                <TouchableOpacity onPress={onClose}>
+                  <MaterialIcons name="close" size={24} color="#6d4c41" />
+                </TouchableOpacity>
               </View>
-            </View>
-            {/* Description Section */}
-            {landmark.description && (
+
+              {/* Status Badge */}
+              <View style={styles.statusBadge}>
+                {landmark.verified ? (
+                  <>
+                    <MaterialIcons name="verified" size={20} color="#4CAF50" />
+                    <Text style={styles.verifiedBadgeText}>{t.verified}</Text>
+                  </>
+                ) : (
+                  <>
+                    <MaterialIcons name="schedule" size={20} color="#FF9800" />
+                    <Text style={styles.pendingBadgeText}>
+                      {t.pendingVerification}
+                      {landmark.status === 'disputed' && ' (Needs Tribal Review)'}
+                    </Text>
+                  </>
+                )}
+              </View>
+              
+              {/* Image Preview */}
+              {landmark.imageUrl && (
+                <Image 
+                  source={{ uri: landmark.imageUrl }}
+                  style={styles.landmarkImage}
+                  onError={() => console.log('Image load error')}
+                />
+              )}
+
+              {/* Coordinates Section */}
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Description</Text>
-                <Text style={styles.descriptionText}>{landmark.description}</Text>
+                <Text style={styles.sectionTitle}>{t.coordinates || "Coordinates"}</Text>
+                <View style={styles.coordinatesContainer}>
+                  <View style={styles.coordinateItem}>
+                    <MaterialIcons name="place" size={18} color="#8d6e63" />
+                    <View>
+                      <Text style={styles.coordinateLabel}>{t.latitude || "Latitude"}</Text>
+                      <Text style={styles.coordinateValue}>{landmark.lat.toFixed(6)}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.coordinateItem}>
+                    <MaterialIcons name="place" size={18} color="#8d6e63" />
+                    <View>
+                      <Text style={styles.coordinateLabel}>{t.longitude || "Longitude"}</Text>
+                      <Text style={styles.coordinateValue}>{landmark.lon.toFixed(6)}</Text>
+                    </View>
+                  </View>
+                </View>
               </View>
-            )}
-            {/* Verification Status Section */}
-            <View style={styles.verificationContainer}>
-              <Text style={styles.verificationTitle}>Verification Status</Text>
+
+              {/* Description Section */}
+              {landmark.description && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>{t.description || "Description"}</Text>
+                  <Text style={styles.descriptionText}>{landmark.description}</Text>
+                </View>
+              )}
+
+              {/* Verification Status Section */}
               
-              {/* Confidence Meter */}
-              <View style={styles.confidenceMeter}>
-                <View style={styles.confidenceHeader}>
-                  <Text>Confidence Score:</Text>
-                  <Text style={[
-                    styles.confidenceValue,
-                    { 
-                      color: confidenceScore > 75 ? '#4CAF50' : 
-                            confidenceScore > 50 ? '#FF9800' : '#f44336'
-                    }
-                  ]}>
-                    {Math.round(confidenceScore)}%
-                  </Text>
-                </View>
-                <View style={styles.confidenceBarBackground}>
-                  <View style={[
-                    styles.confidenceBarFill,
-                    { 
-                      width: `${confidenceScore}%`,
-                      backgroundColor: confidenceScore > 75 ? '#4CAF50' : 
-                                      confidenceScore > 50 ? '#FF9800' : '#f44336'
-                    }
-                  ]} />
-                </View>
-              </View>
-              
-              {/* Vote Breakdown */}
-              <View style={styles.voteBreakdown}>
-                <Text style={styles.yesText}>
-                  Yes: {yesWeight.toFixed(1)} ({(percentageYes).toFixed(0)}%)
-                </Text>
-                <Text style={styles.noText}>
-                  No: {noWeight.toFixed(1)} ({(100 - percentageYes).toFixed(0)}%)
-                </Text>
-              </View>
-              
-              <View style={styles.voteBarBackground}>
-                <View style={[
-                  styles.voteBarFill,
-                  { width: `${percentageYes}%` }
-                ]} />
-              </View>
-              {/* Weight Information */}
-              <View style={styles.weightInfo}>
-                <View style={styles.weightItem}>
-                  <Text style={styles.weightLabel}>Total Weight</Text>
-                  <Text style={styles.weightValue}>{totalWeight.toFixed(1)}</Text>
-                </View>
-                <View style={styles.weightItem}>
-                  <Text style={styles.weightLabel}>Required</Text>
-                  <Text style={styles.weightValue}>{requiredWeight.toFixed(1)}</Text>
-                </View>
-              </View>
-              {/* User Weight */}
-              {currentUser && (
-                <View style={styles.userWeightContainer}>
-                  <View style={styles.userWeightHeader}>
-                    <Text>Your Voting Power:</Text>
-                    <Text style={[
-                      styles.userWeightValue,
-                      { 
-                        color: userWeight >= 4 ? '#4CAF50' : 
-                              userWeight >= 2 ? '#FF9800' : '#757575'
-                      }
+                {/* Verification Status Section */}
+                <View style={styles.verificationContainer}>
+                  <Text style={styles.verificationTitle}>{t.verificationStatus || "Verification Status"}</Text>
+                  
+                  {/* Confidence Meter */}
+                  <View style={styles.confidenceMeter}>
+                    <View style={styles.confidenceHeader}>
+                      <Text>{t.confidenceScore || "Confidence Score"}:</Text>
+                      <Text style={[
+                        styles.confidenceValue,
+                        { 
+                          color: confidenceScore > 75 ? '#4CAF50' : 
+                                confidenceScore > 50 ? '#FF9800' : '#f44336'
+                        }
+                      ]}>
+                        {Math.round(confidenceScore)}%
+                      </Text>
+                    </View>
+                    <View style={styles.confidenceBarBackground}>
+                      <View style={[
+                        styles.confidenceBarFill,
+                        { 
+                          width: `${confidenceScore}%`,
+                          backgroundColor: confidenceScore > 75 ? '#4CAF50' : 
+                                          confidenceScore > 50 ? '#FF9800' : '#f44336'
+                        }
+                      ]} />
+                    </View>
+                  </View>
+
+                  {/* Vote Breakdown */}
+                  <View style={styles.voteBreakdown}>
+                    <Text style={styles.yesText}>
+                      {t.yes || "Yes"}: {yesWeight.toFixed(1)} ({percentageYes.toFixed(0)}%)
+                    </Text>
+                    <Text style={styles.noText}>
+                      {t.no || "No"}: {noWeight.toFixed(1)} ({percentageNo.toFixed(0)}%)
+                    </Text>
+                  </View>
+
+                  <View style={styles.voteBarBackground}>
+                    <View style={[
+                      styles.voteBarFill,
+                      { width: `${percentageYes}%` }
+                    ]} />
+                  </View>
+
+                  {/* Weight Information */}
+                  <View style={styles.weightInfo}>
+                    <View style={styles.weightItem}>
+                      <Text style={styles.weightLabel}>{t.totalWeight || "Total Weight"}</Text>
+                      <Text style={styles.weightValue}>{totalCombinedWeight.toFixed(1)}</Text>
+                    </View>
+                    <View style={styles.weightItem}>
+                      <Text style={styles.weightLabel}>{"Net Weight"}</Text>
+                      <Text style={styles.weightValue}>{netWeight.toFixed(1)}</Text>
+                    </View>
+                    <View style={styles.weightItem}>
+                      <Text style={styles.weightLabel}>{t.required || "Required"}</Text>
+                      <Text style={styles.weightValue}>5.6</Text>
+                    </View>
+                  </View>
+
+                  {/* User Weight */}
+                  {currentUser && (
+                    <View style={styles.userWeightContainer}>
+                      <View style={styles.userWeightHeader}>
+                        <Text>{t.yourVotingPower || "Your Voting Power"}:</Text>
+                        <Text style={[
+                          styles.userWeightValue,
+                          { 
+                            color: userWeight >= 4 ? '#4CAF50' : 
+                                  userWeight >= 2 ? '#FF9800' : '#757575'
+                          }
+                        ]}>
+                          {userWeight.toFixed(1)}x
+                        </Text>
+                      </View>
+                      {userWeight > 1 && (
+                        <Text style={styles.userWeightDescription}>
+                          {userWeight >= 4 ? (t.superLocal || "Super Local") : 
+                          userWeight >= 2 ? (t.verifiedContributor || "Verified Contributor") : ''}
+                        </Text>
+                      )}
+                      {currentUserVote && (
+                        <Text style={styles.userVoteInfo}>
+                          {t.youVoted || "You voted"} {currentUserVote.vote} ({t.weight || "weight"}: {currentUserVote.weight.toFixed(1)})
+                        </Text>
+                      )}
+                    </View>
+                  )}
+
+                  {/* 🔧 قسم شروط التحقق المصحح */}
+                  <View style={styles.verificationRequirements}>
+                    <Text style={styles.requirementsTitle}>
+                      {t.verificationRequirements || "Verification Requirements"}
+                    </Text>
+                    
+                    <View style={[
+                      styles.requirementItem, 
+                      netWeight >= requiredWeight && styles.requirementMet
                     ]}>
-                      {userWeight.toFixed(1)}x
-                    </Text>
+                      <MaterialIcons 
+                        name={netWeight >= requiredWeight ? "check-circle" : "radio-button-unchecked"} 
+                        size={16} 
+                        color={netWeight >= requiredWeight ? "#4CAF50" : "#757575"} 
+                      />
+                      <Text style={styles.requirementText}>
+                        {"Net Weight ≥ 5.6"} ({netWeight.toFixed(1)} / 5.6)
+                      </Text>
+                    </View>
+                    
+                    <View style={[
+                      styles.requirementItem, 
+                      percentageYes >= 80 && styles.requirementMet
+                    ]}>
+                      <MaterialIcons 
+                        name={percentageYes >= 80 ? "check-circle" : "radio-button-unchecked"} 
+                        size={16} 
+                        color={percentageYes >= 80 ? "#4CAF50" : "#757575"} 
+                      />
+                      <Text style={styles.requirementText}>
+                        {"Approval Rate ≥ 80%"} ({percentageYes.toFixed(0)}%)
+                      </Text>
+                    </View>
+                    
+                    {/* حالة التحقق - يجب أن يتحقق كلا الشرطين */}
+                    {landmark.verified ? (
+                      <View style={styles.verifiedStatus}>
+                        <MaterialIcons name="verified" size={20} color="#4CAF50" />
+                        <Text style={styles.verifiedStatusText}>
+                          {t.verifiedStatus || "✓ Verified - All requirements met"}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.notVerifiedStatus}>
+                        <MaterialIcons name="error-outline" size={20} color="#FF9800" />
+                        <Text style={styles.notVerifiedStatusText}>
+                          {"✗ Not Verified - Requirements not met"}
+                          {!landmark.verified && (
+                            <Text style={styles.missingRequirements}>
+                              {"\n"}Missing: {netWeight < requiredWeight ? "Net Weight " : ""}
+                              {netWeight < requiredWeight && percentageYes < 80 ? "& " : ""}
+                              {percentageYes < 80 ? "Approval Rate" : ""}
+                            </Text>
+                          )}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                  {userWeight > 1 && (
-                    <Text style={styles.userWeightDescription}>
-                      {userWeight >= 4 ? 'Super Local' : 
-                      userWeight >= 2 ? 'Verified Contributor' : ''}
-                    </Text>
-                  )}
-                  {currentUserVote && (
-                    <Text style={styles.userVoteInfo}>
-                      You voted {currentUserVote.vote} (weight: {currentUserVote.weight.toFixed(1)})
-                    </Text>
-                  )}
                 </View>
-              )}
-            </View>
-            {/* Vote Buttons */}
-            {!landmark.verified && landmark.status !== 'disputed' && 
-              landmark.createdBy.toString() !== currentUser?._id && (
-                <View style={styles.voteButtons}>
-                <TouchableOpacity
-                  onPress={() => onVote(landmark._id, 'yes')}
-                  disabled={isVoting}
-                  style={[
-                    styles.voteButton,
-                    styles.yesButton,
-                    currentUserVote?.vote === 'yes' && styles.activeVoteButton,
-                    isVoting && styles.disabledButton
-                  ]}
-                >
-                  {isVoting ? (
-                    <ActivityIndicator color="white" />
-                  ) : currentUserVote?.vote === 'yes' ? (
-                    <Text style={styles.buttonText}>✔ Voted Yes</Text>
-                  ) : (
-                    <Text style={styles.buttonText}>Vote Yes</Text>
-                  )}
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  onPress={() => onVote(landmark._id, 'no')}
-                  disabled={isVoting}
-                  style={[
-                    styles.voteButton,
-                    styles.noButton,
-                    currentUserVote?.vote === 'no' && styles.activeVoteButton,
-                    isVoting && styles.disabledButton
-                  ]}
-                >
-                  {isVoting ? (
-                    <ActivityIndicator color="white" />
-                  ) : currentUserVote?.vote === 'no' ? (
-                    <Text style={styles.buttonText}>✔ Voted No</Text>
-                  ) : (
-                    <Text style={styles.buttonText}>Vote No</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
-            {/* Dispute Notice */}
-            {landmark.status === 'disputed' && (
-              <View style={styles.disputeNotice}>
-                <View style={styles.disputeHeader}>
-                  <MaterialIcons name="warning" size={20} color="#FF9800" />
-                  <Text style={styles.disputeTitle}>Tribal Review Needed</Text>
-                </View>
-                <Text style={styles.disputeText}>
-                  This landmark has conflicting votes and requires review by the tribal council.
-                </Text>
-              </View>
-            )}
-            {/* Status Messages */}
-            {(voteSuccess || voteError || deleteSuccess || deleteError) && (
-              <View style={styles.statusMessages}>
-                {voteSuccess && (
-                  <View style={styles.successMessage}>
-                    <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
-                    <Text style={styles.successText}>{voteSuccess}</Text>
+
+                {/* Vote Buttons */}
+                {!landmark.verified && landmark.status !== 'disputed' && 
+                  landmark.createdBy.toString() !== currentUser?._id && (
+                    <View style={styles.voteButtons}>
+                    <TouchableOpacity
+                      onPress={() => onVote(landmark._id, 'yes')}
+                      disabled={isVoting}
+                      style={[
+                        styles.voteButton,
+                        styles.yesButton,
+                        currentUserVote?.vote === 'yes' && styles.activeVoteButton,
+                        isVoting && styles.disabledButton
+                      ]}
+                    >
+                      {isVoting ? (
+                        <ActivityIndicator color="white" />
+                      ) : currentUserVote?.vote === 'yes' ? (
+                        <Text style={styles.buttonText}>✔ {t.votedYes || "Voted Yes"}</Text>
+                      ) : (
+                        <Text style={styles.buttonText}>{t.voteYes || "Vote Yes"}</Text>
+                      )}
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      onPress={() => onVote(landmark._id, 'no')}
+                      disabled={isVoting}
+                      style={[
+                        styles.voteButton,
+                        styles.noButton,
+                        currentUserVote?.vote === 'no' && styles.activeVoteButton,
+                        isVoting && styles.disabledButton
+                      ]}
+                    >
+                      {isVoting ? (
+                        <ActivityIndicator color="white" />
+                      ) : currentUserVote?.vote === 'no' ? (
+                        <Text style={styles.buttonText}>✔ {t.votedNo || "Voted No"}</Text>
+                      ) : (
+                        <Text style={styles.buttonText}>{t.voteNo || "Vote No"}</Text>
+                      )}
+                    </TouchableOpacity>
                   </View>
                 )}
-                {voteError && (
-                  <View style={styles.errorMessage}>
-                    <MaterialIcons name="error" size={20} color="#f44336" />
-                    <Text style={styles.errorText}>{voteError}</Text>
+
+                {/* Dispute Notice */}
+                {landmark.status === 'disputed' && (
+                  <View style={styles.disputeNotice}>
+                    <View style={styles.disputeHeader}>
+                      <MaterialIcons name="warning" size={20} color="#FF9800" />
+                      <Text style={styles.disputeTitle}>{t.tribalReviewNeeded || "Tribal Review Needed"}</Text>
+                    </View>
+                    <Text style={styles.disputeText}>
+                      {t.disputeDescription || "This landmark has conflicting votes and requires review by the tribal council."}
+                    </Text>
                   </View>
                 )}
-                {deleteSuccess && (
-                  <View style={styles.successMessage}>
-                    <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
-                    <Text style={styles.successText}>{deleteSuccess}</Text>
-                  </View>
+
+
+              {/* Action Buttons */}
+              <View style={styles.actionButtons}>
+                {currentUser && (
+                  <TouchableOpacity 
+                    onPress={() => onDelete(landmark._id)}
+                    disabled={
+                      (landmark.createdBy?.toString() ?? '') !== currentUser._id && 
+                      currentUser.role !== 'admin'
+                    }
+                    style={[
+                      styles.deleteButton,
+                      ((landmark.createdBy?.toString() ?? '') !== currentUser._id && 
+                      currentUser.role !== 'admin') && styles.disabledButton
+                    ]}
+                  >
+                    <Text style={styles.deleteButtonText}>{t.deleteLandmark || "Delete Landmark"}</Text>
+                  </TouchableOpacity>
                 )}
-                {deleteError && (
-                  <View style={styles.errorMessage}>
-                    <MaterialIcons name="error" size={20} color="#f44336" />
-                    <Text style={styles.errorText}>{deleteError}</Text>
-                  </View>
-                )}
-              </View>
-            )}
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              {currentUser && (
                 <TouchableOpacity 
-                onPress={() => onDelete(landmark._id)}
-                disabled={
-                  (landmark.createdBy?.toString() ?? '') !== currentUser._id && 
-                  currentUser.role !== 'admin'
-                }
-                style={[
-                  styles.deleteButton,
-                  ((landmark.createdBy?.toString() ?? '') !== currentUser._id && 
-                  currentUser.role !== 'admin') && styles.disabledButton
-                ]}
-              >
-                <Text style={styles.deleteButtonText}>Delete Landmark</Text>
-              </TouchableOpacity>
-              )}
-              <TouchableOpacity 
-                onPress={onClose}
-                style={styles.closeButton}
-              >
-                <Text style={styles.closeButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </ScrollView>
-      </TouchableOpacity>
-    </Modal>
-  );
-};
+                  onPress={onClose}
+                  style={styles.closeButton}
+                >
+                  <Text style={styles.closeButtonText}>{t.close || "Close"}</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </ScrollView>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
 // Main Component
 const LandmarkPage: React.FC = () => {
-const [verificationRadius, setVerificationRadius] = useState(500);
+  
+  const [verificationRadius, setVerificationRadius] = useState(500);
   const mapRef = useRef<MapView>(null);
   const [location, setLocation] = useState<LocationCoords | null>(null);
   const [landmarks, setLandmarks] = useState<Landmark[]>([]);
@@ -820,6 +883,7 @@ useEffect(() => {
     }
   }, [deleteSuccess, deleteError]);
 // 1. تعديل handleMapPress لإخفاء الروبوت عند إضافة معلم
+/*
 const handleMapPress = (e: any) => {
   if (e.nativeEvent?.markerId) return;
   
@@ -838,7 +902,7 @@ const handleMapPress = (e: any) => {
     lon: coordinate.longitude,
   }));
   setShowForm(true);
-};
+};*/ 
 // دالة لحساب المسافة بين نقطتين
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371e3; // نصف قطر الأرض بالمتر
@@ -866,7 +930,31 @@ const getNearbyLandmarks = (landmarksList: Landmark[] = landmarks, radius = 300)
     return distance <= radius;
   });
 };
+  // دالة للتحقق من المعلم الموجود على نفس الإحداثيات
+  const checkExistingLandmarkAtLocation = (lat: number, lon: number): Landmark | null => {
+    const existingLandmark = landmarks.find(landmark => {
+      const distance = calculateDistance(lat, lon, landmark.lat, landmark.lon);
+      // إذا كان هناك معلم على نفس الإحداثيات أو على مسافة أقل من 5 متر
+      return distance < 5; // 5 متر كحد أدنى للمسافة بين المعالم
+    });
+    return existingLandmark || null;
+  };
 
+  // دالة للتحقق من الاسم المكرر ضمن نصف قطر محدد
+  const checkDuplicateLandmarkName = (name: string, lat: number, lon: number, radiusMeters: number = 1000): boolean => {
+    const normalizedName = name.trim().toLowerCase();
+    
+    return landmarks.some(landmark => {
+      // تحقق من تطابق الاسم (case insensitive)
+      const isNameDuplicate = landmark.title.trim().toLowerCase() === normalizedName;
+      
+      if (!isNameDuplicate) return false;
+      
+      // تحقق من المسافة إذا كان الاسم مكرراً
+      const distance = calculateDistance(lat, lon, landmark.lat, landmark.lon);
+      return distance <= radiusMeters;
+    });
+  };
 // تعديل دالة getDisplayedLandmarks لاستخدام الدالة المعدلة
 const getDisplayedLandmarks = () => {
   if (!location) return landmarks;
@@ -927,30 +1015,28 @@ const handleMarkerPress = (marker: Landmark) => {
       }));
     }
   };
-// دالة عرض معلم عشوائي للتحقق - معدلة لعرض المعالم القريبة فقط
-const showRandomLandmarkForVerification = () => {
-  if (!location) return;
+  // دالة عرض معلم عشوائي للتحقق
+  const showRandomLandmarkForVerification = () => {
+    if (!location) return;
 
-  // تصفية المعالم القريبة غير المؤكدة فقط
-  const unverifiedNearby = landmarks.filter(landmark => {
-    if (landmark.verified) return false;
-        const distance = calculateDistance(
-      location.latitude,
-      location.longitude,
-      landmark.lat,
-      landmark.lon
-    );
+    // تصفية المعالم القريبة غير المؤكدة فقط
+    const unverifiedNearby = landmarks.filter(landmark => {
+      if (landmark.verified) return false;
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        landmark.lat,
+        landmark.lon
+      );
+      return distance <= verificationRadius;
+    });
 
-
-    return distance <= verificationRadius;
-  });
-
-  if (unverifiedNearby.length > 0) {
-    const randomIndex = Math.floor(Math.random() * unverifiedNearby.length);
-    setCurrentBotLandmark(unverifiedNearby[randomIndex]);
-    setShowBot(true);
-  }
-};
+    if (unverifiedNearby.length > 0) {
+      const randomIndex = Math.floor(Math.random() * unverifiedNearby.length);
+      setCurrentBotLandmark(unverifiedNearby[randomIndex]);
+      setShowBot(true);
+    }
+  };
 
 // في useEffect الخاص بالروبوت، أضف تحقق من الموقع
 useEffect(() => {
@@ -971,44 +1057,53 @@ useEffect(() => {
   }, 10000); // كل 10 ثواني
   return () => clearInterval(interval);
 }, [landmarks, showBot, botDisabled, location]); // إضافة location إلى dependencies
-<VerificationBot
-    visible={!!(showBot && !botDisabled && currentBotLandmark)}
-    landmark={currentBotLandmark}
-    onVote={(vote) => {
-      if (currentBotLandmark) {
-        // تحقق إضافي من المسافة قبل التصويت
-        const distance = calculateDistance(
-          location?.latitude || 0,
-          location?.longitude || 0,
-          currentBotLandmark.lat,
-          currentBotLandmark.lon
-        );
+  <VerificationBot
+          visible={!!(showBot && !botDisabled && currentBotLandmark)}
+          landmark={currentBotLandmark}
+          onVote={(vote) => {
+            if (!currentBotLandmark || !location) {
+              Alert.alert(
+                t.errors.general,
+                t.errors.landmarkNotFound,
+                [{ text: t.common.ok }]
+              );
+              return;
+            }
 
-        if (distance <= verificationRadius) {
-          handleLandmarkVote(currentBotLandmark._id, vote);
-        } else {
-          Alert.alert(
-            "المعلم بعيد",
-            "لا يمكنك التصويت على معلم خارج نطاقك الجغرافي"
-          );
-        }
-      }
-      setShowBot(false);
-      setTimeout(showRandomLandmarkForVerification, 60000);
-    }}
-    onClose={() => setShowBot(false)}
-    onLandmarkPress={() => {
-      if (currentBotLandmark && mapRef.current) {
-        mapRef.current.animateToRegion({
-          latitude: currentBotLandmark.lat,
-          longitude: currentBotLandmark.lon,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        });
-      }
-    }}
-  />
+            const distance = calculateDistance(
+              location.latitude,
+              location.longitude,
+              currentBotLandmark.lat,
+              currentBotLandmark.lon
+            );
+
+            if (distance > verificationRadius) {
+              Alert.alert(
+                t.errors.outOfRange,
+                t.errors.nearbyOnly,
+                [{ text: t.common.ok }]
+              );
+              return;
+            }
+
+            handleLandmarkVote(currentBotLandmark._id, vote);
+            setShowBot(false);
+          }}
+          onClose={() => setShowBot(false)}
+          onLandmarkPress={() => {
+            if (currentBotLandmark && mapRef.current) {
+              mapRef.current.animateToRegion({
+                latitude: currentBotLandmark.lat,
+                longitude: currentBotLandmark.lon,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              });
+            }
+          }}
+    />
   // Add new landmark
+  // دالة محسنة لإضافة المعلم مع التحقق
+  // دالة محسنة لإضافة المعلم مع التحقق
   const addLandmark = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -1016,23 +1111,99 @@ useEffect(() => {
         router.push('/login');
         return;
       }
-         if (Platform.OS === 'web' && newLandmark.imageUrl) {
-      // معالجة الصور للويب
-      const response = await axios.post(`${API_BASE_URL}/upload`, {
-        image: newLandmark.imageUrl
-      });
-      newLandmark.imageUrl = response.data.url;
-    }
+
+      // التحقق من الحقول المطلوبة
       if (!newLandmark.title.trim()) {
-        Alert.alert('Error', 'Please enter a landmark title');
+        Alert.alert(t.error, t.validation.nameRequired);
         return;
       }
+
+      if (!newLandmark.lat || !newLandmark.lon) {
+        Alert.alert(t.error, t.validation.locationRequired);
+        return;
+      }
+
+      // 1. التحقق من وجود معلم على نفس الإحداثيات
+      const existingAtLocation = checkExistingLandmarkAtLocation(newLandmark.lat, newLandmark.lon);
+      if (existingAtLocation) {
+        Alert.alert(
+          t.errors.duplicateLocation,
+          `${t.errors.landmarkExistsAtLocation}: "${existingAtLocation.title}"`,
+          [
+            { text: t.common.cancel, style: 'cancel' },
+            { 
+              text: t.common.view, 
+              onPress: () => {
+                setSelectedLandmark(existingAtLocation);
+                mapRef.current?.animateToRegion({
+                  latitude: existingAtLocation.lat,
+                  longitude: existingAtLocation.lon,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                });
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      // 2. التحقق من الاسم المكرر ضمن نصف قطر 1 كم
+      const isNameDuplicate = checkDuplicateLandmarkName(newLandmark.title, newLandmark.lat, newLandmark.lon, 1000);
+      if (isNameDuplicate) {
+        Alert.alert(
+          t.errors.duplicateName,
+          t.errors.landmarkNameExistsNearby,
+          [{ text: t.common.ok }]
+        );
+        return;
+      }
+
+      // 3. التحقق من المسافة من موقع المستخدم (اختياري)
+      // 🔧 التحقق من المسافة من موقع المستخدم (إلزامي)
+      if (location) {
+        const distanceFromUser = calculateDistance(
+          location.latitude,
+          location.longitude,
+          newLandmark.lat,
+          newLandmark.lon
+        );
+
+        // استخدام verificationRadius بدلاً من 5000
+        if (distanceFromUser > verificationRadius) {
+          Alert.alert(
+            t.errors.tooFar || "Too Far",
+            t.errors.landmarkTooFarFromLocation || `You can only add landmarks within ${verificationRadius} meters from your current location.`,
+            [{ text: t.common.ok || "OK" }]
+          );
+          return;
+        }
+      } else {
+        // إذا لم يكن موقع المستخدم متاحاً
+        Alert.alert(
+          t.errors.locationRequired || "Location Required",
+          t.errors.enableLocation || "Please enable location services to add landmarks.",
+          [{ text: t.common.ok || "OK" }]
+        );
+        return;
+      }
+
+      // معالجة الصور للويب
+      if (Platform.OS === 'web' && newLandmark.imageUrl) {
+        const response = await axios.post(`${API_BASE_URL}/upload`, {
+          image: newLandmark.imageUrl
+        });
+        newLandmark.imageUrl = response.data.url;
+      }
+
+      // التحقق من المستخدم الحالي
       console.log("Current user before add:", currentUser, currentUserId);
       const meCheck = await axios.get(`${API_BASE_URL}/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       console.log("Auth check:", meCheck.data);
 
+      // إرسال البيانات إلى الخادم
       const response = await axios.post(`${API_BASE_URL}/landmarks`, {
         title: newLandmark.title.trim(),
         description: newLandmark.description.trim(),
@@ -1040,15 +1211,18 @@ useEffect(() => {
         lon: newLandmark.lon,
         color: newLandmark.color || '#8B4513',
         imageUrl: newLandmark.imageUrl || '',
-        createdBy: currentUser?._id || currentUserId  // ✅ أضف هذا السطر
-
+        createdBy: currentUser?._id || currentUserId
       }, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         }
       });
+
+      // إضافة المعلم الجديد إلى القائمة
       setLandmarks(prev => [...prev, response.data]);
+      
+      // إعادة تعيين النموذج
       setShowForm(false);
       setNewLandmark({
         title: '',
@@ -1058,11 +1232,100 @@ useEffect(() => {
         color: '#8B4513',
         imageUrl: ''
       });
-    } catch (error) {
+
+      // عرض رسالة نجاح - استخدام النص مباشرة لتجنب مشاكل الترجمات
+    Alert.alert(t.success, t.successMessage || "The Landmark Added!"); // ✅
+
+    } catch (error: any) {
       console.error("Error adding landmark:", error);
-      Alert.alert("Error", "Failed to add landmark. Please try again.");
+      
+      let errorMessage = t.errors.failedToAddLandmark;
+      
+      if (error.response?.status === 409) {
+        errorMessage = t.errors.duplicateLandmark;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      Alert.alert(t.error, errorMessage);
     }
   };
+
+  // دالة الضغط على الخريطة مع التحقق المسبق - تأكد من وجود دالة واحدة فقط
+const handleMapPress = (e: any) => {
+  if (e.nativeEvent?.markerId) return;
+  
+  // التحقق من المسافة أولاً قبل فتح النموذج
+  if (location) {
+    const { coordinate } = e.nativeEvent;
+    const distance = calculateDistance(
+      location.latitude,
+      location.longitude,
+      coordinate.latitude,
+      coordinate.longitude
+    );
+    
+    if (distance > verificationRadius) {
+      Alert.alert(
+        t.errors.tooFar || "Too Far",
+        t.errors.landmarkTooFarFromLocation?.replace('{radius}', verificationRadius.toString()) || 
+          `You can only add landmarks within ${verificationRadius} meters from your location.`,
+        [{ text: t.common.ok || "OK" }]
+      );
+      return;
+    }
+  } else {
+    // إذا لم يكن موقع المستخدم متاحاً
+    Alert.alert(
+      t.errors.locationRequired || "Location Required",
+      t.errors.enableLocation || "Please enable location services to add landmarks.",
+      [{ text: t.common.ok || "OK" }]
+    );
+    return;
+  }
+  
+  setSelectedLandmark(null);
+  setShowBot(false);
+  
+  // تعطيل الروبوت لمدة دقيقتين
+  setBotDisabled(true);
+  setTimeout(() => setBotDisabled(false), 120000);
+  
+  const { coordinate } = e.nativeEvent;
+  
+  // التحقق السريع من وجود معلم في الموقع المضغوط عليه
+  const existingAtLocation = checkExistingLandmarkAtLocation(coordinate.latitude, coordinate.longitude);
+  if (existingAtLocation) {
+    Alert.alert(
+      t.errors.locationOccupied || "Location Occupied",
+      t.errors.chooseDifferentLocation || "Please choose a different location.",
+      [
+        { text: t.common.cancel || "Cancel", style: 'cancel' },
+        { 
+          text: t.common.viewExisting || "View Existing", 
+          onPress: () => {
+            setSelectedLandmark(existingAtLocation);
+            mapRef.current?.animateToRegion({
+              latitude: existingAtLocation.lat,
+              longitude: existingAtLocation.lon,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            });
+          }
+        }
+      ]
+    );
+    return;
+  }
+  
+  setClickedLocation(coordinate);
+  setNewLandmark(prev => ({
+    ...prev,
+    lat: coordinate.latitude,
+    lon: coordinate.longitude,
+  }));
+  setShowForm(true);
+};
 const getUnverifiedLandmarks = () => {
   // إذا كان هناك معلم محدد، نستخدم موقعه كمركز للتصفية
   const center = selectedLandmark ? {
@@ -1537,26 +1800,36 @@ const editDistance = (s1: string, s2: string) => {
                 style={styles.toggleFormButton}
                 onPress={() => setIsFormMinimized(!isFormMinimized)}
               >
-                  <MaterialIcons 
-                    name={isFormMinimized ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} 
-                    size={24} 
-                    color="#6d4c41" 
-                  />
+                <MaterialIcons 
+                  name={isFormMinimized ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} 
+                  size={24} 
+                  color="#6d4c41" 
+                />
                 <Text style={styles.toggleFormText}>
                   {isFormMinimized ? t.showForm : t.minimizeForm}
-                  {isFormMinimized ? t.showForm : ''}
                 </Text>
               </TouchableOpacity>
 
               {!isFormMinimized && (
                 <>
                   <Text style={styles.formTitle}>{t.addLandmarkTitle}</Text>
+                  
+                  {/* عرض إحداثيات الموقع المحدد */}
+                  {newLandmark.lat !== 0 && (
+                    <View style={styles.coordinatesPreview}>
+                      <Text style={styles.coordinatesText}>
+                        {t.selectedLocation}: {newLandmark.lat.toFixed(6)}, {newLandmark.lon.toFixed(6)}
+                      </Text>
+                    </View>
+                  )}
+                  
                   <TextInput
                     placeholder={t.landmarkTitlePlaceholder}
                     value={newLandmark.title}
                     onChangeText={(text) => setNewLandmark({...newLandmark, title: text})}
                     style={[styles.input, isRTL && { textAlign: 'right' }]}
                   />
+                  
                   <TextInput
                     placeholder={t.descriptionPlaceholder}
                     value={newLandmark.description}
@@ -1564,6 +1837,7 @@ const editDistance = (s1: string, s2: string) => {
                     style={[styles.input, styles.descriptionInput, isRTL && { textAlign: 'right' }]}
                     multiline
                   />
+                  
                   <TouchableOpacity 
                     style={styles.imagePickerButton}
                     onPress={pickImage}
@@ -1572,34 +1846,37 @@ const editDistance = (s1: string, s2: string) => {
                       {newLandmark.imageUrl ? t.changeImage : t.selectImage}
                     </Text>
                   </TouchableOpacity>
+                  
                   {newLandmark.imageUrl && (
                     <Image 
                       source={{ uri: newLandmark.imageUrl }}
                       style={styles.previewImage}
                     />
                   )}
-                       <View style={[styles.formButtons, isRTL && { flexDirection: 'row-reverse' }]}>
-                  <TouchableOpacity 
-                    onPress={addLandmark}
-                    disabled={!newLandmark.title.trim()}
-                    style={[
-                      styles.submitButton,
-                      !newLandmark.title.trim() && styles.disabledButton
-                    ]}
-                  >
-                    <Text style={styles.submitButtonText}>{t.addLandmarkButton}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => setShowForm(false)}
-                    style={styles.cancelButton}
-                  >
-                    <Text style={styles.cancelButtonText}>{t.cancelButton}</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
-        )}
+                  
+                  <View style={[styles.formButtons, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <TouchableOpacity 
+                      onPress={addLandmark}
+                      disabled={!newLandmark.title.trim()}
+                      style={[
+                        styles.submitButton,
+                        !newLandmark.title.trim() && styles.disabledButton
+                      ]}
+                    >
+                      <Text style={styles.submitButtonText}>{t.addLandmarkButton}</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      onPress={() => setShowForm(false)}
+                      style={styles.cancelButton}
+                    >
+                      <Text style={styles.cancelButtonText}>{t.cancelButton}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
+          )}
           <View>
         </View>
 
@@ -1629,17 +1906,17 @@ const editDistance = (s1: string, s2: string) => {
     )}
        {/* تأكد من وجود هذا السطر في المكان الصحيح */}
        <VerificationBot
-  visible={!!(showBot && !botDisabled && currentBotLandmark)}
-  landmark={currentBotLandmark}
-  onVote={(vote) => {
-    if (!currentBotLandmark || !location) {
-      Alert.alert(
-        t.errors.general,
-        t.errors.landmarkNotFound,
-        [{ text: t.common.ok }]
-      );
-      return;
-    }
+          visible={!!(showBot && !botDisabled && currentBotLandmark)}
+          landmark={currentBotLandmark}
+          onVote={(vote) => {
+            if (!currentBotLandmark || !location) {
+              Alert.alert(
+                t.errors.general,
+                t.errors.landmarkNotFound,
+                [{ text: t.common.ok }]
+              );
+              return;
+            }
 
     const distance = calculateDistance(
       location.latitude,
@@ -2228,39 +2505,41 @@ mapInfoText: {
   color: '#5d4037',
   textAlign: 'center',
 },
-botContainer: {
-  position: 'absolute',
-  bottom: 20,
-  right: 20,
-  width: 280, // عرض أصغر قليلاً
-  backgroundColor: 'white',
-  borderRadius: 12, // زوايا أكثر استدارة
-  padding: 12, // تقليل الحشو
-  zIndex: 100,
-  elevation: 8,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.1,
-  shadowRadius: 6,
-  borderWidth: 1,
-  borderColor: '#f0e6e2',
-},
-botHeader: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  marginBottom: 8, // تقليل المسافة
-},
-botTitle: {
-  fontSize: 16, // تصغير حجم الخط
-  fontWeight: '600',
-  color: '#6d4c41',
-},
-botQuestion: {
-  fontSize: 14, // تصغير حجم الخط
-  color: '#5d4037',
-  marginBottom: 8, // تقليل المسافة
-  fontWeight: '500',
-},
+  botContainer: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 280,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 12,
+    zIndex: 100,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: '#f0e6e2',
+  },
+  botHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  botTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6d4c41',
+    flex: 1,
+    textAlign: 'center', // محاذاة مركزية للعنوان
+  },
+  botQuestion: {
+    fontSize: 14,
+    color: '#5d4037',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
 botLandmarkImage: {
   width: '100%',
   height: 100, // تصغير ارتفاع الصورة
@@ -2717,7 +2996,82 @@ dangerButtonText: {
     marginLeft: 8,
     fontSize: 16,
   },
+    coordinatesPreview: {
+    backgroundColor: '#f5f5f5',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  coordinatesText: {
+    fontSize: 12,
+    color: '#757575',
+    textAlign: 'center',
+  },
+  verificationRequirements: {
+  backgroundColor: '#f8f9fa',
+  padding: 15,
+  borderRadius: 8,
+  marginVertical: 10,
+  borderWidth: 1,
+  borderColor: '#e9ecef',
+},
+requirementsTitle: {
+  fontWeight: 'bold',
+  marginBottom: 10,
+  color: '#495057',
+},
+requirementItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 8,
+  padding: 8,
+  borderRadius: 6,
+},
+requirementMet: {
+  backgroundColor: 'rgba(76, 175, 80, 0.1)',
+},
+requirementText: {
+  marginLeft: 8,
+  fontSize: 14,
+  color: '#495057',
+},
+verifiedStatus: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: 'rgba(76, 175, 80, 0.1)',
+  padding: 12,
+  borderRadius: 8,
+  marginTop: 10,
+  borderWidth: 1,
+  borderColor: '#4CAF50',
+},
+verifiedStatusText: {
+  marginLeft: 8,
+  color: '#4CAF50',
+  fontWeight: 'bold',
+},
+notVerifiedStatus: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: 'rgba(255, 152, 0, 0.1)',
+  padding: 12,
+  borderRadius: 8,
+  marginTop: 10,
+  borderWidth: 1,
+  borderColor: '#FF9800',
+},
+notVerifiedStatusText: {
+  marginLeft: 8,
+  color: '#FF9800',
+  fontWeight: 'bold',
+},
+missingRequirements: {
+  fontSize: 12,
+  fontWeight: 'normal',
+  color: '#795548',
+},
 });
 export default LandmarkPage;
-
 

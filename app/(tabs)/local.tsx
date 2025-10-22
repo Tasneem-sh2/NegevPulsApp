@@ -6,10 +6,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { jwtDecode } from 'jwt-decode';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { I18nManager } from 'react-native';
 import { useAuth } from '../AuthContext';
 type LocaleKeys = 'en' | 'ar' | 'he'; // أو أي لغات أخرى تدعمها التطبيق
+
 interface UserData {
   [x: string]: any;
   _id: string;
@@ -262,7 +264,7 @@ const confirmLogout = () => {
         onPress={confirmLogout}
       >
         <MaterialIcons name="logout" size={20} color="#FFD54F" />
-        <Text style={styles.logoutButtonText}>{t('logout')}</Text>
+          <Text style={styles.logoutButtonText}>{t('common.logout')}</Text>
       </TouchableOpacity>
       <ScrollView style={[styles.container, isRTL && { direction: 'rtl' }]}>
         {/* Profile Header */}
